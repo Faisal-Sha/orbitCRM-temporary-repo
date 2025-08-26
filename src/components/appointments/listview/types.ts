@@ -1,0 +1,31 @@
+
+export interface Appointment {
+  id: string;
+  groupDate: string;
+  groupDateDisplay: string;
+  time: string;
+  isTimeRange: boolean;
+  type: "intakes" | "followups" | "clients" | "team" | "personal";
+  service: string;
+  clientFullName: string;
+  clinicianFullName: string;
+  meetingTitle?: string;
+  numberOfInvitees: number;
+  attendees: string[];
+  alertLevel: "red" | "yellow" | "grey";
+  note?: string;
+  email: string;
+  phone: string;
+  growthStage: "foundation" | "developing" | "established";
+  outcome: string;
+  meetingUrl?: string;
+  description?: string;
+  location?: string;
+  address?: string;
+  otherDetails?: string;
+}
+
+export interface FilterOptions {
+  value: string;
+  label: string;
+}
