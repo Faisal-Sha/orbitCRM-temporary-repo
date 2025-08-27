@@ -16,40 +16,38 @@ const PasswordResetPage = () => {
 
   const checkEmailExists = async (email: string): Promise<boolean> => {
     try {
-      // Query the global_users table to check if the email exists
-      const { data, error } = await supabase
-        .from('global_users')
-        .select('user_id')
-        .eq('user_id', 'temp'); // This won't find anything, we need a different approach
-
-      if (error) {
-        console.error("Error checking email:", error);
-        return false;
-      }
-
-      // Alternative approach: Try to sign in with a fake password to check if user exists
-      // This will return different errors for existing vs non-existing users
+      // First try to get user data from auth.users via the admin API
+      // Since we can't directly query auth.users, we'll use a different approach
+      const { data: authData } = await supabase.auth.getUser();
+      
+      // Try to sign in to check if user exists (this is a common pattern)
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: email,
-        password: 'fake-password-to-check-user-existence'
+        password: 'fake-password-to-check-existence-123'
       });
 
-      console.log("Sign in error for email check:", signInError);
+      console.log("Email existence check error:", signInError);
 
-      // If the error is "Invalid login credentials", the user exists but password is wrong
-      // If the error is "Invalid login credentials" or similar, we need to check the specific message
+      // Supabase returns different errors for different scenarios
       if (signInError) {
-        // Supabase returns "Invalid login credentials" for both wrong password and non-existing user
-        // for security reasons. We'll use a different approach.
-        
-        // Let's try the password reset directly and handle the response
-        return true; // We'll let Supabase handle it and check the response
+        // Check if it's specifically an invalid credentials error (user exists but wrong password)
+        // vs user not found error
+        if (signInError.message.includes('Invalid login credentials')) {
+          // This could mean either user doesn't exist OR wrong password
+          // We need to make the actual password reset call to determine
+          return true; // Let the reset call handle the actual validation
+        }
+        if (signInError.message.includes('User not found') || 
+            signInError.message.includes('not found') ||
+            signInError.message.includes('Invalid email')) {
+          return false;
+        }
       }
 
-      return false;
+      return true;
     } catch (error) {
-      console.error("Error in email check:", error);
-      return false;
+      console.error("Error checking email existence:", error);
+      return true; // Default to allowing the request
     }
   };
 
@@ -67,11 +65,12 @@ const PasswordResetPage = () => {
       if (error) {
         console.error("Password reset error:", error);
         
-        // Handle specific error cases
+        // Handle specific error cases more accurately
         if (error.message.includes("User not found") || 
             error.message.includes("Invalid email") ||
             error.message.includes("user_not_found") ||
-            error.message.toLowerCase().includes("not found")) {
+            error.message.toLowerCase().includes("not found") ||
+            error.message.includes("Unable to validate email address")) {
           toast({
             title: "Email not found",
             description: "No account exists with this email address. Please check your email or sign up for a new account.",
