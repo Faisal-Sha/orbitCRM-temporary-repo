@@ -14,29 +14,53 @@ export type Database = {
   }
   public: {
     Tables: {
-      profiles: {
+      global_users: {
         Row: {
           created_at: string
+          created_by_user_id: string | null
+          deleted_at: string | null
+          deleted_by_user_id: string | null
           first_name: string | null
           id: string
+          is_deleted: boolean
+          is_owner: boolean
           last_name: string | null
+          profile_image_url: string | null
+          status: Database["public"]["Enums"]["user_status"]
           updated_at: string
+          updated_by_user_id: string | null
           user_id: string
         }
         Insert: {
           created_at?: string
+          created_by_user_id?: string | null
+          deleted_at?: string | null
+          deleted_by_user_id?: string | null
           first_name?: string | null
           id?: string
+          is_deleted?: boolean
+          is_owner?: boolean
           last_name?: string | null
+          profile_image_url?: string | null
+          status?: Database["public"]["Enums"]["user_status"]
           updated_at?: string
+          updated_by_user_id?: string | null
           user_id: string
         }
         Update: {
           created_at?: string
+          created_by_user_id?: string | null
+          deleted_at?: string | null
+          deleted_by_user_id?: string | null
           first_name?: string | null
           id?: string
+          is_deleted?: boolean
+          is_owner?: boolean
           last_name?: string | null
+          profile_image_url?: string | null
+          status?: Database["public"]["Enums"]["user_status"]
           updated_at?: string
+          updated_by_user_id?: string | null
           user_id?: string
         }
         Relationships: []
@@ -49,7 +73,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      user_status: "invited" | "active" | "inactive" | "deleted"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -176,6 +200,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      user_status: ["invited", "active", "inactive", "deleted"],
+    },
   },
 } as const
