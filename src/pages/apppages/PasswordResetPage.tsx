@@ -6,58 +6,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 
 const PasswordResetPage = () => {
   const [email, setEmail] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
 
-  const handleResetRequest = async (e: React.FormEvent) => {
+  const handleResetRequest = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/password-reset-submit`,
-      });
-
-      if (error) {
-        // Check if the error indicates the email doesn't exist
-        if (error.message.includes('Invalid login credentials') || 
-            error.message.includes('Email not confirmed') ||
-            error.message.includes('User not found')) {
-          toast({
-            title: "Email not found",
-            description: "The email address you entered was not found. Please check and try again.",
-            variant: "destructive",
-          });
-        } else {
-          toast({
-            title: "Error sending reset email",
-            description: error.message,
-            variant: "destructive",
-          });
-        }
-      } else {
-        console.log("Password reset request sent for:", email);
-        setIsSubmitted(true);
-        toast({
-          title: "Reset email sent",
-          description: "Check your email for the password reset link.",
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "An error occurred",
-        description: "Please try again later.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
+    console.log("Password reset request for:", email);
+    setIsSubmitted(true);
+    // Handle password reset logic here
   };
 
   if (isSubmitted) {
@@ -106,11 +64,10 @@ const PasswordResetPage = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                disabled={isLoading}
               />
             </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Sending Reset Link..." : "Send Reset Link"}
+            <Button type="submit" className="w-full">
+              Send Reset Link
             </Button>
           </form>
           <div className="mt-6 text-center">

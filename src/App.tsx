@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -11,7 +10,6 @@ import AppLayout from "./layouts/AppLayout";
 import LoginPage from "./pages/apppages/LoginPage";
 import RegisterPage from "./pages/apppages/RegisterPage";
 import PasswordResetPage from "./pages/apppages/PasswordResetPage";
-import PasswordResetSubmitPage from "./pages/apppages/PasswordResetSubmitPage";
 import NotFoundPage from "./pages/apppages/404Page";
 import ContactPage from "./pages/apppages/ContactPage";
 
@@ -146,7 +144,6 @@ const App = () => (
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/password-reset" element={<PasswordResetPage />} />
-            <Route path="/password-reset-submit" element={<PasswordResetSubmitPage />} />
             <Route path="/contact" element={<ContactPage />} />
             
             <Route path="/" element={<AppLayout />}>
