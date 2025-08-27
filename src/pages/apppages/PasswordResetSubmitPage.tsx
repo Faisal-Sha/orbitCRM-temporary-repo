@@ -22,39 +22,85 @@ const PasswordResetSubmitPage = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Check if we have the necessary URL parameters for password reset
-    const accessToken = searchParams.get('access_token');
-    const refreshToken = searchParams.get('refresh_token');
-    const type = searchParams.get('type');
-
-    if (type === 'recovery' && accessToken && refreshToken) {
-      // Set the session using the tokens from the URL
-      supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken,
-      }).then(({ error }) => {
+    const handlePasswordReset = async () => {
+      try {
+        // Check if there's an error in the URL (like access_denied)
+        const error = searchParams.get('error');
         if (error) {
-          console.error('Error setting session:', error);
+          console.error('URL contains error:', error);
+          toast({
+            title: "Reset link error",
+            description: "There was an issue with the reset link. Please request a new one.",
+            variant: "destructive",
+          });
+          setIsValidLink(false);
+          setIsLoading(false);
+          return;
+        }
+
+        // Check for the hash fragment which contains the tokens
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const accessToken = hashParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token');
+        const type = hashParams.get('type');
+
+        // Also check URL params as backup
+        const urlAccessToken = searchParams.get('access_token');
+        const urlRefreshToken = searchParams.get('refresh_token');
+        const urlType = searchParams.get('type');
+
+        const finalAccessToken = accessToken || urlAccessToken;
+        const finalRefreshToken = refreshToken || urlRefreshToken;
+        const finalType = type || urlType;
+
+        console.log('Reset tokens:', {
+          accessToken: finalAccessToken ? 'present' : 'missing',
+          refreshToken: finalRefreshToken ? 'present' : 'missing',
+          type: finalType
+        });
+
+        if (finalType === 'recovery' && finalAccessToken && finalRefreshToken) {
+          // Set the session using the tokens
+          const { error: sessionError } = await supabase.auth.setSession({
+            access_token: finalAccessToken,
+            refresh_token: finalRefreshToken,
+          });
+
+          if (sessionError) {
+            console.error('Error setting session:', sessionError);
+            toast({
+              title: "Invalid reset link",
+              description: "The password reset link is invalid or has expired. Please request a new one.",
+              variant: "destructive",
+            });
+            setIsValidLink(false);
+          } else {
+            console.log('Session set successfully');
+            setIsValidLink(true);
+          }
+        } else {
+          console.error('Missing required parameters for password reset');
           toast({
             title: "Invalid reset link",
             description: "The password reset link is invalid or has expired. Please request a new one.",
             variant: "destructive",
           });
           setIsValidLink(false);
-        } else {
-          setIsValidLink(true);
         }
+      } catch (error) {
+        console.error('Error handling password reset:', error);
+        toast({
+          title: "Error",
+          description: "An error occurred while processing the reset link.",
+          variant: "destructive",
+        });
+        setIsValidLink(false);
+      } finally {
         setIsLoading(false);
-      });
-    } else {
-      toast({
-        title: "Invalid reset link",
-        description: "The password reset link is invalid or has expired. Please request a new one.",
-        variant: "destructive",
-      });
-      setIsValidLink(false);
-      setIsLoading(false);
-    }
+      }
+    };
+
+    handlePasswordReset();
   }, [searchParams, toast]);
 
   const handlePasswordReset = async (e: React.FormEvent) => {
