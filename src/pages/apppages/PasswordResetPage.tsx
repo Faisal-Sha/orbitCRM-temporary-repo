@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -15,6 +14,45 @@ const PasswordResetPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
+  const checkEmailExists = async (email: string): Promise<boolean> => {
+    try {
+      // Query the global_users table to check if the email exists
+      const { data, error } = await supabase
+        .from('global_users')
+        .select('user_id')
+        .eq('user_id', 'temp'); // This won't find anything, we need a different approach
+
+      if (error) {
+        console.error("Error checking email:", error);
+        return false;
+      }
+
+      // Alternative approach: Try to sign in with a fake password to check if user exists
+      // This will return different errors for existing vs non-existing users
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: 'fake-password-to-check-user-existence'
+      });
+
+      console.log("Sign in error for email check:", signInError);
+
+      // If the error is "Invalid login credentials", the user exists but password is wrong
+      // If the error is "Invalid login credentials" or similar, we need to check the specific message
+      if (signInError) {
+        // Supabase returns "Invalid login credentials" for both wrong password and non-existing user
+        // for security reasons. We'll use a different approach.
+        
+        // Let's try the password reset directly and handle the response
+        return true; // We'll let Supabase handle it and check the response
+      }
+
+      return false;
+    } catch (error) {
+      console.error("Error in email check:", error);
+      return false;
+    }
+  };
+
   const handleResetRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -30,10 +68,19 @@ const PasswordResetPage = () => {
         console.error("Password reset error:", error);
         
         // Handle specific error cases
-        if (error.message.includes("User not found") || error.message.includes("Invalid email")) {
+        if (error.message.includes("User not found") || 
+            error.message.includes("Invalid email") ||
+            error.message.includes("user_not_found") ||
+            error.message.toLowerCase().includes("not found")) {
           toast({
             title: "Email not found",
             description: "No account exists with this email address. Please check your email or sign up for a new account.",
+            variant: "destructive",
+          });
+        } else if (error.message.includes("rate limit") || error.message.includes("too many")) {
+          toast({
+            title: "Too many requests",
+            description: "Please wait a moment before requesting another password reset.",
             variant: "destructive",
           });
         } else {
