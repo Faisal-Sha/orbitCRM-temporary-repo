@@ -20,6 +20,28 @@ const PasswordResetPage = () => {
     setIsLoading(true);
 
     try {
+      // First, check if the email exists in the global_users table
+      console.log("Checking if email exists in global_users:", email);
+      const { data: userData, error: userError } = await supabase
+        .from('global_users')
+        .select('user_id')
+        .eq('user_id', email)
+        .single();
+
+      if (userError || !userData) {
+        console.log("Email not found in global_users table:", userError);
+        toast({
+          title: "Email not found",
+          description: "No account exists with this email address. Please check your email or sign up for a new account.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      console.log("Email found in global_users, proceeding with password reset");
+      
+      // If email exists, proceed with password reset
       const redirectUrl = `${window.location.origin}/password-reset-submit`;
       
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -28,21 +50,11 @@ const PasswordResetPage = () => {
 
       if (error) {
         console.error("Password reset error:", error);
-        
-        // Handle specific error cases
-        if (error.message.includes("User not found") || error.message.includes("Invalid email")) {
-          toast({
-            title: "Email not found",
-            description: "No account exists with this email address. Please check your email or sign up for a new account.",
-            variant: "destructive",
-          });
-        } else {
-          toast({
-            title: "Error",
-            description: error.message || "An error occurred while sending the reset email. Please try again.",
-            variant: "destructive",
-          });
-        }
+        toast({
+          title: "Error",
+          description: error.message || "An error occurred while sending the reset email. Please try again.",
+          variant: "destructive",
+        });
         return;
       }
 
@@ -114,7 +126,7 @@ const PasswordResetPage = () => {
               />
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Sending Reset Link..." : "Send Reset Link"}
+              {isLoading ? "Checking Email..." : "Send Reset Link"}
             </Button>
           </form>
           <div className="mt-6 text-center">
