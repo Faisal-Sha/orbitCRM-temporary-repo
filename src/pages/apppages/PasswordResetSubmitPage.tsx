@@ -1,11 +1,13 @@
 
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const PasswordResetSubmitPage = () => {
   const [newPassword, setNewPassword] = useState("");
@@ -13,31 +15,154 @@ const PasswordResetSubmitPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isValidLink, setIsValidLink] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { toast } = useToast();
 
-  const handlePasswordReset = (e: React.FormEvent) => {
+  useEffect(() => {
+    // Check if we have the necessary URL parameters for password reset
+    const accessToken = searchParams.get('access_token');
+    const refreshToken = searchParams.get('refresh_token');
+    const type = searchParams.get('type');
+
+    if (type === 'recovery' && accessToken && refreshToken) {
+      // Set the session using the tokens from the URL
+      supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      }).then(({ error }) => {
+        if (error) {
+          console.error('Error setting session:', error);
+          toast({
+            title: "Invalid reset link",
+            description: "The password reset link is invalid or has expired. Please request a new one.",
+            variant: "destructive",
+          });
+          setIsValidLink(false);
+        } else {
+          setIsValidLink(true);
+        }
+        setIsLoading(false);
+      });
+    } else {
+      toast({
+        title: "Invalid reset link",
+        description: "The password reset link is invalid or has expired. Please request a new one.",
+        variant: "destructive",
+      });
+      setIsValidLink(false);
+      setIsLoading(false);
+    }
+  }, [searchParams, toast]);
+
+  const handlePasswordReset = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (newPassword !== confirmPassword) {
-      alert("Passwords do not match");
+      toast({
+        title: "Passwords don't match",
+        description: "Please make sure both password fields match.",
+        variant: "destructive",
+      });
       return;
     }
     
     if (newPassword.length < 6) {
-      alert("Password must be at least 6 characters long");
+      toast({
+        title: "Password too short",
+        description: "Password must be at least 6 characters long.",
+        variant: "destructive",
+      });
       return;
     }
 
     setIsSubmitting(true);
-    console.log("Resetting password with:", newPassword);
+    console.log("Updating password...");
     
-    // Simulate password reset process
-    setTimeout(() => {
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+
+      if (error) {
+        console.error("Password update error:", error);
+        toast({
+          title: "Error updating password",
+          description: error.message || "Failed to update password. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log("Password updated successfully");
+      toast({
+        title: "Password updated",
+        description: "Your password has been successfully updated. You can now log in with your new password.",
+      });
+
+      // Sign out the user so they can log in with the new password
+      await supabase.auth.signOut();
+      
+      // Redirect to login page after a short delay
+      setTimeout(() => {
+        navigate("/login");
+      }, 2000);
+    } catch (error) {
+      console.error("Unexpected error:", error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
       setIsSubmitting(false);
-      alert("Password reset successful!");
-      navigate("/login");
-    }, 1000);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="text-center py-8">
+            <p className="text-sm text-muted-foreground">Validating reset link...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!isValidLink) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-2xl font-bold text-center">Invalid Reset Link</CardTitle>
+            <CardDescription className="text-center">
+              The password reset link is invalid or has expired
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Please request a new password reset link.
+            </p>
+            <Link to="/password-reset">
+              <Button className="w-full">
+                Request New Reset Link
+              </Button>
+            </Link>
+            <Link to="/login">
+              <Button variant="outline" className="w-full">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Login
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -61,6 +186,7 @@ const PasswordResetSubmitPage = () => {
                   onChange={(e) => setNewPassword(e.target.value)}
                   required
                   minLength={6}
+                  disabled={isSubmitting}
                 />
                 <Button
                   type="button"
@@ -68,6 +194,7 @@ const PasswordResetSubmitPage = () => {
                   size="sm"
                   className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                   onClick={() => setShowPassword(!showPassword)}
+                  disabled={isSubmitting}
                 >
                   {showPassword ? (
                     <EyeOff className="h-4 w-4" />
@@ -89,6 +216,7 @@ const PasswordResetSubmitPage = () => {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
                   minLength={6}
+                  disabled={isSubmitting}
                 />
                 <Button
                   type="button"
@@ -96,6 +224,7 @@ const PasswordResetSubmitPage = () => {
                   size="sm"
                   className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  disabled={isSubmitting}
                 >
                   {showConfirmPassword ? (
                     <EyeOff className="h-4 w-4" />
@@ -107,7 +236,7 @@ const PasswordResetSubmitPage = () => {
             </div>
             
             <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? "Resetting Password..." : "Reset Password"}
+              {isSubmitting ? "Updating Password..." : "Update Password"}
             </Button>
           </form>
           
