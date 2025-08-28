@@ -19,59 +19,29 @@ const PasswordResetPage = () => {
     setIsLoading(true);
 
     try {
-      // First, check if the email exists in the global_users table
-      console.log("Checking if email exists in global_users:", email);
+      // First, check if the email exists in the app_users table
+      console.log("Checking if email exists in app_users:", email);
       
-      // Query the global_users table to check if user exists with this email
-      // Note: We need to check against auth.users for the actual email, 
-      // but we'll use a different approach since we can't directly query auth.users
+      // Query the app_users table to check if user exists with this email
+      const { data: appUser, error: queryError } = await supabase
+        .from('app_users')
+        .select('account_email')
+        .eq('account_email', email)
+        .maybeSingle();
       
-      // Try to get user data from Supabase auth first to see if user exists
-      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
-      
-      if (authError) {
-        console.log("Error checking auth users:", authError);
-        // If we can't check auth users directly, try the password reset and handle the error
-        const redirectUrl = `${window.location.origin}/password-reset-submit`;
-        
-        const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: redirectUrl,
-        });
-
-        if (resetError) {
-          console.error("Password reset error:", resetError);
-          if (resetError.message.includes("User not found") || resetError.message.includes("Invalid email")) {
-            toast({
-              title: "Email not found",
-              description: "No account exists with this email address. Please check your email or sign up for a new account.",
-              variant: "destructive",
-            });
-          } else {
-            toast({
-              title: "Error",
-              description: resetError.message || "An error occurred while sending the reset email. Please try again.",
-              variant: "destructive",
-            });
-          }
-          setIsLoading(false);
-          return;
-        }
-
-        console.log("Password reset email sent successfully");
-        setIsSubmitted(true);
+      if (queryError) {
+        console.error("Error checking app_users:", queryError);
         toast({
-          title: "Reset email sent",
-          description: "Check your email for the password reset link.",
+          title: "Error",
+          description: "An error occurred while checking your email. Please try again.",
+          variant: "destructive",
         });
         setIsLoading(false);
         return;
       }
-
-      // Check if the email exists in the auth users
-      const userExists = authUsers.users.some(user => user.email === email);
       
-      if (!userExists) {
-        console.log("Email not found in auth users");
+      if (!appUser) {
+        console.log("Email not found in app_users");
         toast({
           title: "Email not found",
           description: "No account exists with this email address. Please check your email or sign up for a new account.",
@@ -81,7 +51,7 @@ const PasswordResetPage = () => {
         return;
       }
 
-      console.log("Email found in auth users, proceeding with password reset");
+      console.log("Email found in app_users, proceeding with password reset");
       
       // If email exists, proceed with password reset
       const redirectUrl = `${window.location.origin}/password-reset-submit`;
