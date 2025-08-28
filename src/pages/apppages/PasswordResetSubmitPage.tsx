@@ -24,13 +24,27 @@ const PasswordResetSubmitPage = () => {
   useEffect(() => {
     const handlePasswordReset = async () => {
       try {
-        // Check if there's an error in the URL (like access_denied)
+        // Check if there's an error in the URL (like access_denied, otp_expired, etc.)
         const error = searchParams.get('error');
+        const errorCode = searchParams.get('error_code');
+        const errorDescription = searchParams.get('error_description');
+        
         if (error) {
-          console.error('URL contains error:', error);
+          console.error('URL contains error:', { error, errorCode, errorDescription });
+          
+          let errorMessage = "There was an issue with the reset link. Please request a new one.";
+          
+          if (error === 'access_denied') {
+            errorMessage = "Access was denied. The reset link may have expired or been used already.";
+          } else if (errorCode === 'otp_expired') {
+            errorMessage = "The reset link has expired. Please request a new one.";
+          } else if (errorDescription) {
+            errorMessage = errorDescription;
+          }
+          
           toast({
             title: "Reset link error",
-            description: "There was an issue with the reset link. Please request a new one.",
+            description: errorMessage,
             variant: "destructive",
           });
           setIsValidLink(false);

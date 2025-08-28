@@ -54,7 +54,9 @@ const PasswordResetPage = () => {
       console.log("Email found in app_users, proceeding with password reset");
       
       // If email exists, proceed with password reset
+      // Use current origin but ensure it works in all environments
       const redirectUrl = `${window.location.origin}/password-reset-submit`;
+      console.log('Password reset redirect URL:', redirectUrl);
       
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: redirectUrl,
