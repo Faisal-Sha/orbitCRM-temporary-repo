@@ -44,6 +44,12 @@ interface Organization {
   storage_used: string;
 }
 
+interface SoftDeleteResponse {
+  organization_id: string;
+  success: boolean;
+  message: string;
+}
+
 const OrganizationsManagement = () => {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
@@ -254,24 +260,14 @@ const OrganizationsManagement = () => {
       }
 
       console.log('User found:', user.id);
-      console.log('Attempting to update organization with soft delete...');
+      console.log('Calling soft_delete_organization function...');
 
-      const updateData = { 
-        status: 'deleted' as const,
-        is_deleted: true,
-        deleted_by: user.id,
-        deleted_at: new Date().toISOString()
-      };
-      
-      console.log('Update data:', updateData);
-      
-      const { data, error, count } = await supabase
-        .from('app_organizations')
-        .update(updateData)
-        .eq('id', selectedOrg.id)
-        .select();
+      const { data, error } = await supabase.rpc('soft_delete_organization', {
+        org_id: selectedOrg.id,
+        deleting_user_id: user.id
+      });
 
-      console.log('Update response:', { data, error, count });
+      console.log('Function response:', { data, error });
 
       if (error) {
         console.error('Error deleting organization:', error);
@@ -283,17 +279,19 @@ const OrganizationsManagement = () => {
         return;
       }
 
-      if (!data || data.length === 0) {
-        console.error('No rows were updated - organization may not exist or user lacks permissions');
+      const response = data as unknown as SoftDeleteResponse;
+
+      if (!response || !response.success) {
+        console.error('Delete operation failed:', response?.message || 'Unknown error');
         toast({
           title: "Error",
-          description: "Failed to delete organization - no rows updated",
+          description: response?.message || "Failed to delete organization",
           variant: "destructive",
         });
         return;
       }
 
-      console.log('Successfully updated organization:', data[0]);
+      console.log('Successfully deleted organization:', response);
 
       toast({
         title: "Success",

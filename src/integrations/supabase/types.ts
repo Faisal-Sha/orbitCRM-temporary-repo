@@ -701,6 +701,10 @@ export type Database = {
           user_count: number
         }[]
       }
+      soft_delete_organization: {
+        Args: { deleting_user_id: string; org_id: string }
+        Returns: Json
+      }
       update_organization_with_admin: {
         Args: {
           admin_email: string
