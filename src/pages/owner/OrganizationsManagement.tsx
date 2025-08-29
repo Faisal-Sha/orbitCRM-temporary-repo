@@ -240,8 +240,11 @@ const OrganizationsManagement = () => {
     if (!selectedOrg) return;
 
     try {
+      console.log('Starting delete operation for organization:', selectedOrg.id);
+      
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
+        console.log('No user found, aborting delete');
         toast({
           title: "Error",
           description: "You must be logged in to delete organizations",
@@ -250,25 +253,47 @@ const OrganizationsManagement = () => {
         return;
       }
 
-      const { error } = await supabase
+      console.log('User found:', user.id);
+      console.log('Attempting to update organization with soft delete...');
+
+      const updateData = { 
+        status: 'deleted' as const,
+        is_deleted: true,
+        deleted_by: user.id,
+        deleted_at: new Date().toISOString()
+      };
+      
+      console.log('Update data:', updateData);
+      
+      const { data, error, count } = await supabase
         .from('app_organizations')
-        .update({ 
-          status: 'deleted',
-          is_deleted: true,
-          deleted_by: user.id,
-          deleted_at: new Date().toISOString()
-        })
-        .eq('id', selectedOrg.id);
+        .update(updateData)
+        .eq('id', selectedOrg.id)
+        .select();
+
+      console.log('Update response:', { data, error, count });
 
       if (error) {
         console.error('Error deleting organization:', error);
         toast({
-          title: "Error",
-          description: "Failed to delete organization",
+          title: "Error", 
+          description: `Failed to delete organization: ${error.message}`,
           variant: "destructive",
         });
         return;
       }
+
+      if (!data || data.length === 0) {
+        console.error('No rows were updated - organization may not exist or user lacks permissions');
+        toast({
+          title: "Error",
+          description: "Failed to delete organization - no rows updated",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log('Successfully updated organization:', data[0]);
 
       toast({
         title: "Success",
@@ -281,7 +306,7 @@ const OrganizationsManagement = () => {
       // Force immediate refresh of organizations list
       await fetchOrganizations();
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error in handleDelete:', error);
       toast({
         title: "Error",
         description: "Failed to delete organization",
