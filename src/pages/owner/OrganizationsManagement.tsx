@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,7 +34,7 @@ import { useToast } from "@/hooks/use-toast";
 interface Organization {
   id: string;
   organization_name: string;
-  status: "active" | "inactive" | "suspended";
+  status: "active" | "inactive" | "deleted";
   created_at: string;
   admin_first_name: string | null;
   admin_last_name: string | null;
@@ -57,7 +56,7 @@ const OrganizationsManagement = () => {
     adminFirstName: "",
     adminLastName: "",
     adminEmail: "",
-    status: "active" as "active" | "inactive" | "suspended"
+    status: "active" as "active" | "inactive" | "deleted"
   });
   const { toast } = useToast();
 
@@ -87,13 +86,7 @@ const OrganizationsManagement = () => {
         return;
       }
 
-      // Map the database status values to match our interface
-      const mappedData = (data || []).map((org: any) => ({
-        ...org,
-        status: org.status === 'deleted' ? 'inactive' : org.status // Map 'deleted' to 'inactive'
-      }));
-
-      setOrganizations(mappedData);
+      setOrganizations(data || []);
     } catch (error) {
       console.error('Error:', error);
       toast({
@@ -196,14 +189,11 @@ const OrganizationsManagement = () => {
         return;
       }
 
-      // Map frontend status to database status
-      const dbStatus = formData.status === 'inactive' ? 'deleted' : formData.status === 'suspended' ? 'suspended' : 'active';
-
       const { data, error } = await supabase.rpc('update_organization_with_admin', {
         org_id: selectedOrg.id,
         organization_name: formData.name,
         organization_state: formData.state,
-        organization_status: dbStatus as 'active' | 'inactive' | 'deleted',
+        organization_status: formData.status as "active" | "inactive" | "deleted",
         admin_first_name: formData.adminFirstName,
         admin_last_name: formData.adminLastName,
         admin_email: formData.adminEmail,
@@ -275,13 +265,13 @@ const OrganizationsManagement = () => {
     }
   };
 
-  const handleSuspendToggle = async (org: Organization) => {
+  const handleStatusToggle = async (org: Organization) => {
     try {
-      const newStatus = org.status === "active" ? "suspended" : "active";
+      const newStatus = org.status === "active" ? "deleted" : "active";
       
       const { error } = await supabase
         .from('app_organizations')
-        .update({ status: newStatus as 'active' | 'suspended' })
+        .update({ status: newStatus as "active" | "inactive" | "deleted" })
         .eq('id', org.id);
 
       if (error) {
@@ -296,7 +286,7 @@ const OrganizationsManagement = () => {
 
       toast({
         title: "Success",
-        description: `Organization ${newStatus === "active" ? "activated" : "suspended"} successfully`,
+        description: `Organization ${newStatus === "active" ? "activated" : "deactivated"} successfully`,
       });
 
       fetchOrganizations();
@@ -344,8 +334,8 @@ const OrganizationsManagement = () => {
     switch (status) {
       case "active":
         return <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-100">Active</Badge>;
-      case "suspended":
-        return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Suspended</Badge>;
+      case "deleted":
+        return <Badge variant="secondary" className="bg-red-100 text-red-800 hover:bg-red-100">Deleted</Badge>;
       case "inactive":
         return <Badge variant="outline" className="bg-gray-100 text-gray-800 hover:bg-gray-100">Inactive</Badge>;
       default:
@@ -431,8 +421,8 @@ const OrganizationsManagement = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleSuspendToggle(org)}
-                        className={org.status === "active" ? "text-yellow-600" : "text-green-600"}
+                        onClick={() => handleStatusToggle(org)}
+                        className={org.status === "active" ? "text-red-600" : "text-green-600"}
                       >
                         <AlertTriangle className="h-4 w-4" />
                       </Button>
@@ -517,14 +507,14 @@ const OrganizationsManagement = () => {
             </div>
             <div className="grid gap-2">
               <Label htmlFor="status">Initial Status</Label>
-              <Select value={formData.status} onValueChange={(value: "active" | "suspended" | "inactive") => setFormData({ ...formData, status: value })}>
+              <Select value={formData.status} onValueChange={(value: "active" | "inactive" | "deleted") => setFormData({ ...formData, status: value })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="suspended">Suspended</SelectItem>
                   <SelectItem value="inactive">Inactive</SelectItem>
+                  <SelectItem value="deleted">Deleted</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -602,14 +592,14 @@ const OrganizationsManagement = () => {
             </div>
             <div className="grid gap-2">
               <Label htmlFor="editStatus">Status</Label>
-              <Select value={formData.status} onValueChange={(value: "active" | "suspended" | "inactive") => setFormData({ ...formData, status: value })}>
+              <Select value={formData.status} onValueChange={(value: "active" | "inactive" | "deleted") => setFormData({ ...formData, status: value })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="suspended">Suspended</SelectItem>
                   <SelectItem value="inactive">Inactive</SelectItem>
+                  <SelectItem value="deleted">Deleted</SelectItem>
                 </SelectContent>
               </Select>
             </div>
