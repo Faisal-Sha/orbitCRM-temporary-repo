@@ -277,7 +277,9 @@ const OrganizationsManagement = () => {
 
       setIsDeleteDialogOpen(false);
       setSelectedOrg(null);
-      fetchOrganizations();
+      
+      // Force immediate refresh of organizations list
+      await fetchOrganizations();
     } catch (error) {
       console.error('Error:', error);
       toast({
