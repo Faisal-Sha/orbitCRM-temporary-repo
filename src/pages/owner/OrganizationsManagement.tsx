@@ -88,7 +88,13 @@ const OrganizationsManagement = () => {
         return;
       }
 
-      setOrganizations(data || []);
+      // Ensure all organizations have the required properties, including organization_state
+      const organizationsWithState = (data || []).map((org: any) => ({
+        ...org,
+        organization_state: org.organization_state || null
+      }));
+
+      setOrganizations(organizationsWithState);
     } catch (error) {
       console.error('Error:', error);
       toast({
