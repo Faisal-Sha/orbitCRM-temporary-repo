@@ -695,6 +695,7 @@ export type Database = {
           created_at: string
           id: string
           organization_name: string
+          organization_state: string
           status: Database["public"]["Enums"]["organization_status_enum"]
           storage_used: string
           user_count: number
