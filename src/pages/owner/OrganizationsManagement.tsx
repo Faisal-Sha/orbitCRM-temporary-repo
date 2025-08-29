@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,13 +28,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Edit, Trash2, AlertTriangle } from "lucide-react";
+import { Plus, Edit, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 interface Organization {
   id: string;
   organization_name: string;
+  organization_state: string | null;
   status: "active" | "inactive" | "deleted";
   created_at: string;
   admin_first_name: string | null;
@@ -56,7 +58,7 @@ const OrganizationsManagement = () => {
     adminFirstName: "",
     adminLastName: "",
     adminEmail: "",
-    status: "active" as "active" | "inactive" | "deleted"
+    status: "active" as "active" | "inactive"
   });
   const { toast } = useToast();
 
@@ -265,41 +267,6 @@ const OrganizationsManagement = () => {
     }
   };
 
-  const handleStatusToggle = async (org: Organization) => {
-    try {
-      const newStatus = org.status === "active" ? "deleted" : "active";
-      
-      const { error } = await supabase
-        .from('app_organizations')
-        .update({ status: newStatus as "active" | "inactive" | "deleted" })
-        .eq('id', org.id);
-
-      if (error) {
-        console.error('Error updating organization status:', error);
-        toast({
-          title: "Error",
-          description: "Failed to update organization status",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      toast({
-        title: "Success",
-        description: `Organization ${newStatus === "active" ? "activated" : "deactivated"} successfully`,
-      });
-
-      fetchOrganizations();
-    } catch (error) {
-      console.error('Error:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update organization status",
-        variant: "destructive",
-      });
-    }
-  };
-
   const openAddDialog = () => {
     setFormData({ 
       name: "", 
@@ -316,11 +283,11 @@ const OrganizationsManagement = () => {
     setSelectedOrg(org);
     setFormData({
       name: org.organization_name,
-      state: "", // State is not stored in the current schema
+      state: org.organization_state || "",
       adminFirstName: org.admin_first_name || "",
       adminLastName: org.admin_last_name || "",
       adminEmail: org.admin_email || "",
-      status: org.status
+      status: org.status === "deleted" ? "inactive" : org.status as "active" | "inactive"
     });
     setIsEditDialogOpen(true);
   };
@@ -334,10 +301,10 @@ const OrganizationsManagement = () => {
     switch (status) {
       case "active":
         return <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-100">Active</Badge>;
-      case "deleted":
-        return <Badge variant="secondary" className="bg-red-100 text-red-800 hover:bg-red-100">Deleted</Badge>;
       case "inactive":
         return <Badge variant="outline" className="bg-gray-100 text-gray-800 hover:bg-gray-100">Inactive</Badge>;
+      case "deleted":
+        return <Badge variant="secondary" className="bg-red-100 text-red-800 hover:bg-red-100">Deleted</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -380,6 +347,7 @@ const OrganizationsManagement = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>Organization</TableHead>
+                <TableHead>State</TableHead>
                 <TableHead>Admin</TableHead>
                 <TableHead>Users</TableHead>
                 <TableHead>Storage</TableHead>
@@ -392,6 +360,7 @@ const OrganizationsManagement = () => {
               {organizations.map((org) => (
                 <TableRow key={org.id}>
                   <TableCell className="font-medium">{org.organization_name}</TableCell>
+                  <TableCell>{org.organization_state || "N/A"}</TableCell>
                   <TableCell>
                     <div>
                       <div className="font-medium">
@@ -417,14 +386,6 @@ const OrganizationsManagement = () => {
                         onClick={() => openEditDialog(org)}
                       >
                         <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleStatusToggle(org)}
-                        className={org.status === "active" ? "text-red-600" : "text-green-600"}
-                      >
-                        <AlertTriangle className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="outline"
@@ -507,14 +468,13 @@ const OrganizationsManagement = () => {
             </div>
             <div className="grid gap-2">
               <Label htmlFor="status">Initial Status</Label>
-              <Select value={formData.status} onValueChange={(value: "active" | "inactive" | "deleted") => setFormData({ ...formData, status: value })}>
+              <Select value={formData.status} onValueChange={(value: "active" | "inactive") => setFormData({ ...formData, status: value })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="active">Active</SelectItem>
                   <SelectItem value="inactive">Inactive</SelectItem>
-                  <SelectItem value="deleted">Deleted</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -592,14 +552,13 @@ const OrganizationsManagement = () => {
             </div>
             <div className="grid gap-2">
               <Label htmlFor="editStatus">Status</Label>
-              <Select value={formData.status} onValueChange={(value: "active" | "inactive" | "deleted") => setFormData({ ...formData, status: value })}>
+              <Select value={formData.status} onValueChange={(value: "active" | "inactive") => setFormData({ ...formData, status: value })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="active">Active</SelectItem>
                   <SelectItem value="inactive">Inactive</SelectItem>
-                  <SelectItem value="deleted">Deleted</SelectItem>
                 </SelectContent>
               </Select>
             </div>
