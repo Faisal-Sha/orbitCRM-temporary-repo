@@ -144,7 +144,8 @@ const OrganizationsManagement = () => {
         admin_first_name: formData.adminFirstName,
         admin_last_name: formData.adminLastName,
         admin_email: formData.adminEmail,
-        created_by_user_id: user.id
+        created_by_user_id: user.id,
+        organization_status: formData.status
       });
 
       if (error) {
@@ -624,7 +625,7 @@ const OrganizationsManagement = () => {
           <DialogHeader>
             <DialogTitle>Delete Organization</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete "{selectedOrg?.organization_name}"? This action cannot be undone and will permanently remove all data associated with this organization.
+              Are you sure you want to delete "{selectedOrg?.organization_name}"?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

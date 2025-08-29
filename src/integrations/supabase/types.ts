@@ -676,14 +676,24 @@ export type Database = {
     }
     Functions: {
       create_organization_with_admin: {
-        Args: {
-          admin_email: string
-          admin_first_name: string
-          admin_last_name: string
-          created_by_user_id: string
-          organization_name: string
-          organization_state: string
-        }
+        Args:
+          | {
+              admin_email: string
+              admin_first_name: string
+              admin_last_name: string
+              created_by_user_id: string
+              organization_name: string
+              organization_state: string
+            }
+          | {
+              admin_email: string
+              admin_first_name: string
+              admin_last_name: string
+              created_by_user_id: string
+              organization_name: string
+              organization_state: string
+              organization_status?: Database["public"]["Enums"]["organization_status_enum"]
+            }
         Returns: Json
       }
       get_organizations_with_admins: {
