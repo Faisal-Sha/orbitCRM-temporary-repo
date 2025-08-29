@@ -178,9 +178,6 @@ const OrganizationsManagement = () => {
     try {
       setLoading(true);
       
-      // Get current user session for authentication
-      const { data: { session } } = await supabase.auth.getSession();
-      
       // Call the edge function to create the complete organization workflow
       const { data, error } = await supabase.functions.invoke('create-organization', {
         body: {
@@ -190,10 +187,7 @@ const OrganizationsManagement = () => {
           adminName: formData.adminName,
           adminSurname: formData.adminSurname,
           adminEmail: formData.adminEmail
-        },
-        headers: session?.access_token ? {
-          Authorization: `Bearer ${session.access_token}`
-        } : {}
+        }
       });
 
       if (error) {
