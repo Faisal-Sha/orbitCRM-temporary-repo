@@ -31,6 +31,19 @@ const handler = async (req: Request): Promise<Response> => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Get the authorization header
+    const authHeader = req.headers.get('Authorization');
+    let currentUserId = null;
+    
+    if (authHeader) {
+      // Extract token and get user
+      const token = authHeader.replace('Bearer ', '');
+      const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+      if (!userError && user) {
+        currentUserId = user.id;
+      }
+    }
+
     const {
       organizationName,
       state,
@@ -55,6 +68,8 @@ const handler = async (req: Request): Promise<Response> => {
       .insert({
         organization_name: organizationName,
         status: status,
+        created_by: currentUserId,
+        updated_by: currentUserId,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
@@ -75,6 +90,8 @@ const handler = async (req: Request): Promise<Response> => {
         first_name: adminName,
         last_name: adminSurname,
         status: 'active',
+        created_by: currentUserId,
+        updated_by: currentUserId,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
@@ -94,6 +111,8 @@ const handler = async (req: Request): Promise<Response> => {
       .insert({
         person_id: personData.id,
         email: adminEmail,
+        created_by: currentUserId,
+        updated_by: currentUserId,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
@@ -107,10 +126,26 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("Contact created:", contactData);
 
-    // Step 4: Skip admin link for now - will be created when user registers
-    // The app_organization_admins table expects a user_id, not person_id
-    // This will be handled during registration process
-    console.log("Skipping admin link creation - will be handled during user registration");
+    // Step 4: Create Admin Organization Link
+    const { data: adminLinkData, error: adminLinkError } = await supabase
+      .from('app_organization_admins')
+      .insert({
+        organization_id: orgData.id,
+        admin_id: personData.id,
+        created_by: currentUserId,
+        updated_by: currentUserId,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (adminLinkError) {
+      console.error('Error creating admin link:', adminLinkError);
+      throw new Error(`Failed to create admin link: ${adminLinkError.message}`);
+    }
+
+    console.log("Admin link created:", adminLinkData);
 
     // Step 5: Assign Admin Role
     const { data: orgPersonData, error: orgPersonError } = await supabase
@@ -119,6 +154,8 @@ const handler = async (req: Request): Promise<Response> => {
         organization_id: orgData.id,
         person_id: personData.id,
         user_role_id: '389ef5df-2b0c-46d0-a31b-e83cf88ba5a4', // Admin role ID
+        created_by: currentUserId,
+        updated_by: currentUserId,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
@@ -136,29 +173,39 @@ const handler = async (req: Request): Promise<Response> => {
     const baseUrl = 'https://preview--lovable-supabase-integration.lovable.app';
     const invitationUrl = `${baseUrl}/register?first_name=${encodeURIComponent(adminName)}&last_name=${encodeURIComponent(adminSurname)}&email=${encodeURIComponent(adminEmail)}&readonly=true`;
 
-    const emailResponse = await resend.emails.send({
-      from: "Organization Platform <onboarding@resend.dev>",
-      to: [adminEmail],
-      subject: `Welcome to ${organizationName} - Complete Your Registration`,
-      html: `
-        <h1>Welcome to ${organizationName}!</h1>
-        <p>Dear ${adminName} ${adminSurname},</p>
-        <p>You have been appointed as an administrator for <strong>${organizationName}</strong>.</p>
-        <p>To complete your registration and access your admin dashboard, please click the link below:</p>
-        <p>
-          <a href="${invitationUrl}" 
-             style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
-            Complete Registration
-          </a>
-        </p>
-        <p>If the button above doesn't work, you can also copy and paste this link into your browser:</p>
-        <p>${invitationUrl}</p>
-        <p>This invitation is specifically for you and contains your pre-filled information for a seamless registration process.</p>
-        <p>Best regards,<br>The Platform Team</p>
-      `,
-    });
+    try {
+      const emailResponse = await resend.emails.send({
+        from: "Organization Platform <williamv.vysniauskas@gmail.com>",
+        to: [adminEmail],
+        subject: `Welcome to ${organizationName} - Complete Your Registration`,
+        html: `
+          <h1>Welcome to ${organizationName}!</h1>
+          <p>Dear ${adminName} ${adminSurname},</p>
+          <p>You have been appointed as an administrator for <strong>${organizationName}</strong>.</p>
+          <p>To complete your registration and access your admin dashboard, please click the link below:</p>
+          <p>
+            <a href="${invitationUrl}" 
+               style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
+              Complete Registration
+            </a>
+          </p>
+          <p>If the button above doesn't work, you can also copy and paste this link into your browser:</p>
+          <p>${invitationUrl}</p>
+          <p>This invitation is specifically for you and contains your pre-filled information for a seamless registration process.</p>
+          <p>Best regards,<br>The Platform Team</p>
+        `,
+      });
 
-    console.log("Invitation email sent:", emailResponse);
+      console.log("Invitation email sent:", emailResponse);
+
+      if (emailResponse.error) {
+        console.error("Email sending failed:", emailResponse.error);
+        // Don't throw error for email failure - organization creation should still succeed
+      }
+    } catch (emailError) {
+      console.error("Email error:", emailError);
+      // Don't throw error for email failure - organization creation should still succeed
+    }
 
     return new Response(JSON.stringify({
       success: true,
