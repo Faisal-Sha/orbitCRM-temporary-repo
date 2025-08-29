@@ -79,7 +79,7 @@ const OrganizationsManagement = () => {
   const fetchOrganizations = async () => {
     try {
       setLoading(true);
-      // Fetch organizations with admin details
+      // Fetch organizations and associated people data
       const { data: orgsData, error: orgsError } = await supabase
         .from('app_organizations')
         .select(`
@@ -87,8 +87,8 @@ const OrganizationsManagement = () => {
           organization_name,
           status,
           created_at,
-          app_organization_admins!inner (
-            admin_id,
+          app_organization_people!inner (
+            person_id,
             people!inner (
               id,
               first_name,
@@ -99,15 +99,42 @@ const OrganizationsManagement = () => {
             )
           )
         `)
-        .eq('is_deleted', false);
+        .eq('is_deleted', false)
+        .eq('app_organization_people.user_role_id', '389ef5df-2b0c-46d0-a31b-e83cf88ba5a4');
 
       if (orgsError) {
         console.error('Error fetching organizations:', orgsError);
-        toast({
-          title: "Error",
-          description: "Failed to fetch organizations",
-          variant: "destructive",
-        });
+        
+        // If no organizations with admins found, fetch just the organizations
+        const { data: basicOrgs, error: basicError } = await supabase
+          .from('app_organizations')
+          .select('id, organization_name, status, created_at')
+          .eq('is_deleted', false);
+
+        if (basicError) {
+          toast({
+            title: "Error",
+            description: "Failed to fetch organizations",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // Transform basic organizations without admin data
+        const transformedBasicOrgs: Organization[] = (basicOrgs || []).map(org => ({
+          id: org.id,
+          name: org.organization_name || '',
+          state: 'N/A',
+          adminName: 'Pending',
+          adminSurname: 'Registration',
+          adminEmail: 'N/A',
+          userCount: 0,
+          storageUsed: "0 MB",
+          dateCreated: new Date(org.created_at).toLocaleDateString(),
+          status: org.status as "active" | "suspended" | "inactive"
+        }));
+
+        setOrganizations(transformedBasicOrgs);
         return;
       }
 
@@ -116,9 +143,9 @@ const OrganizationsManagement = () => {
         id: org.id,
         name: org.organization_name || '',
         state: 'California', // TODO: Add state field to database
-        adminName: org.app_organization_admins?.[0]?.people?.first_name || '',
-        adminSurname: org.app_organization_admins?.[0]?.people?.last_name || '',
-        adminEmail: org.app_organization_admins?.[0]?.people?.people_contacts?.[0]?.email || '',
+        adminName: org.app_organization_people?.[0]?.people?.first_name || 'Pending',
+        adminSurname: org.app_organization_people?.[0]?.people?.last_name || 'Registration',
+        adminEmail: org.app_organization_people?.[0]?.people?.people_contacts?.[0]?.email || 'N/A',
         userCount: 0, // TODO: Calculate actual user count
         storageUsed: "0 MB", // TODO: Calculate actual storage
         dateCreated: new Date(org.created_at).toLocaleDateString(),
@@ -472,7 +499,7 @@ const OrganizationsManagement = () => {
 
       {/* Add Organization Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add New Organization</DialogTitle>
             <DialogDescription>
@@ -502,23 +529,25 @@ const OrganizationsManagement = () => {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="adminName">Admin Name</Label>
-              <Input
-                id="adminName"
-                value={formData.adminName}
-                onChange={(e) => setFormData({ ...formData, adminName: e.target.value })}
-                placeholder="Enter admin first name"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="adminSurname">Admin Surname</Label>
-              <Input
-                id="adminSurname"
-                value={formData.adminSurname}
-                onChange={(e) => setFormData({ ...formData, adminSurname: e.target.value })}
-                placeholder="Enter admin last name"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="adminName">Admin Name</Label>
+                <Input
+                  id="adminName"
+                  value={formData.adminName}
+                  onChange={(e) => setFormData({ ...formData, adminName: e.target.value })}
+                  placeholder="First name"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="adminSurname">Admin Surname</Label>
+                <Input
+                  id="adminSurname"
+                  value={formData.adminSurname}
+                  onChange={(e) => setFormData({ ...formData, adminSurname: e.target.value })}
+                  placeholder="Last name"
+                />
+              </div>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="adminEmail">Admin Email</Label>
@@ -557,7 +586,7 @@ const OrganizationsManagement = () => {
 
       {/* Edit Organization Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Organization</DialogTitle>
             <DialogDescription>
@@ -587,23 +616,25 @@ const OrganizationsManagement = () => {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="editAdminName">Admin Name</Label>
-              <Input
-                id="editAdminName"
-                value={formData.adminName}
-                onChange={(e) => setFormData({ ...formData, adminName: e.target.value })}
-                placeholder="Enter admin first name"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="editAdminSurname">Admin Surname</Label>
-              <Input
-                id="editAdminSurname"
-                value={formData.adminSurname}
-                onChange={(e) => setFormData({ ...formData, adminSurname: e.target.value })}
-                placeholder="Enter admin last name"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="editAdminName">Admin Name</Label>
+                <Input
+                  id="editAdminName"
+                  value={formData.adminName}
+                  onChange={(e) => setFormData({ ...formData, adminName: e.target.value })}
+                  placeholder="First name"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="editAdminSurname">Admin Surname</Label>
+                <Input
+                  id="editAdminSurname"
+                  value={formData.adminSurname}
+                  onChange={(e) => setFormData({ ...formData, adminSurname: e.target.value })}
+                  placeholder="Last name"
+                />
+              </div>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="editAdminEmail">Admin Email</Label>

@@ -107,24 +107,10 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("Contact created:", contactData);
 
-    // Step 4: Link Admin to Organization
-    const { data: orgAdminData, error: orgAdminError } = await supabase
-      .from('app_organization_admins')
-      .insert({
-        organization_id: orgData.id,
-        admin_id: personData.id,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .select()
-      .single();
-
-    if (orgAdminError) {
-      console.error('Error linking admin to organization:', orgAdminError);
-      throw new Error(`Failed to link admin to organization: ${orgAdminError.message}`);
-    }
-
-    console.log("Organization admin link created:", orgAdminData);
+    // Step 4: Skip admin link for now - will be created when user registers
+    // The app_organization_admins table expects a user_id, not person_id
+    // This will be handled during registration process
+    console.log("Skipping admin link creation - will be handled during user registration");
 
     // Step 5: Assign Admin Role
     const { data: orgPersonData, error: orgPersonError } = await supabase
@@ -147,7 +133,8 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Organization person role assigned:", orgPersonData);
 
     // Step 6: Send Invitation Email
-    const invitationUrl = `${supabaseUrl.replace('https://zihgewzxoeozgfhyczhf.supabase.co', 'https://preview--lovable-supabase-integration.lovable.app')}/register?first_name=${encodeURIComponent(adminName)}&last_name=${encodeURIComponent(adminSurname)}&email=${encodeURIComponent(adminEmail)}&readonly=true`;
+    const baseUrl = 'https://preview--lovable-supabase-integration.lovable.app';
+    const invitationUrl = `${baseUrl}/register?first_name=${encodeURIComponent(adminName)}&last_name=${encodeURIComponent(adminSurname)}&email=${encodeURIComponent(adminEmail)}&readonly=true`;
 
     const emailResponse = await resend.emails.send({
       from: "Organization Platform <onboarding@resend.dev>",
