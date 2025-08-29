@@ -35,7 +35,7 @@ import { useToast } from "@/hooks/use-toast";
 interface Organization {
   id: string;
   organization_name: string;
-  status: "active" | "suspended" | "inactive";
+  status: "active" | "inactive" | "suspended";
   created_at: string;
   admin_first_name: string | null;
   admin_last_name: string | null;
@@ -57,7 +57,7 @@ const OrganizationsManagement = () => {
     adminFirstName: "",
     adminLastName: "",
     adminEmail: "",
-    status: "active" as "active" | "suspended" | "inactive"
+    status: "active" as "active" | "inactive" | "suspended"
   });
   const { toast } = useToast();
 
@@ -87,7 +87,13 @@ const OrganizationsManagement = () => {
         return;
       }
 
-      setOrganizations(data || []);
+      // Map the database status values to match our interface
+      const mappedData = (data || []).map((org: any) => ({
+        ...org,
+        status: org.status === 'deleted' ? 'inactive' : org.status // Map 'deleted' to 'inactive'
+      }));
+
+      setOrganizations(mappedData);
     } catch (error) {
       console.error('Error:', error);
       toast({
@@ -190,11 +196,14 @@ const OrganizationsManagement = () => {
         return;
       }
 
+      // Map frontend status to database status
+      const dbStatus = formData.status === 'inactive' ? 'deleted' : formData.status;
+
       const { data, error } = await supabase.rpc('update_organization_with_admin', {
         org_id: selectedOrg.id,
         organization_name: formData.name,
         organization_state: formData.state,
-        organization_status: formData.status,
+        organization_status: dbStatus,
         admin_first_name: formData.adminFirstName,
         admin_last_name: formData.adminLastName,
         admin_email: formData.adminEmail,
