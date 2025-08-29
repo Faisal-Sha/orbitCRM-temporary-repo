@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,56 +29,24 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Edit, Trash2, AlertTriangle } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface Organization {
   id: string;
-  name: string;
-  state: string;
-  owner: string;
-  ownerEmail: string;
-  userCount: number;
-  storageUsed: string;
-  dateCreated: string;
+  organization_name: string;
   status: "active" | "suspended" | "inactive";
+  created_at: string;
+  admin_first_name: string | null;
+  admin_last_name: string | null;
+  admin_email: string | null;
+  user_count: number;
+  storage_used: string;
 }
 
 const OrganizationsManagement = () => {
-  const [organizations, setOrganizations] = useState<Organization[]>([
-    {
-      id: "1",
-      name: "TechCorp Solutions",
-      state: "California",
-      owner: "John Smith",
-      ownerEmail: "john@techcorp.com",
-      userCount: 45,
-      storageUsed: "2.3 GB",
-      dateCreated: "2024-01-15",
-      status: "active"
-    },
-    {
-      id: "2",
-      name: "Healthcare Plus",
-      state: "Texas",
-      owner: "Sarah Johnson",
-      ownerEmail: "sarah@healthcareplus.com",
-      userCount: 78,
-      storageUsed: "4.7 GB",
-      dateCreated: "2024-02-20",
-      status: "active"
-    },
-    {
-      id: "3",
-      name: "EduLearn Academy",
-      state: "New York",
-      owner: "Mike Wilson",
-      ownerEmail: "mike@edulearn.com",
-      userCount: 23,
-      storageUsed: "1.2 GB",
-      dateCreated: "2024-03-10",
-      status: "suspended"
-    }
-  ]);
-
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -86,10 +54,12 @@ const OrganizationsManagement = () => {
   const [formData, setFormData] = useState({
     name: "",
     state: "",
-    owner: "",
-    ownerEmail: "",
+    adminFirstName: "",
+    adminLastName: "",
+    adminEmail: "",
     status: "active" as "active" | "suspended" | "inactive"
   });
+  const { toast } = useToast();
 
   const usStates = [
     "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut",
@@ -102,65 +72,255 @@ const OrganizationsManagement = () => {
     "Wisconsin", "Wyoming"
   ];
 
-  const handleAdd = () => {
-    if (formData.name && formData.state && formData.owner && formData.ownerEmail) {
-      const newOrg: Organization = {
-        id: Date.now().toString(),
-        name: formData.name,
-        state: formData.state,
-        owner: formData.owner,
-        ownerEmail: formData.ownerEmail,
-        userCount: 0,
-        storageUsed: "0 MB",
-        dateCreated: new Date().toISOString().split('T')[0],
-        status: formData.status
-      };
-      setOrganizations([...organizations, newOrg]);
-      setFormData({ name: "", state: "", owner: "", ownerEmail: "", status: "active" });
-      setIsAddDialogOpen(false);
+  const fetchOrganizations = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase.rpc('get_organizations_with_admins');
+      
+      if (error) {
+        console.error('Error fetching organizations:', error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch organizations",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setOrganizations(data || []);
+    } catch (error) {
+      console.error('Error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch organizations",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleEdit = () => {
-    if (selectedOrg && formData.name && formData.state && formData.owner && formData.ownerEmail) {
-      setOrganizations(organizations.map(org => 
-        org.id === selectedOrg.id 
-          ? { ...org, name: formData.name, state: formData.state, owner: formData.owner, ownerEmail: formData.ownerEmail, status: formData.status }
-          : org
-      ));
+  useEffect(() => {
+    fetchOrganizations();
+  }, []);
+
+  const handleAdd = async () => {
+    if (!formData.name || !formData.state || !formData.adminFirstName || !formData.adminLastName || !formData.adminEmail) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Error",
+          description: "You must be logged in to create organizations",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const { data, error } = await supabase.rpc('create_organization_with_admin', {
+        organization_name: formData.name,
+        organization_state: formData.state,
+        admin_first_name: formData.adminFirstName,
+        admin_last_name: formData.adminLastName,
+        admin_email: formData.adminEmail,
+        created_by_user_id: user.id
+      });
+
+      if (error) {
+        console.error('Error creating organization:', error);
+        toast({
+          title: "Error",
+          description: "Failed to create organization",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Success",
+        description: "Organization created successfully",
+      });
+
+      setFormData({ 
+        name: "", 
+        state: "", 
+        adminFirstName: "", 
+        adminLastName: "", 
+        adminEmail: "", 
+        status: "active" 
+      });
+      setIsAddDialogOpen(false);
+      fetchOrganizations();
+    } catch (error) {
+      console.error('Error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create organization",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEdit = async () => {
+    if (!selectedOrg || !formData.name || !formData.state || !formData.adminFirstName || !formData.adminLastName || !formData.adminEmail) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Error",
+          description: "You must be logged in to update organizations",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const { data, error } = await supabase.rpc('update_organization_with_admin', {
+        org_id: selectedOrg.id,
+        organization_name: formData.name,
+        organization_state: formData.state,
+        organization_status: formData.status,
+        admin_first_name: formData.adminFirstName,
+        admin_last_name: formData.adminLastName,
+        admin_email: formData.adminEmail,
+        updated_by_user_id: user.id
+      });
+
+      if (error) {
+        console.error('Error updating organization:', error);
+        toast({
+          title: "Error",
+          description: "Failed to update organization",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Success",
+        description: "Organization updated successfully",
+      });
+
       setIsEditDialogOpen(false);
       setSelectedOrg(null);
+      fetchOrganizations();
+    } catch (error) {
+      console.error('Error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update organization",
+        variant: "destructive",
+      });
     }
   };
 
-  const handleDelete = () => {
-    if (selectedOrg) {
-      setOrganizations(organizations.filter(org => org.id !== selectedOrg.id));
+  const handleDelete = async () => {
+    if (!selectedOrg) return;
+
+    try {
+      const { error } = await supabase
+        .from('app_organizations')
+        .update({ is_deleted: true })
+        .eq('id', selectedOrg.id);
+
+      if (error) {
+        console.error('Error deleting organization:', error);
+        toast({
+          title: "Error",
+          description: "Failed to delete organization",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Success",
+        description: "Organization deleted successfully",
+      });
+
       setIsDeleteDialogOpen(false);
       setSelectedOrg(null);
+      fetchOrganizations();
+    } catch (error) {
+      console.error('Error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete organization",
+        variant: "destructive",
+      });
     }
   };
 
-  const handleSuspendToggle = (org: Organization) => {
-    setOrganizations(organizations.map(o => 
-      o.id === org.id 
-        ? { ...o, status: org.status === "active" ? "suspended" : "active" }
-        : o
-    ));
+  const handleSuspendToggle = async (org: Organization) => {
+    try {
+      const newStatus = org.status === "active" ? "suspended" : "active";
+      
+      const { error } = await supabase
+        .from('app_organizations')
+        .update({ status: newStatus })
+        .eq('id', org.id);
+
+      if (error) {
+        console.error('Error updating organization status:', error);
+        toast({
+          title: "Error",
+          description: "Failed to update organization status",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Success",
+        description: `Organization ${newStatus === "active" ? "activated" : "suspended"} successfully`,
+      });
+
+      fetchOrganizations();
+    } catch (error) {
+      console.error('Error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update organization status",
+        variant: "destructive",
+      });
+    }
   };
 
   const openAddDialog = () => {
-    setFormData({ name: "", state: "", owner: "", ownerEmail: "", status: "active" });
+    setFormData({ 
+      name: "", 
+      state: "", 
+      adminFirstName: "", 
+      adminLastName: "", 
+      adminEmail: "", 
+      status: "active" 
+    });
     setIsAddDialogOpen(true);
   };
 
   const openEditDialog = (org: Organization) => {
     setSelectedOrg(org);
     setFormData({
-      name: org.name,
-      state: org.state,
-      owner: org.owner,
-      ownerEmail: org.ownerEmail,
+      name: org.organization_name,
+      state: "", // State is not stored in the current schema
+      adminFirstName: org.admin_first_name || "",
+      adminLastName: org.admin_last_name || "",
+      adminEmail: org.admin_email || "",
       status: org.status
     });
     setIsEditDialogOpen(true);
@@ -184,6 +344,24 @@ const OrganizationsManagement = () => {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight">Organizations Management</h2>
+            <p className="text-muted-foreground">Manage all organizations on the platform</p>
+          </div>
+        </div>
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-center">Loading organizations...</div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -198,16 +376,12 @@ const OrganizationsManagement = () => {
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Platform Organizations</CardTitle>
-        </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Organization</TableHead>
-                <TableHead>State</TableHead>
-                <TableHead>Owner</TableHead>
+                <TableHead>Admin</TableHead>
                 <TableHead>Users</TableHead>
                 <TableHead>Storage</TableHead>
                 <TableHead>Created</TableHead>
@@ -218,17 +392,23 @@ const OrganizationsManagement = () => {
             <TableBody>
               {organizations.map((org) => (
                 <TableRow key={org.id}>
-                  <TableCell className="font-medium">{org.name}</TableCell>
-                  <TableCell>{org.state}</TableCell>
+                  <TableCell className="font-medium">{org.organization_name}</TableCell>
                   <TableCell>
                     <div>
-                      <div className="font-medium">{org.owner}</div>
-                      <div className="text-sm text-muted-foreground">{org.ownerEmail}</div>
+                      <div className="font-medium">
+                        {org.admin_first_name && org.admin_last_name 
+                          ? `${org.admin_first_name} ${org.admin_last_name}`
+                          : "No admin assigned"
+                        }
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {org.admin_email || "No email"}
+                      </div>
                     </div>
                   </TableCell>
-                  <TableCell>{org.userCount}</TableCell>
-                  <TableCell>{org.storageUsed}</TableCell>
-                  <TableCell>{org.dateCreated}</TableCell>
+                  <TableCell>{org.user_count}</TableCell>
+                  <TableCell>{org.storage_used}</TableCell>
+                  <TableCell>{new Date(org.created_at).toLocaleDateString()}</TableCell>
                   <TableCell>{getStatusBadge(org.status)}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
@@ -266,7 +446,7 @@ const OrganizationsManagement = () => {
 
       {/* Add Organization Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add New Organization</DialogTitle>
             <DialogDescription>
@@ -296,23 +476,34 @@ const OrganizationsManagement = () => {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="owner">Owner Name</Label>
-              <Input
-                id="owner"
-                value={formData.owner}
-                onChange={(e) => setFormData({ ...formData, owner: e.target.value })}
-                placeholder="Enter owner name"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="adminFirstName">Admin Name</Label>
+                <Input
+                  id="adminFirstName"
+                  value={formData.adminFirstName}
+                  onChange={(e) => setFormData({ ...formData, adminFirstName: e.target.value })}
+                  placeholder="Enter admin first name"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="adminLastName">Admin Surname</Label>
+                <Input
+                  id="adminLastName"
+                  value={formData.adminLastName}
+                  onChange={(e) => setFormData({ ...formData, adminLastName: e.target.value })}
+                  placeholder="Enter admin last name"
+                />
+              </div>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="ownerEmail">Owner Email</Label>
+              <Label htmlFor="adminEmail">Admin Email</Label>
               <Input
-                id="ownerEmail"
+                id="adminEmail"
                 type="email"
-                value={formData.ownerEmail}
-                onChange={(e) => setFormData({ ...formData, ownerEmail: e.target.value })}
-                placeholder="Enter owner email"
+                value={formData.adminEmail}
+                onChange={(e) => setFormData({ ...formData, adminEmail: e.target.value })}
+                placeholder="Enter admin email"
               />
             </div>
             <div className="grid gap-2">
@@ -340,7 +531,7 @@ const OrganizationsManagement = () => {
 
       {/* Edit Organization Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Organization</DialogTitle>
             <DialogDescription>
@@ -370,23 +561,34 @@ const OrganizationsManagement = () => {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="editOwner">Owner Name</Label>
-              <Input
-                id="editOwner"
-                value={formData.owner}
-                onChange={(e) => setFormData({ ...formData, owner: e.target.value })}
-                placeholder="Enter owner name"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="editAdminFirstName">Admin Name</Label>
+                <Input
+                  id="editAdminFirstName"
+                  value={formData.adminFirstName}
+                  onChange={(e) => setFormData({ ...formData, adminFirstName: e.target.value })}
+                  placeholder="Enter admin first name"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="editAdminLastName">Admin Surname</Label>
+                <Input
+                  id="editAdminLastName"
+                  value={formData.adminLastName}
+                  onChange={(e) => setFormData({ ...formData, adminLastName: e.target.value })}
+                  placeholder="Enter admin last name"
+                />
+              </div>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="editOwnerEmail">Owner Email</Label>
+              <Label htmlFor="editAdminEmail">Admin Email</Label>
               <Input
-                id="editOwnerEmail"
+                id="editAdminEmail"
                 type="email"
-                value={formData.ownerEmail}
-                onChange={(e) => setFormData({ ...formData, ownerEmail: e.target.value })}
-                placeholder="Enter owner email"
+                value={formData.adminEmail}
+                onChange={(e) => setFormData({ ...formData, adminEmail: e.target.value })}
+                placeholder="Enter admin email"
               />
             </div>
             <div className="grid gap-2">
@@ -418,7 +620,7 @@ const OrganizationsManagement = () => {
           <DialogHeader>
             <DialogTitle>Delete Organization</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete "{selectedOrg?.name}"? This action cannot be undone and will permanently remove all data associated with this organization.
+              Are you sure you want to delete "{selectedOrg?.organization_name}"? This action cannot be undone and will permanently remove all data associated with this organization.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

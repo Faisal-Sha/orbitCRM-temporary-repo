@@ -14,9 +14,62 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_global_people: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          id: string
+          is_deleted: boolean
+          person_id: string
+          updated_at: string
+          updated_by: string | null
+          user_role_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          id?: string
+          is_deleted?: boolean
+          person_id: string
+          updated_at?: string
+          updated_by?: string | null
+          user_role_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          id?: string
+          is_deleted?: boolean
+          person_id?: string
+          updated_at?: string
+          updated_by?: string | null
+          user_role_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_person"
+            columns: ["person_id"]
+            isOneToOne: true
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_user_role"
+            columns: ["user_role_id"]
+            isOneToOne: false
+            referencedRelation: "app_user_roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       app_organization_admins: {
         Row: {
-          admin_id: string
           created_at: string
           created_by: string | null
           deleted_at: string | null
@@ -24,11 +77,11 @@ export type Database = {
           id: string
           is_deleted: boolean
           organization_id: string
+          person_id: string
           updated_at: string
           updated_by: string | null
         }
         Insert: {
-          admin_id: string
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -36,11 +89,11 @@ export type Database = {
           id?: string
           is_deleted?: boolean
           organization_id: string
+          person_id: string
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
-          admin_id?: string
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -48,13 +101,14 @@ export type Database = {
           id?: string
           is_deleted?: boolean
           organization_id?: string
+          person_id?: string
           updated_at?: string
           updated_by?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "app_organization_admins_admin_id_fkey"
-            columns: ["admin_id"]
+            foreignKeyName: "app_organization_admins_person_id_fkey"
+            columns: ["person_id"]
             isOneToOne: false
             referencedRelation: "people"
             referencedColumns: ["id"]
@@ -140,8 +194,8 @@ export type Database = {
           deleted_by: string | null
           id: string
           is_deleted: boolean
-          organization_name: string
-          status: string
+          organization_name: string | null
+          status: Database["public"]["Enums"]["organization_status_enum"]
           updated_at: string
           updated_by: string | null
         }
@@ -152,8 +206,8 @@ export type Database = {
           deleted_by?: string | null
           id?: string
           is_deleted?: boolean
-          organization_name: string
-          status?: string
+          organization_name?: string | null
+          status?: Database["public"]["Enums"]["organization_status_enum"]
           updated_at?: string
           updated_by?: string | null
         }
@@ -164,8 +218,8 @@ export type Database = {
           deleted_by?: string | null
           id?: string
           is_deleted?: boolean
-          organization_name?: string
-          status?: string
+          organization_name?: string | null
+          status?: Database["public"]["Enums"]["organization_status_enum"]
           updated_at?: string
           updated_by?: string | null
         }
@@ -180,7 +234,7 @@ export type Database = {
           id: string
           is_deleted: boolean
           label_color: string | null
-          role_name: string
+          role_name: Database["public"]["Enums"]["user_roles_enum"]
           updated_at: string
           updated_by: string | null
         }
@@ -192,7 +246,7 @@ export type Database = {
           id?: string
           is_deleted?: boolean
           label_color?: string | null
-          role_name: string
+          role_name?: Database["public"]["Enums"]["user_roles_enum"]
           updated_at?: string
           updated_by?: string | null
         }
@@ -204,7 +258,7 @@ export type Database = {
           id?: string
           is_deleted?: boolean
           label_color?: string | null
-          role_name?: string
+          role_name?: Database["public"]["Enums"]["user_roles_enum"]
           updated_at?: string
           updated_by?: string | null
         }
@@ -219,8 +273,7 @@ export type Database = {
           deleted_by: string | null
           id: string
           is_deleted: boolean
-          is_owner: boolean
-          status: Database["public"]["Enums"]["user_status"]
+          status: Database["public"]["Enums"]["user_status_enum"]
           updated_at: string
           updated_by: string | null
           user_id: string
@@ -233,8 +286,7 @@ export type Database = {
           deleted_by?: string | null
           id?: string
           is_deleted?: boolean
-          is_owner?: boolean
-          status?: Database["public"]["Enums"]["user_status"]
+          status?: Database["public"]["Enums"]["user_status_enum"]
           updated_at?: string
           updated_by?: string | null
           user_id: string
@@ -247,8 +299,7 @@ export type Database = {
           deleted_by?: string | null
           id?: string
           is_deleted?: boolean
-          is_owner?: boolean
-          status?: Database["public"]["Enums"]["user_status"]
+          status?: Database["public"]["Enums"]["user_status_enum"]
           updated_at?: string
           updated_by?: string | null
           user_id?: string
@@ -266,7 +317,7 @@ export type Database = {
           is_deleted: boolean
           last_name: string
           middle_name: string | null
-          status: string
+          status: Database["public"]["Enums"]["people_status_enum"]
           updated_at: string
           updated_by: string | null
           user_account_id: string | null
@@ -281,7 +332,7 @@ export type Database = {
           is_deleted?: boolean
           last_name: string
           middle_name?: string | null
-          status?: string
+          status?: Database["public"]["Enums"]["people_status_enum"]
           updated_at?: string
           updated_by?: string | null
           user_account_id?: string | null
@@ -296,7 +347,7 @@ export type Database = {
           is_deleted?: boolean
           last_name?: string
           middle_name?: string | null
-          status?: string
+          status?: Database["public"]["Enums"]["people_status_enum"]
           updated_at?: string
           updated_by?: string | null
           user_account_id?: string | null
@@ -313,10 +364,10 @@ export type Database = {
       }
       people_contacts: {
         Row: {
-          address_line_1: string
+          address_line_1: string | null
           address_line_2: string | null
-          city: string
-          country: string
+          city: string | null
+          country: string | null
           created_at: string
           created_by: string | null
           deleted_at: string | null
@@ -325,9 +376,9 @@ export type Database = {
           id: string
           is_deleted: boolean
           person_id: string
+          phone: string | null
           phone_home: string | null
-          phone_mobile: string
-          state: string
+          state: string | null
           updated_at: string
           updated_by: string | null
           url_facebook: string | null
@@ -335,13 +386,13 @@ export type Database = {
           url_linkedin: string | null
           url_tiktok: string | null
           work_email: string | null
-          zip_code: string
+          zip_code: string | null
         }
         Insert: {
-          address_line_1: string
+          address_line_1?: string | null
           address_line_2?: string | null
-          city: string
-          country: string
+          city?: string | null
+          country?: string | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -350,9 +401,9 @@ export type Database = {
           id?: string
           is_deleted?: boolean
           person_id: string
+          phone?: string | null
           phone_home?: string | null
-          phone_mobile: string
-          state: string
+          state?: string | null
           updated_at?: string
           updated_by?: string | null
           url_facebook?: string | null
@@ -360,13 +411,13 @@ export type Database = {
           url_linkedin?: string | null
           url_tiktok?: string | null
           work_email?: string | null
-          zip_code: string
+          zip_code?: string | null
         }
         Update: {
-          address_line_1?: string
+          address_line_1?: string | null
           address_line_2?: string | null
-          city?: string
-          country?: string
+          city?: string | null
+          country?: string | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -375,9 +426,9 @@ export type Database = {
           id?: string
           is_deleted?: boolean
           person_id?: string
+          phone?: string | null
           phone_home?: string | null
-          phone_mobile?: string
-          state?: string
+          state?: string | null
           updated_at?: string
           updated_by?: string | null
           url_facebook?: string | null
@@ -385,7 +436,7 @@ export type Database = {
           url_linkedin?: string | null
           url_tiktok?: string | null
           work_email?: string | null
-          zip_code?: string
+          zip_code?: string | null
         }
         Relationships: [
           {
@@ -404,13 +455,15 @@ export type Database = {
           deleted_at: string | null
           deleted_by: string | null
           email: string | null
-          first_name: string
+          first_name: string | null
           id: string
           is_deleted: boolean
-          last_name: string
+          last_name: string | null
           person_id: string
-          phone_number: string
-          relationship: string
+          phone_number: string | null
+          relationship:
+            | Database["public"]["Enums"]["emergency_relationship_enum"]
+            | null
           updated_at: string
           updated_by: string | null
         }
@@ -420,13 +473,15 @@ export type Database = {
           deleted_at?: string | null
           deleted_by?: string | null
           email?: string | null
-          first_name: string
+          first_name?: string | null
           id?: string
           is_deleted?: boolean
-          last_name: string
+          last_name?: string | null
           person_id: string
-          phone_number: string
-          relationship: string
+          phone_number?: string | null
+          relationship?:
+            | Database["public"]["Enums"]["emergency_relationship_enum"]
+            | null
           updated_at?: string
           updated_by?: string | null
         }
@@ -436,13 +491,15 @@ export type Database = {
           deleted_at?: string | null
           deleted_by?: string | null
           email?: string | null
-          first_name?: string
+          first_name?: string | null
           id?: string
           is_deleted?: boolean
-          last_name?: string
+          last_name?: string | null
           person_id?: string
-          phone_number?: string
-          relationship?: string
+          phone_number?: string | null
+          relationship?:
+            | Database["public"]["Enums"]["emergency_relationship_enum"]
+            | null
           updated_at?: string
           updated_by?: string | null
         }
@@ -466,7 +523,7 @@ export type Database = {
           first_name: string
           id: string
           is_deleted: boolean
-          last_name: string
+          last_name: string | null
           phone_number: string | null
           referral_note: string | null
           referral_relationship:
@@ -475,7 +532,7 @@ export type Database = {
           referral_type:
             | Database["public"]["Enums"]["referral_type_enum"]
             | null
-          referred_by_id: string
+          referred_by_id: string | null
           referred_by_name: string | null
           updated_at: string
           updated_by: string | null
@@ -489,7 +546,7 @@ export type Database = {
           first_name: string
           id?: string
           is_deleted?: boolean
-          last_name: string
+          last_name?: string | null
           phone_number?: string | null
           referral_note?: string | null
           referral_relationship?:
@@ -498,7 +555,7 @@ export type Database = {
           referral_type?:
             | Database["public"]["Enums"]["referral_type_enum"]
             | null
-          referred_by_id: string
+          referred_by_id?: string | null
           referred_by_name?: string | null
           updated_at?: string
           updated_by?: string | null
@@ -512,7 +569,7 @@ export type Database = {
           first_name?: string
           id?: string
           is_deleted?: boolean
-          last_name?: string
+          last_name?: string | null
           phone_number?: string | null
           referral_note?: string | null
           referral_relationship?:
@@ -521,7 +578,7 @@ export type Database = {
           referral_type?:
             | Database["public"]["Enums"]["referral_type_enum"]
             | null
-          referred_by_id?: string
+          referred_by_id?: string | null
           referred_by_name?: string | null
           updated_at?: string
           updated_by?: string | null
@@ -540,7 +597,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
-          date_of_birth: string
+          date_of_birth: string | null
           deleted_at: string | null
           deleted_by: string | null
           ethnicity_identity: string | null
@@ -561,7 +618,7 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
-          date_of_birth: string
+          date_of_birth?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
           ethnicity_identity?: string | null
@@ -582,7 +639,7 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
-          date_of_birth?: string
+          date_of_birth?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
           ethnicity_identity?: string | null
@@ -615,9 +672,54 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      create_organization_with_admin: {
+        Args: {
+          admin_email: string
+          admin_first_name: string
+          admin_last_name: string
+          created_by_user_id: string
+          organization_name: string
+          organization_state: string
+        }
+        Returns: Json
+      }
+      get_organizations_with_admins: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          admin_email: string
+          admin_first_name: string
+          admin_last_name: string
+          created_at: string
+          id: string
+          organization_name: string
+          status: Database["public"]["Enums"]["organization_status_enum"]
+          storage_used: string
+          user_count: number
+        }[]
+      }
+      update_organization_with_admin: {
+        Args: {
+          admin_email: string
+          admin_first_name: string
+          admin_last_name: string
+          org_id: string
+          organization_name: string
+          organization_state: string
+          organization_status: Database["public"]["Enums"]["organization_status_enum"]
+          updated_by_user_id: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
+      emergency_relationship_enum:
+        | "family member"
+        | "friend"
+        | "colleague"
+        | "organization"
+        | "other"
+      organization_status_enum: "active" | "inactive" | "deleted"
+      people_status_enum: "active" | "inactive" | "deleted"
       referral_relationship_enum:
         | "family member"
         | "friend"
@@ -625,7 +727,15 @@ export type Database = {
         | "orgnaization"
         | "other"
       referral_type_enum: "client" | "staff"
-      user_status: "invited" | "active" | "inactive" | "deleted"
+      user_roles_enum:
+        | "owner"
+        | "admin"
+        | "lead"
+        | "client"
+        | "staff"
+        | "partner"
+        | "general"
+      user_status_enum: "invited" | "active" | "inactive" | "deleted"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -753,6 +863,15 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      emergency_relationship_enum: [
+        "family member",
+        "friend",
+        "colleague",
+        "organization",
+        "other",
+      ],
+      organization_status_enum: ["active", "inactive", "deleted"],
+      people_status_enum: ["active", "inactive", "deleted"],
       referral_relationship_enum: [
         "family member",
         "friend",
@@ -761,7 +880,16 @@ export const Constants = {
         "other",
       ],
       referral_type_enum: ["client", "staff"],
-      user_status: ["invited", "active", "inactive", "deleted"],
+      user_roles_enum: [
+        "owner",
+        "admin",
+        "lead",
+        "client",
+        "staff",
+        "partner",
+        "general",
+      ],
+      user_status_enum: ["invited", "active", "inactive", "deleted"],
     },
   },
 } as const
