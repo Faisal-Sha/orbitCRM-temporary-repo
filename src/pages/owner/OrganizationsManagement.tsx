@@ -240,9 +240,24 @@ const OrganizationsManagement = () => {
     if (!selectedOrg) return;
 
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Error",
+          description: "You must be logged in to delete organizations",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const { error } = await supabase
         .from('app_organizations')
-        .update({ is_deleted: true })
+        .update({ 
+          status: 'deleted',
+          is_deleted: true,
+          deleted_by: user.id,
+          deleted_at: new Date().toISOString()
+        })
         .eq('id', selectedOrg.id);
 
       if (error) {
