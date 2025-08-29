@@ -197,13 +197,13 @@ const OrganizationsManagement = () => {
       }
 
       // Map frontend status to database status
-      const dbStatus = formData.status === 'inactive' ? 'deleted' : formData.status;
+      const dbStatus = formData.status === 'inactive' ? 'deleted' : formData.status === 'suspended' ? 'suspended' : 'active';
 
       const { data, error } = await supabase.rpc('update_organization_with_admin', {
         org_id: selectedOrg.id,
         organization_name: formData.name,
         organization_state: formData.state,
-        organization_status: dbStatus,
+        organization_status: dbStatus as 'active' | 'inactive' | 'deleted',
         admin_first_name: formData.adminFirstName,
         admin_last_name: formData.adminLastName,
         admin_email: formData.adminEmail,
@@ -281,7 +281,7 @@ const OrganizationsManagement = () => {
       
       const { error } = await supabase
         .from('app_organizations')
-        .update({ status: newStatus })
+        .update({ status: newStatus as 'active' | 'suspended' })
         .eq('id', org.id);
 
       if (error) {
