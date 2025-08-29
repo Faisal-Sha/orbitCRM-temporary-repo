@@ -87,13 +87,8 @@ const OrganizationsManagement = () => {
         return;
       }
 
-      // Ensure each organization has organization_state field, defaulting to null if missing
-      const normalizedData = (data || []).map((org: any) => ({
-        ...org,
-        organization_state: org.organization_state || null
-      })) as Organization[];
-
-      setOrganizations(normalizedData);
+      console.log('Fetched organizations data:', data);
+      setOrganizations(data || []);
     } catch (error) {
       console.error('Error:', error);
       toast({
