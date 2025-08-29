@@ -195,6 +195,7 @@ export type Database = {
           id: string
           is_deleted: boolean
           organization_name: string | null
+          organization_state: string | null
           status: Database["public"]["Enums"]["organization_status_enum"]
           updated_at: string
           updated_by: string | null
@@ -207,6 +208,7 @@ export type Database = {
           id?: string
           is_deleted?: boolean
           organization_name?: string | null
+          organization_state?: string | null
           status?: Database["public"]["Enums"]["organization_status_enum"]
           updated_at?: string
           updated_by?: string | null
@@ -219,6 +221,7 @@ export type Database = {
           id?: string
           is_deleted?: boolean
           organization_name?: string | null
+          organization_state?: string | null
           status?: Database["public"]["Enums"]["organization_status_enum"]
           updated_at?: string
           updated_by?: string | null
