@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -88,13 +87,7 @@ const OrganizationsManagement = () => {
         return;
       }
 
-      // Ensure all organizations have the required properties, including organization_state
-      const organizationsWithState = (data || []).map((org: any) => ({
-        ...org,
-        organization_state: org.organization_state || null
-      }));
-
-      setOrganizations(organizationsWithState);
+      setOrganizations(data || []);
     } catch (error) {
       console.error('Error:', error);
       toast({
