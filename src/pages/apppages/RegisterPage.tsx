@@ -84,47 +84,13 @@ const RegisterPage = () => {
           description: "We've sent you a confirmation link. Please check your email and click the link to activate your account.",
         });
       } else if (data.session) {
-        // If this is an invitation registration, link the user account to the existing person record
-        if (isInvitation && data.user) {
-          try {
-            const linkResult = await supabase.rpc('link_user_to_person', {
-              user_email: email,
-              new_user_id: data.user.id
-            });
-
-            if (linkResult.error) {
-              console.error('Error linking user to person:', linkResult.error);
-              toast({
-                title: "Warning",
-                description: "Account created but failed to link to organization admin record. Please contact support.",
-                variant: "destructive",
-              });
-            } else if ((linkResult.data as any)?.success) {
-              toast({
-                title: "Welcome to your organization!",
-                description: "Your admin account has been successfully created and linked.",
-              });
-            } else {
-              toast({
-                title: "Warning", 
-                description: "Account created but failed to link to organization. Please contact support.",
-                variant: "destructive",
-              });
-            }
-          } catch (linkError) {
-            console.error('Error linking user to person:', linkError);
-            toast({
-              title: "Warning",
-              description: "Account created but failed to link to organization. Please contact support.",
-              variant: "destructive",
-            });
-          }
-        } else {
-          toast({
-            title: "Account created successfully",
-            description: "Welcome! You're now registered and logged in.",
-          });
-        }
+        // Account linking is now handled automatically by the database trigger
+        toast({
+          title: isInvitation ? "Welcome to your organization!" : "Account created successfully",
+          description: isInvitation 
+            ? "Your admin account has been successfully created and linked."
+            : "Welcome! You're now registered and logged in.",
+        });
         
         navigate("/");
       }
