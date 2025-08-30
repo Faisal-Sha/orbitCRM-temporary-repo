@@ -341,7 +341,7 @@ const OrganizationsManagement = () => {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="font-bold tracking-tight text-lg">Organizations Management</h2>
-          <p className="text-muted-foreground">Manage all organizations on the platform</p>
+          <p className="text-muted-foreground text-sm">Manage all organizations on the platform</p>
         </div>
         <Button onClick={openAddDialog} className="flex items-center gap-2">
           <Plus className="h-4 w-4" />
