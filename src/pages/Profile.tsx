@@ -1,19 +1,15 @@
 
 import PageContainer from "@/components/PageContainer";
 import TabsComponent from "@/components/TabsComponent";
+import PersonalInfo from "@/pages/profile/PersonalInfo";
+import Security from "@/pages/profile/Security";
+import Preferences from "@/pages/profile/Preferences";
 
 const Profile = () => {
-  const tabContent = (tabName: string) => (
-    <div className="app-card">
-      <h3 className="app-heading-3 mb-4">{tabName} Content</h3>
-      <p>This is the {tabName.toLowerCase()} tab content for Profile settings.</p>
-    </div>
-  );
-
   const tabs = [
-    { value: "info", label: "Personal Info", content: tabContent("Personal Info") },
-    { value: "security", label: "Security", content: tabContent("Security") },
-    { value: "preferences", label: "Preferences", content: tabContent("Preferences") },
+    { value: "info", label: "Personal Info", content: <PersonalInfo /> },
+    { value: "security", label: "Security", content: <Security /> },
+    { value: "preferences", label: "Preferences", content: <Preferences /> },
   ];
 
   return (
