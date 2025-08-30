@@ -21,6 +21,7 @@ const RegisterPage = () => {
   const { toast } = useToast();
 
   const isInvitation = searchParams.get("invitation") === "true";
+  const [organizationName, setOrganizationName] = useState("");
 
   useEffect(() => {
     // Pre-fill form from invitation URL parameters
@@ -28,10 +29,12 @@ const RegisterPage = () => {
       const firstNameParam = searchParams.get("first_name");
       const lastNameParam = searchParams.get("last_name");
       const emailParam = searchParams.get("email");
+      const organizationParam = searchParams.get("organization_name");
       
       if (firstNameParam) setFirstName(firstNameParam);
       if (lastNameParam) setLastName(lastNameParam);
       if (emailParam) setEmail(emailParam);
+      if (organizationParam) setOrganizationName(organizationParam);
     }
   }, [searchParams, isInvitation]);
 
@@ -92,7 +95,7 @@ const RegisterPage = () => {
             : "Welcome! You're now registered and logged in.",
         });
         
-        navigate("/");
+        navigate(isInvitation ? "/settings" : "/");
       }
 
     } catch (error) {
@@ -140,6 +143,18 @@ const RegisterPage = () => {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleRegister} className="space-y-4">
+            {isInvitation && (
+              <div className="space-y-2">
+                <Label htmlFor="organization">Organization</Label>
+                <Input
+                  id="organization"
+                  value={organizationName}
+                  readOnly
+                  disabled
+                  className="bg-muted text-muted-foreground"
+                />
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="firstName">First Name</Label>

@@ -577,6 +577,8 @@ const OrganizationsManagement = () => {
                   value={formData.adminFirstName}
                   onChange={(e) => setFormData({ ...formData, adminFirstName: e.target.value })}
                   placeholder="Enter admin first name"
+                  disabled
+                  className="bg-muted text-muted-foreground"
                 />
               </div>
               <div className="grid gap-2">
@@ -586,6 +588,8 @@ const OrganizationsManagement = () => {
                   value={formData.adminLastName}
                   onChange={(e) => setFormData({ ...formData, adminLastName: e.target.value })}
                   placeholder="Enter admin last name"
+                  disabled
+                  className="bg-muted text-muted-foreground"
                 />
               </div>
             </div>
@@ -597,6 +601,8 @@ const OrganizationsManagement = () => {
                 value={formData.adminEmail}
                 onChange={(e) => setFormData({ ...formData, adminEmail: e.target.value })}
                 placeholder="Enter admin email"
+                disabled
+                className="bg-muted text-muted-foreground"
               />
             </div>
             <div className="grid gap-2">
