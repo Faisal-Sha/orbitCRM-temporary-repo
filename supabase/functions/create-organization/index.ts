@@ -69,8 +69,8 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Organization created successfully:", data);
 
     // Step 2: Send invitation email
-    const siteUrl = Deno.env.get('SITE_URL') || 'https://preview--lovable-supabase-integration.lovable.app';
-    console.log('SITE_URL from environment:', Deno.env.get('SITE_URL'));
+    const siteUrl = Deno.env.get('SITE_BASE_URL') || 'https://preview--lovable-supabase-integration.lovable.app';
+    console.log('SITE_BASE_URL from environment:', Deno.env.get('SITE_BASE_URL'));
     console.log('Using siteUrl for invitation:', siteUrl);
     const invitationUrl = `${siteUrl}/register?first_name=${encodeURIComponent(adminFirstName)}&last_name=${encodeURIComponent(adminLastName)}&email=${encodeURIComponent(adminEmail)}&invitation=true`;
     console.log('Generated invitation URL:', invitationUrl);
