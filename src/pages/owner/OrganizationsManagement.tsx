@@ -138,14 +138,16 @@ const OrganizationsManagement = () => {
         return;
       }
 
-      const { data, error } = await supabase.rpc('create_organization_with_admin', {
-        organization_name: formData.name,
-        organization_state: formData.state,
-        admin_first_name: formData.adminFirstName,
-        admin_last_name: formData.adminLastName,
-        admin_email: formData.adminEmail,
-        created_by_user_id: user.id,
-        organization_status: formData.status
+      const { data, error } = await supabase.functions.invoke('create-organization', {
+        body: {
+          organizationName: formData.name,
+          organizationState: formData.state,
+          organizationStatus: formData.status,
+          adminFirstName: formData.adminFirstName,
+          adminLastName: formData.adminLastName,
+          adminEmail: formData.adminEmail,
+          createdByUserId: user.id
+        }
       });
 
       if (error) {
@@ -158,38 +160,10 @@ const OrganizationsManagement = () => {
         return;
       }
 
-      // Send admin invitation email
-      try {
-        const invitationResponse = await supabase.functions.invoke('send-admin-invitation', {
-          body: {
-            adminFirstName: formData.adminFirstName,
-            adminLastName: formData.adminLastName,
-            adminEmail: formData.adminEmail,
-            organizationName: formData.name
-          }
-        });
-
-        if (invitationResponse.error) {
-          console.error('Error sending invitation:', invitationResponse.error);
-          toast({
-            title: "Warning",
-            description: "Organization created but invitation email failed to send",
-            variant: "destructive",
-          });
-        } else {
-          toast({
-            title: "Success",
-            description: "Organization created and invitation email sent successfully",
-          });
-        }
-      } catch (invitationError) {
-        console.error('Error sending invitation:', invitationError);
-        toast({
-          title: "Warning",
-          description: "Organization created but invitation email failed to send",
-          variant: "destructive",
-        });
-      }
+      toast({
+        title: "Success",
+        description: "Organization created and invitation email sent successfully",
+      });
 
       setFormData({ 
         name: "", 
