@@ -1,6 +1,6 @@
 
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,8 +16,24 @@ const RegisterPage = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const isInvitation = searchParams.get("invitation") === "true";
+
+  useEffect(() => {
+    // Pre-fill form from invitation URL parameters
+    if (isInvitation) {
+      const firstNameParam = searchParams.get("first_name");
+      const lastNameParam = searchParams.get("last_name");
+      const emailParam = searchParams.get("email");
+      
+      if (firstNameParam) setFirstName(firstNameParam);
+      if (lastNameParam) setLastName(lastNameParam);
+      if (emailParam) setEmail(emailParam);
+    }
+  }, [searchParams, isInvitation]);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,10 +84,48 @@ const RegisterPage = () => {
           description: "We've sent you a confirmation link. Please check your email and click the link to activate your account.",
         });
       } else if (data.session) {
-        toast({
-          title: "Account created successfully",
-          description: "Welcome! You're now registered and logged in.",
-        });
+        // If this is an invitation registration, link the user account to the existing person record
+        if (isInvitation && data.user) {
+          try {
+            const linkResult = await supabase.rpc('link_user_to_person', {
+              user_email: email,
+              new_user_id: data.user.id
+            });
+
+            if (linkResult.error) {
+              console.error('Error linking user to person:', linkResult.error);
+              toast({
+                title: "Warning",
+                description: "Account created but failed to link to organization admin record. Please contact support.",
+                variant: "destructive",
+              });
+            } else if ((linkResult.data as any)?.success) {
+              toast({
+                title: "Welcome to your organization!",
+                description: "Your admin account has been successfully created and linked.",
+              });
+            } else {
+              toast({
+                title: "Warning", 
+                description: "Account created but failed to link to organization. Please contact support.",
+                variant: "destructive",
+              });
+            }
+          } catch (linkError) {
+            console.error('Error linking user to person:', linkError);
+            toast({
+              title: "Warning",
+              description: "Account created but failed to link to organization. Please contact support.",
+              variant: "destructive",
+            });
+          }
+        } else {
+          toast({
+            title: "Account created successfully",
+            description: "Welcome! You're now registered and logged in.",
+          });
+        }
+        
         navigate("/");
       }
 
@@ -108,9 +162,14 @@ const RegisterPage = () => {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">Create Account</CardTitle>
+          <CardTitle className="text-2xl font-bold text-center">
+            {isInvitation ? "Complete Your Admin Registration" : "Create Account"}
+          </CardTitle>
           <CardDescription className="text-center">
-            Sign up to get started with your account
+            {isInvitation 
+              ? "Complete your organization admin account setup" 
+              : "Sign up to get started with your account"
+            }
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -124,6 +183,8 @@ const RegisterPage = () => {
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                   required
+                  disabled={isInvitation}
+                  className={isInvitation ? "bg-muted" : ""}
                 />
               </div>
               <div className="space-y-2">
@@ -134,6 +195,8 @@ const RegisterPage = () => {
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
                   required
+                  disabled={isInvitation}
+                  className={isInvitation ? "bg-muted" : ""}
                 />
               </div>
             </div>
@@ -146,6 +209,8 @@ const RegisterPage = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                disabled={isInvitation}
+                className={isInvitation ? "bg-muted" : ""}
               />
             </div>
             <div className="space-y-2">
@@ -174,7 +239,7 @@ const RegisterPage = () => {
               )}
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Creating Account..." : "Sign Up"}
+              {isLoading ? "Creating Account..." : (isInvitation ? "Complete Registration" : "Sign Up")}
             </Button>
           </form>
           <div className="mt-6 text-center">

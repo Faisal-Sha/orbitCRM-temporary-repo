@@ -158,10 +158,38 @@ const OrganizationsManagement = () => {
         return;
       }
 
-      toast({
-        title: "Success",
-        description: "Organization created successfully",
-      });
+      // Send admin invitation email
+      try {
+        const invitationResponse = await supabase.functions.invoke('send-admin-invitation', {
+          body: {
+            adminFirstName: formData.adminFirstName,
+            adminLastName: formData.adminLastName,
+            adminEmail: formData.adminEmail,
+            organizationName: formData.name
+          }
+        });
+
+        if (invitationResponse.error) {
+          console.error('Error sending invitation:', invitationResponse.error);
+          toast({
+            title: "Warning",
+            description: "Organization created but invitation email failed to send",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Success",
+            description: "Organization created and invitation email sent successfully",
+          });
+        }
+      } catch (invitationError) {
+        console.error('Error sending invitation:', invitationError);
+        toast({
+          title: "Warning",
+          description: "Organization created but invitation email failed to send",
+          variant: "destructive",
+        });
+      }
 
       setFormData({ 
         name: "", 

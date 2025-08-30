@@ -702,6 +702,10 @@ export type Database = {
           user_count: number
         }[]
       }
+      link_user_to_person: {
+        Args: { new_user_id: string; user_email: string }
+        Returns: Json
+      }
       soft_delete_organization: {
         Args: { deleting_user_id: string; org_id: string }
         Returns: Json
