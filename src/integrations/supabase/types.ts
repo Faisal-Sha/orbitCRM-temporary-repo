@@ -324,6 +324,8 @@ export type Database = {
           updated_at: string
           updated_by: string | null
           user_account_id: string | null
+          user_profile_bio: string | null
+          user_profile_pic: string | null
         }
         Insert: {
           created_at?: string
@@ -339,6 +341,8 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
           user_account_id?: string | null
+          user_profile_bio?: string | null
+          user_profile_pic?: string | null
         }
         Update: {
           created_at?: string
@@ -354,6 +358,8 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
           user_account_id?: string | null
+          user_profile_bio?: string | null
+          user_profile_pic?: string | null
         }
         Relationships: [
           {
@@ -370,7 +376,7 @@ export type Database = {
           address_line_1: string | null
           address_line_2: string | null
           city: string | null
-          country: string | null
+          country: string
           created_at: string
           created_by: string | null
           deleted_at: string | null
@@ -395,7 +401,7 @@ export type Database = {
           address_line_1?: string | null
           address_line_2?: string | null
           city?: string | null
-          country?: string | null
+          country?: string
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -420,7 +426,7 @@ export type Database = {
           address_line_1?: string | null
           address_line_2?: string | null
           city?: string | null
-          country?: string | null
+          country?: string
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -702,6 +708,10 @@ export type Database = {
           user_count: number
         }[]
       }
+      get_personal_profile: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       link_user_to_person: {
         Args: { new_user_id: string; user_email: string }
         Returns: Json
@@ -720,6 +730,31 @@ export type Database = {
           organization_state: string
           organization_status: Database["public"]["Enums"]["organization_status_enum"]
           updated_by_user_id: string
+        }
+        Returns: Json
+      }
+      update_personal_email: {
+        Args: { p_email: string; p_updated_by: string }
+        Returns: Json
+      }
+      update_personal_profile: {
+        Args: {
+          p_address_line_1: string
+          p_address_line_2: string
+          p_bio: string
+          p_city: string
+          p_facebook: string
+          p_first_name: string
+          p_instagram: string
+          p_last_name: string
+          p_linkedin: string
+          p_middle_name: string
+          p_phone: string
+          p_profile_pic: string
+          p_state: string
+          p_tiktok: string
+          p_updated_by: string
+          p_zip_code: string
         }
         Returns: Json
       }
