@@ -41,6 +41,38 @@ export const useRealtimeProfile = () => {
     linkedin: '',
   });
   const [loading, setLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentPersonId, setCurrentPersonId] = useState<string | null>(null);
+
+  // Get current user and their person ID
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setCurrentUserId(user.id);
+        console.log('🔑 Current user ID:', user.id);
+        
+        // Get the person ID for this user
+        const { data, error } = await supabase
+          .from('people')
+          .select('id')
+          .eq('user_account_id', (await supabase
+            .from('app_users')
+            .select('id')
+            .eq('user_id', user.id)
+            .single()
+          ).data?.id)
+          .single();
+          
+        if (data && !error) {
+          setCurrentPersonId(data.id);
+          console.log('🧑 Current person ID:', data.id);
+        }
+      }
+    };
+    
+    getCurrentUser();
+  }, []);
 
   const fetchProfile = async () => {
     try {
@@ -80,6 +112,17 @@ export const useRealtimeProfile = () => {
   };
 
   const updateProfileFromPayload = (newData: any) => {
+    // Only update if this is the current user's data
+    if (!currentPersonId || newData.id !== currentPersonId) {
+      console.log('🚫 Ignoring profile update for different user:', { 
+        receivedPersonId: newData.id, 
+        currentPersonId,
+        currentUserId 
+      });
+      return;
+    }
+
+    console.log('✅ Updating profile for current user:', newData);
     setProfileData(prev => ({
       ...prev,
       first_name: newData.first_name || prev.first_name,
@@ -91,6 +134,17 @@ export const useRealtimeProfile = () => {
   };
 
   const updateContactsFromPayload = (newData: any) => {
+    // Only update if this is the current user's contacts
+    if (!currentPersonId || newData.person_id !== currentPersonId) {
+      console.log('🚫 Ignoring contacts update for different user:', { 
+        receivedPersonId: newData.person_id, 
+        currentPersonId,
+        currentUserId 
+      });
+      return;
+    }
+
+    console.log('✅ Updating contacts for current user:', newData);
     setProfileData(prev => ({
       ...prev,
       email: newData.email || prev.email,
