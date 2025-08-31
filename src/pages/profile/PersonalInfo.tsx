@@ -71,8 +71,8 @@ const PersonalInfo = () => {
 
   // Set up save and discard handlers in context
   useEffect(() => {
-    setOnSave(() => handleSave);
-    setOnDiscard(() => handleDiscard);
+    setOnSave(handleSave);
+    setOnDiscard(handleDiscard);
   }, [formData, originalData, setOnSave, setOnDiscard]);
 
   // Set up beforeunload event to warn about unsaved changes
