@@ -1,6 +1,7 @@
 
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useUnsavedChanges } from "@/contexts/UnsavedChangesContext";
 
 interface TabItem {
   value: string;
@@ -15,9 +16,18 @@ interface TabsComponentProps {
 
 const TabsComponent = ({ tabs, defaultTab }: TabsComponentProps) => {
   const [activeTab, setActiveTab] = useState(defaultTab || tabs[0].value);
+  const { interceptNavigation } = useUnsavedChanges();
+
+  const handleTabChange = (newTabValue: string) => {
+    if (newTabValue === activeTab) return;
+    
+    interceptNavigation(() => {
+      setActiveTab(newTabValue);
+    });
+  };
 
   return (
-    <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="w-full">
+    <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
       <TabsList className="app-tabs w-full mb-6">
         {tabs.map((tab) => (
           <TabsTrigger
