@@ -195,9 +195,17 @@ export const useRealtimeProfile = () => {
   useRealtimeSubscription<any>({
     table: 'people',
     enabled: !!currentPersonId, // Only enable when we have a person ID
-    onUpdate: ({ new: newData }) => {
-      console.log('🧑 People table updated:', newData);
+    onInsert: ({ new: newData }) => {
+      console.log('🧑➕ People table INSERT event:', newData);
       updateProfileFromPayload(newData);
+    },
+    onUpdate: ({ new: newData }) => {
+      console.log('🧑✏️ People table UPDATE event:', newData);
+      updateProfileFromPayload(newData);
+    },
+    onDelete: ({ old: oldData }) => {
+      console.log('🧑❌ People table DELETE event:', oldData);
+      // Handle deletion if needed
     },
   });
 
@@ -205,9 +213,17 @@ export const useRealtimeProfile = () => {
   useRealtimeSubscription<any>({
     table: 'people_contacts',
     enabled: !!currentPersonId, // Only enable when we have a person ID
-    onUpdate: ({ new: newData }) => {
-      console.log('📞 People contacts updated:', newData);
+    onInsert: ({ new: newData }) => {
+      console.log('📞➕ People contacts INSERT event:', newData);
       updateContactsFromPayload(newData);
+    },
+    onUpdate: ({ new: newData }) => {
+      console.log('📞✏️ People contacts UPDATE event:', newData);
+      updateContactsFromPayload(newData);
+    },
+    onDelete: ({ old: oldData }) => {
+      console.log('📞❌ People contacts DELETE event:', oldData);
+      // Handle deletion if needed
     },
   });
 
