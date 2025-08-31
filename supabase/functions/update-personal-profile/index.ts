@@ -57,6 +57,7 @@ serve(async (req) => {
       lastName,
       bio,
       profilePic,
+      oldProfilePic,
       email,
       phone,
       addressLine1,
@@ -77,6 +78,31 @@ serve(async (req) => {
     }
 
     console.log('Current user ID:', user.id);
+
+    // Delete old profile picture from storage if it's being changed or removed
+    if (oldProfilePic && oldProfilePic !== profilePic) {
+      try {
+        // Extract file path from URL
+        const oldPicUrl = new URL(oldProfilePic);
+        const pathMatch = oldPicUrl.pathname.match(/\/storage\/v1\/object\/public\/profile-pictures\/(.+)$/);
+        if (pathMatch) {
+          const filePath = pathMatch[1];
+          console.log('Deleting old profile picture:', filePath);
+          
+          const { error: deleteError } = await supabase.storage
+            .from('profile-pictures')
+            .remove([filePath]);
+          
+          if (deleteError) {
+            console.error('Error deleting old profile picture:', deleteError);
+          } else {
+            console.log('Successfully deleted old profile picture');
+          }
+        }
+      } catch (error) {
+        console.error('Error parsing old profile picture URL:', error);
+      }
+    }
 
     // First, update the regular profile data
     const { data: profileResult, error: profileError } = await supabase.rpc('update_personal_profile', {

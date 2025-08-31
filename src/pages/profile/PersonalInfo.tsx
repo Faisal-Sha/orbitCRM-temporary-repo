@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Camera, Loader2 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Camera, Loader2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -146,6 +147,7 @@ const PersonalInfo = () => {
           lastName: formData.lastName,
           bio: formData.bio,
           profilePic: formData.profilePic,
+          oldProfilePic: originalData?.profilePic,
           email: formData.email,
           phone: formData.phone,
           addressLine1: formData.addressLine1,
@@ -287,6 +289,14 @@ const PersonalInfo = () => {
     fileInputRef.current?.click();
   };
 
+  const handleDeletePicture = () => {
+    setFormData(prev => ({
+      ...prev,
+      profilePic: ""
+    }));
+    toast.success('Picture removed. Save changes to delete permanently.');
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -343,12 +353,31 @@ const PersonalInfo = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center gap-4 mb-4">
-              <Avatar className="h-20 w-20">
-                <AvatarImage src={formData.profilePic || "/placeholder-avatar.jpg"} />
-                <AvatarFallback>
-                  {formData.firstName?.[0]}{formData.lastName?.[0]}
-                </AvatarFallback>
-              </Avatar>
+              <div className="relative group">
+                <Avatar className="h-20 w-20">
+                  <AvatarImage src={formData.profilePic || "/placeholder-avatar.jpg"} />
+                  <AvatarFallback>
+                    {formData.firstName?.[0]}{formData.lastName?.[0]}
+                  </AvatarFallback>
+                </Avatar>
+                {formData.profilePic && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={handleDeletePicture}
+                          className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-destructive/90"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Delete picture</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+              </div>
               <div className="flex flex-col gap-2">
                 <Button 
                   variant="outline" 
