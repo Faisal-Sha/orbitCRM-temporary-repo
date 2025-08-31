@@ -47,27 +47,52 @@ export const useRealtimeProfile = () => {
   // Get current user and their person ID
   useEffect(() => {
     const getCurrentUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setCurrentUserId(user.id);
-        console.log('🔑 Current user ID:', user.id);
-        
-        // Get the person ID for this user
-        const { data, error } = await supabase
-          .from('people')
-          .select('id')
-          .eq('user_account_id', (await supabase
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          setCurrentUserId(user.id);
+          console.log('🔑 Current user ID:', user.id);
+          
+          // First, get the app_user record
+          const { data: appUserData, error: appUserError } = await supabase
             .from('app_users')
             .select('id')
             .eq('user_id', user.id)
-            .single()
-          ).data?.id)
-          .single();
+            .single();
+            
+          if (appUserError) {
+            console.error('❌ Error fetching app_user:', appUserError);
+            return;
+          }
           
-        if (data && !error) {
-          setCurrentPersonId(data.id);
-          console.log('🧑 Current person ID:', data.id);
+          if (!appUserData) {
+            console.error('❌ No app_user found for user ID:', user.id);
+            return;
+          }
+          
+          console.log('📱 App user ID:', appUserData.id);
+          
+          // Then, get the person record
+          const { data: personData, error: personError } = await supabase
+            .from('people')
+            .select('id')
+            .eq('user_account_id', appUserData.id)
+            .single();
+            
+          if (personError) {
+            console.error('❌ Error fetching person:', personError);
+            return;
+          }
+          
+          if (personData) {
+            setCurrentPersonId(personData.id);
+            console.log('🧑 Current person ID:', personData.id);
+          } else {
+            console.error('❌ No person found for app_user ID:', appUserData.id);
+          }
         }
+      } catch (error) {
+        console.error('❌ Error in getCurrentUser:', error);
       }
     };
     
@@ -166,18 +191,20 @@ export const useRealtimeProfile = () => {
     fetchProfile();
   }, []);
 
-  // Set up realtime subscription for people table
+  // Set up realtime subscription for people table - only after person ID is available
   useRealtimeSubscription<any>({
     table: 'people',
+    enabled: !!currentPersonId, // Only enable when we have a person ID
     onUpdate: ({ new: newData }) => {
       console.log('🧑 People table updated:', newData);
       updateProfileFromPayload(newData);
     },
   });
 
-  // Set up realtime subscription for people_contacts table
+  // Set up realtime subscription for people_contacts table - only after person ID is available
   useRealtimeSubscription<any>({
     table: 'people_contacts',
+    enabled: !!currentPersonId, // Only enable when we have a person ID
     onUpdate: ({ new: newData }) => {
       console.log('📞 People contacts updated:', newData);
       updateContactsFromPayload(newData);
