@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useUnsavedChanges } from "@/contexts/UnsavedChangesContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -67,7 +67,7 @@ const PersonalInfo = () => {
   // Check if form has unsaved changes
   const hasUnsavedChanges = originalData && JSON.stringify(formData) !== JSON.stringify(originalData);
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     try {
       setSaving(true);
 
@@ -116,25 +116,29 @@ const PersonalInfo = () => {
     } finally {
       setSaving(false);
     }
-  };
+  }, [formData, setSaving]);
 
-  const handleDiscard = () => {
+  const handleDiscard = useCallback(() => {
     // Reset form to original data
     if (originalData) {
       setFormData(originalData);
     }
-  };
+  }, [originalData]);
 
   // Update context when unsaved changes state changes
   useEffect(() => {
-    setHasUnsavedChanges(!!hasUnsavedChanges);
+    if (setHasUnsavedChanges) {
+      setHasUnsavedChanges(!!hasUnsavedChanges);
+    }
   }, [hasUnsavedChanges, setHasUnsavedChanges]);
 
   // Register save and discard handlers with context
   useEffect(() => {
-    setOnSave(handleSave);
-    setOnDiscard(handleDiscard);
-  }, [setOnSave, setOnDiscard, handleSave, handleDiscard]);
+    if (setOnSave && setOnDiscard) {
+      setOnSave(handleSave);
+      setOnDiscard(handleDiscard);
+    }
+  }, [handleSave, handleDiscard, setOnSave, setOnDiscard]);
 
   // Load profile data on component mount
   useEffect(() => {
