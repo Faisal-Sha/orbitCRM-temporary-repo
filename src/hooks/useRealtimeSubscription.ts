@@ -22,6 +22,8 @@ export const useRealtimeSubscription = <T = any>({
   useEffect(() => {
     if (!enabled) return;
 
+    console.log(`🔄 Setting up realtime subscription for table: ${table}`);
+
     const channel = supabase
       .channel(`${table}-changes`)
       .on(
@@ -32,6 +34,7 @@ export const useRealtimeSubscription = <T = any>({
           table,
         },
         (payload) => {
+          console.log(`📝 INSERT event on ${table}:`, payload);
           if (onInsert) {
             onInsert(payload.new as T);
           }
@@ -45,6 +48,7 @@ export const useRealtimeSubscription = <T = any>({
           table,
         },
         (payload) => {
+          console.log(`✏️ UPDATE event on ${table}:`, payload);
           if (onUpdate) {
             onUpdate({ old: payload.old as T, new: payload.new as T });
           }
@@ -58,17 +62,21 @@ export const useRealtimeSubscription = <T = any>({
           table,
         },
         (payload) => {
+          console.log(`🗑️ DELETE event on ${table}:`, payload);
           if (onDelete) {
             onDelete({ old: payload.old as T });
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log(`📡 Realtime subscription status for ${table}:`, status);
+      });
 
     channelRef.current = channel;
 
     return () => {
       if (channelRef.current) {
+        console.log(`🔌 Unsubscribing from ${table} realtime`);
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;
       }

@@ -44,17 +44,31 @@ export const useRealtimeOrganizations = () => {
   // Set up realtime subscription
   useRealtimeSubscription<any>({
     table: 'app_organizations',
-    onInsert: () => {
-      // Refetch all organizations when a new one is added
+    onInsert: (newOrg) => {
+      console.log('🏢 New organization added:', newOrg);
+      // For INSERT, we need to refetch since we need admin data from the RPC function
       fetchOrganizations();
     },
-    onUpdate: () => {
-      // Refetch all organizations when one is updated
-      fetchOrganizations();
+    onUpdate: ({ old: oldOrg, new: newOrg }) => {
+      console.log('🏢 Organization updated:', { old: oldOrg, new: newOrg });
+      // For UPDATE, we can update the specific organization
+      setOrganizations(prev => 
+        prev.map(org => 
+          org.id === newOrg.id 
+            ? { 
+                ...org, 
+                organization_name: newOrg.organization_name,
+                organization_state: newOrg.organization_state,
+                status: newOrg.status 
+              }
+            : org
+        )
+      );
     },
-    onDelete: () => {
-      // Refetch all organizations when one is deleted
-      fetchOrganizations();
+    onDelete: ({ old: deletedOrg }) => {
+      console.log('🏢 Organization deleted:', deletedOrg);
+      // For DELETE, remove from the list
+      setOrganizations(prev => prev.filter(org => org.id !== deletedOrg.id));
     },
   });
 

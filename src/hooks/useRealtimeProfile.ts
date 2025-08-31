@@ -79,6 +79,34 @@ export const useRealtimeProfile = () => {
     }
   };
 
+  const updateProfileFromPayload = (newData: any) => {
+    setProfileData(prev => ({
+      ...prev,
+      first_name: newData.first_name || prev.first_name,
+      middle_name: newData.middle_name || prev.middle_name,
+      last_name: newData.last_name || prev.last_name,
+      bio: newData.user_profile_bio || prev.bio,
+      profile_pic: newData.user_profile_pic || prev.profile_pic,
+    }));
+  };
+
+  const updateContactsFromPayload = (newData: any) => {
+    setProfileData(prev => ({
+      ...prev,
+      email: newData.email || prev.email,
+      phone: newData.phone || prev.phone,
+      address_line_1: newData.address_line_1 || prev.address_line_1,
+      address_line_2: newData.address_line_2 || prev.address_line_2,
+      city: newData.city || prev.city,
+      state: newData.state || prev.state,
+      zip_code: newData.zip_code || prev.zip_code,
+      facebook: newData.url_facebook || prev.facebook,
+      instagram: newData.url_instagram || prev.instagram,
+      tiktok: newData.url_tiktok || prev.tiktok,
+      linkedin: newData.url_linkedin || prev.linkedin,
+    }));
+  };
+
   // Initial fetch
   useEffect(() => {
     fetchProfile();
@@ -87,16 +115,18 @@ export const useRealtimeProfile = () => {
   // Set up realtime subscription for people table
   useRealtimeSubscription<any>({
     table: 'people',
-    onUpdate: () => {
-      fetchProfile();
+    onUpdate: ({ new: newData }) => {
+      console.log('🧑 People table updated:', newData);
+      updateProfileFromPayload(newData);
     },
   });
 
   // Set up realtime subscription for people_contacts table
   useRealtimeSubscription<any>({
     table: 'people_contacts',
-    onUpdate: () => {
-      fetchProfile();
+    onUpdate: ({ new: newData }) => {
+      console.log('📞 People contacts updated:', newData);
+      updateContactsFromPayload(newData);
     },
   });
 
