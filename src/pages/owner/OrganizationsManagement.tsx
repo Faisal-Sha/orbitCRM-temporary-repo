@@ -28,8 +28,9 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Edit, Trash2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useRealtimeOrganizations } from "@/hooks/useRealtimeOrganizations";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Organization {
   id: string;
@@ -51,8 +52,7 @@ interface SoftDeleteResponse {
 }
 
 const OrganizationsManagement = () => {
-  const [organizations, setOrganizations] = useState<Organization[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { organizations, loading } = useRealtimeOrganizations();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -78,44 +78,7 @@ const OrganizationsManagement = () => {
     "Wisconsin", "Wyoming"
   ];
 
-  const fetchOrganizations = async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase.rpc('get_organizations_with_admins');
-      
-      if (error) {
-        console.error('Error fetching organizations:', error);
-        toast({
-          title: "Error",
-          description: "Failed to fetch organizations",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Ensure each organization has organization_state field, defaulting to null if missing
-      const normalizedData = (data || []).map((org: any) => ({
-        ...org,
-        organization_state: org.organization_state || null
-      })) as Organization[];
-
-      console.log('Fetched organizations data:', normalizedData);
-      setOrganizations(normalizedData);
-    } catch (error) {
-      console.error('Error:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch organizations",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchOrganizations();
-  }, []);
+  // Organizations are now managed by useRealtimeOrganizations hook
 
   const handleAdd = async () => {
     if (!formData.name || !formData.state || !formData.adminFirstName || !formData.adminLastName || !formData.adminEmail) {
@@ -174,7 +137,7 @@ const OrganizationsManagement = () => {
         status: "active" 
       });
       setIsAddDialogOpen(false);
-      fetchOrganizations();
+      // Organizations will be updated automatically via realtime
     } catch (error) {
       console.error('Error:', error);
       toast({
@@ -234,7 +197,7 @@ const OrganizationsManagement = () => {
 
       setIsEditDialogOpen(false);
       setSelectedOrg(null);
-      fetchOrganizations();
+      // Organizations will be updated automatically via realtime
     } catch (error) {
       console.error('Error:', error);
       toast({
@@ -304,8 +267,7 @@ const OrganizationsManagement = () => {
       setIsDeleteDialogOpen(false);
       setSelectedOrg(null);
       
-      // Force immediate refresh of organizations list
-      await fetchOrganizations();
+      // Organizations will be updated automatically via realtime
     } catch (error) {
       console.error('Error in handleDelete:', error);
       toast({
