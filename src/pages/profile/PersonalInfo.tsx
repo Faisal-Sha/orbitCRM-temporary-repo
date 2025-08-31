@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useNavigationBlocker } from "@/hooks/useNavigationBlocker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,7 +33,12 @@ interface ProfileData {
   linkedin: string;
 }
 
-const PersonalInfo = () => {
+interface PersonalInfoRef {
+  hasUnsavedChanges: () => boolean;
+  showUnsavedModal: () => Promise<boolean>;
+}
+
+const PersonalInfo = forwardRef<PersonalInfoRef>((_, ref) => {
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -63,10 +68,28 @@ const PersonalInfo = () => {
   const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
   const [pendingNavigationPath, setPendingNavigationPath] = useState<string>('');
   const [uploading, setUploading] = useState(false);
+  const [tabSwitchResolve, setTabSwitchResolve] = useState<((value: boolean) => void) | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Check if form has unsaved changes
   const hasUnsavedChanges = originalData && JSON.stringify(formData) !== JSON.stringify(originalData);
+
+  // Expose methods to parent via ref
+  useImperativeHandle(ref, () => ({
+    hasUnsavedChanges: () => !!hasUnsavedChanges,
+    showUnsavedModal: () => {
+      return new Promise<boolean>((resolve) => {
+        if (!hasUnsavedChanges) {
+          resolve(true);
+          return;
+        }
+        
+        // Show modal for tab switching
+        setTabSwitchResolve(() => resolve);
+        setShowUnsavedModal(true);
+      });
+    }
+  }));
 
   // Use navigation blocker hook
   const { allowNavigation } = useNavigationBlocker({
@@ -195,14 +218,19 @@ const PersonalInfo = () => {
       toast.error('Failed to save changes');
     } finally {
       setSaving(false);
-      setShowUnsavedModal(false);
     }
   };
 
   const handleModalSave = async () => {
     await handleSave();
-    if (pendingNavigation) {
-      pendingNavigation();
+    setShowUnsavedModal(false);
+    
+    // Handle tab switching vs page navigation differently
+    if (tabSwitchResolve) {
+      tabSwitchResolve(true);
+      setTabSwitchResolve(null);
+    } else if (pendingNavigation) {
+      // For page navigation, don't navigate away after save
       setPendingNavigation(null);
     }
   };
@@ -213,7 +241,13 @@ const PersonalInfo = () => {
       setFormData(originalData);
     }
     setShowUnsavedModal(false);
-    if (pendingNavigation) {
+    
+    // Handle tab switching vs page navigation differently
+    if (tabSwitchResolve) {
+      tabSwitchResolve(true);
+      setTabSwitchResolve(null);
+    } else if (pendingNavigation) {
+      // For page navigation, navigate away after discarding
       pendingNavigation();
       setPendingNavigation(null);
     }
@@ -221,7 +255,14 @@ const PersonalInfo = () => {
 
   const handleModalCancel = () => {
     setShowUnsavedModal(false);
-    setPendingNavigation(null);
+    
+    // Handle tab switching vs page navigation differently
+    if (tabSwitchResolve) {
+      tabSwitchResolve(false);
+      setTabSwitchResolve(null);
+    } else {
+      setPendingNavigation(null);
+    }
   };
 
   // Function to handle navigation with unsaved changes check
@@ -611,6 +652,6 @@ const PersonalInfo = () => {
       </Dialog>
     </>
   );
-};
+});
 
 export default PersonalInfo;
