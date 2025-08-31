@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -55,6 +55,8 @@ const PersonalInfo = () => {
   const [saving, setSaving] = useState(false);
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Check if form has unsaved changes
   const hasUnsavedChanges = originalData && JSON.stringify(formData) !== JSON.stringify(originalData);
@@ -187,12 +189,21 @@ const PersonalInfo = () => {
     }
   };
 
-  const handleModalCancel = () => {
+  const handleModalDiscard = () => {
+    // Reset form to original data
+    if (originalData) {
+      setFormData(originalData);
+    }
     setShowUnsavedModal(false);
     if (pendingNavigation) {
       pendingNavigation();
       setPendingNavigation(null);
     }
+  };
+
+  const handleModalCancel = () => {
+    setShowUnsavedModal(false);
+    setPendingNavigation(null);
   };
 
   // Function to handle navigation with unsaved changes check
@@ -203,6 +214,77 @@ const PersonalInfo = () => {
     } else {
       callback();
     }
+  };
+
+  const handleProfilePictureUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image size must be less than 5MB');
+      return;
+    }
+
+    try {
+      setUploading(true);
+
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) {
+        toast.error('Please sign in to upload pictures');
+        return;
+      }
+
+      // Create unique filename
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${session.user.id}/${Date.now()}.${fileExt}`;
+
+      // Upload to Supabase storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('profile-pictures')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        toast.error('Failed to upload image');
+        return;
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('profile-pictures')
+        .getPublicUrl(fileName);
+
+      // Update form data with new profile picture URL
+      setFormData(prev => ({
+        ...prev,
+        profilePic: publicUrl
+      }));
+
+      toast.success('Profile picture uploaded successfully');
+    } catch (error) {
+      console.error('Error uploading profile picture:', error);
+      toast.error('Failed to upload profile picture');
+    } finally {
+      setUploading(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleChangePictureClick = () => {
+    fileInputRef.current?.click();
   };
 
   if (loading) {
@@ -267,10 +349,33 @@ const PersonalInfo = () => {
                   {formData.firstName?.[0]}{formData.lastName?.[0]}
                 </AvatarFallback>
               </Avatar>
-              <Button variant="outline" className="flex items-center gap-2">
-                <Camera className="h-4 w-4" />
-                Change Picture
-              </Button>
+              <div className="flex flex-col gap-2">
+                <Button 
+                  variant="outline" 
+                  className="flex items-center gap-2"
+                  onClick={handleChangePictureClick}
+                  disabled={uploading}
+                >
+                  {uploading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Camera className="h-4 w-4" />
+                      Change Picture
+                    </>
+                  )}
+                </Button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleProfilePictureUpload}
+                  className="hidden"
+                />
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="bio">Bio</Label>
@@ -433,7 +538,7 @@ const PersonalInfo = () => {
               Would you like to save your changes before continuing?
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
+          <DialogFooter className="flex-row justify-end gap-2">
             <Button 
               variant="outline" 
               onClick={handleModalCancel}
@@ -442,12 +547,19 @@ const PersonalInfo = () => {
               Cancel
             </Button>
             <Button 
+              variant="destructive"
+              onClick={handleModalDiscard}
+              disabled={saving}
+            >
+              Discard
+            </Button>
+            <Button 
               onClick={handleModalSave}
               disabled={saving}
               className="flex items-center gap-2"
             >
               {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-              Save Changes
+              Save
             </Button>
           </DialogFooter>
         </DialogContent>
