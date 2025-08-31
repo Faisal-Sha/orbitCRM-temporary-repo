@@ -16,14 +16,20 @@ interface TabsComponentProps {
 
 const TabsComponent = ({ tabs, defaultTab }: TabsComponentProps) => {
   const [activeTab, setActiveTab] = useState(defaultTab || tabs[0].value);
-  const { interceptNavigation } = useUnsavedChanges();
+  const unsavedChangesContext = useUnsavedChanges();
 
   const handleTabChange = (newTabValue: string) => {
     if (newTabValue === activeTab) return;
     
-    interceptNavigation(() => {
+    // If unsaved changes context is available, use intercept navigation
+    if (unsavedChangesContext) {
+      unsavedChangesContext.interceptNavigation(() => {
+        setActiveTab(newTabValue);
+      });
+    } else {
+      // No unsaved changes context, just switch tabs normally
       setActiveTab(newTabValue);
-    });
+    }
   };
 
   return (
