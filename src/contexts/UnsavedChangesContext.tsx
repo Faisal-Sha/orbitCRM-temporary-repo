@@ -19,10 +19,7 @@ const UnsavedChangesContext = createContext<UnsavedChangesContextType | undefine
 
 export const useUnsavedChanges = () => {
   const context = useContext(UnsavedChangesContext);
-  if (context === undefined) {
-    throw new Error('useUnsavedChanges must be used within UnsavedChangesProvider');
-  }
-  return context;
+  return context || null;
 };
 
 interface UnsavedChangesProviderProps {

@@ -19,52 +19,47 @@ interface TabsComponentProps {
 
 const TabsComponent = ({ tabs, defaultTab }: TabsComponentProps) => {
   const [activeTab, setActiveTab] = useState(defaultTab || tabs[0].value);
-  const { 
-    interceptNavigation, 
-    showUnsavedModal, 
-    setShowUnsavedModal, 
-    pendingNavigation, 
-    onSave, 
-    onDiscard, 
-    saving,
-    setSaving 
-  } = useUnsavedChanges();
+  const unsavedChangesContext = useUnsavedChanges();
 
   const handleTabChange = (newTab: string) => {
     if (newTab === activeTab) return;
     
-    interceptNavigation(newTab, () => {
+    if (unsavedChangesContext?.interceptNavigation) {
+      unsavedChangesContext.interceptNavigation(newTab, () => {
+        setActiveTab(newTab);
+      });
+    } else {
       setActiveTab(newTab);
-    });
+    }
   };
 
   const handleModalSave = async () => {
-    if (onSave) {
-      setSaving(true);
+    if (unsavedChangesContext?.onSave) {
+      unsavedChangesContext.setSaving(true);
       try {
-        await onSave();
-        setShowUnsavedModal(false);
-        if (pendingNavigation) {
-          pendingNavigation();
+        await unsavedChangesContext.onSave();
+        unsavedChangesContext.setShowUnsavedModal(false);
+        if (unsavedChangesContext.pendingNavigation) {
+          unsavedChangesContext.pendingNavigation();
         }
       } finally {
-        setSaving(false);
+        unsavedChangesContext.setSaving(false);
       }
     }
   };
 
   const handleModalDiscard = () => {
-    if (onDiscard) {
-      onDiscard();
+    if (unsavedChangesContext?.onDiscard) {
+      unsavedChangesContext.onDiscard();
     }
-    setShowUnsavedModal(false);
-    if (pendingNavigation) {
-      pendingNavigation();
+    unsavedChangesContext?.setShowUnsavedModal(false);
+    if (unsavedChangesContext?.pendingNavigation) {
+      unsavedChangesContext.pendingNavigation();
     }
   };
 
   const handleModalCancel = () => {
-    setShowUnsavedModal(false);
+    unsavedChangesContext?.setShowUnsavedModal(false);
   };
 
   return (
@@ -88,42 +83,44 @@ const TabsComponent = ({ tabs, defaultTab }: TabsComponentProps) => {
         ))}
       </Tabs>
 
-      {/* Unsaved Changes Modal */}
-      <Dialog open={showUnsavedModal} onOpenChange={setShowUnsavedModal}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Unsaved Changes</DialogTitle>
-            <DialogDescription>
-              You have unsaved changes that will be lost if you navigate away. 
-              Would you like to save your changes before continuing?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex-row justify-end gap-2">
-            <Button 
-              variant="outline" 
-              onClick={handleModalCancel}
-              disabled={saving}
-            >
-              Cancel
-            </Button>
-            <Button 
-              variant="destructive"
-              onClick={handleModalDiscard}
-              disabled={saving}
-            >
-              Discard
-            </Button>
-            <Button 
-              onClick={handleModalSave}
-              disabled={saving}
-              className="flex items-center gap-2"
-            >
-              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-              Save
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Unsaved Changes Modal - only show if context exists */}
+      {unsavedChangesContext && (
+        <Dialog open={unsavedChangesContext.showUnsavedModal} onOpenChange={unsavedChangesContext.setShowUnsavedModal}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Unsaved Changes</DialogTitle>
+              <DialogDescription>
+                You have unsaved changes that will be lost if you navigate away. 
+                Would you like to save your changes before continuing?
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="flex-row justify-end gap-2">
+              <Button 
+                variant="outline" 
+                onClick={handleModalCancel}
+                disabled={unsavedChangesContext.saving}
+              >
+                Cancel
+              </Button>
+              <Button 
+                variant="destructive"
+                onClick={handleModalDiscard}
+                disabled={unsavedChangesContext.saving}
+              >
+                Discard
+              </Button>
+              <Button 
+                onClick={handleModalSave}
+                disabled={unsavedChangesContext.saving}
+                className="flex items-center gap-2"
+              >
+                {unsavedChangesContext.saving && <Loader2 className="h-4 w-4 animate-spin" />}
+                Save
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </>
   );
 };
