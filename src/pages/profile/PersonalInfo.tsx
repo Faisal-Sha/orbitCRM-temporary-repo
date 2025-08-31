@@ -1,6 +1,5 @@
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import { useUnsavedChanges } from "@/contexts/UnsavedChangesContext";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -53,92 +52,14 @@ const PersonalInfo = () => {
 
   const [originalData, setOriginalData] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [showUnsavedModal, setShowUnsavedModal] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
-  const { 
-    setHasUnsavedChanges, 
-    setOnSave, 
-    setOnDiscard,
-    saving,
-    setSaving
-  } = useUnsavedChanges();
 
   // Check if form has unsaved changes
   const hasUnsavedChanges = originalData && JSON.stringify(formData) !== JSON.stringify(originalData);
-
-  const handleSave = useCallback(async () => {
-    try {
-      setSaving(true);
-
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError || !session) {
-        toast.error('Please sign in to save changes');
-        return;
-      }
-
-      const response = await supabase.functions.invoke('update-personal-profile', {
-        body: {
-          firstName: formData.firstName,
-          middleName: formData.middleName,
-          lastName: formData.lastName,
-          bio: formData.bio,
-          profilePic: formData.profilePic,
-          email: formData.email,
-          phone: formData.phone,
-          addressLine1: formData.addressLine1,
-          addressLine2: formData.addressLine2,
-          city: formData.city,
-          state: formData.state,
-          zipCode: formData.zipCode,
-          facebook: formData.facebook,
-          instagram: formData.instagram,
-          tiktok: formData.tiktok,
-          linkedin: formData.linkedin
-        }
-      });
-
-      if (response.error) {
-        console.error('Save error:', response.error);
-        toast.error('Failed to save changes');
-        return;
-      }
-
-      if (response.data?.success) {
-        setOriginalData(formData);
-        toast.success('Profile updated successfully');
-      } else {
-        toast.error(response.data?.error || 'Failed to save changes');
-      }
-    } catch (error) {
-      console.error('Error saving profile:', error);
-      toast.error('Failed to save changes');
-    } finally {
-      setSaving(false);
-    }
-  }, [formData, setSaving]);
-
-  const handleDiscard = useCallback(() => {
-    // Reset form to original data
-    if (originalData) {
-      setFormData(originalData);
-    }
-  }, [originalData]);
-
-  // Update context when unsaved changes state changes
-  useEffect(() => {
-    if (setHasUnsavedChanges) {
-      setHasUnsavedChanges(!!hasUnsavedChanges);
-    }
-  }, [hasUnsavedChanges, setHasUnsavedChanges]);
-
-  // Register save and discard handlers with context
-  useEffect(() => {
-    if (setOnSave && setOnDiscard) {
-      setOnSave(handleSave);
-      setOnDiscard(handleDiscard);
-    }
-  }, [handleSave, handleDiscard, setOnSave, setOnDiscard]);
 
   // Load profile data on component mount
   useEffect(() => {
@@ -208,6 +129,92 @@ const PersonalInfo = () => {
     }));
   };
 
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) {
+        toast.error('Please sign in to save changes');
+        return;
+      }
+
+      const response = await supabase.functions.invoke('update-personal-profile', {
+        body: {
+          firstName: formData.firstName,
+          middleName: formData.middleName,
+          lastName: formData.lastName,
+          bio: formData.bio,
+          profilePic: formData.profilePic,
+          email: formData.email,
+          phone: formData.phone,
+          addressLine1: formData.addressLine1,
+          addressLine2: formData.addressLine2,
+          city: formData.city,
+          state: formData.state,
+          zipCode: formData.zipCode,
+          facebook: formData.facebook,
+          instagram: formData.instagram,
+          tiktok: formData.tiktok,
+          linkedin: formData.linkedin
+        }
+      });
+
+      if (response.error) {
+        console.error('Save error:', response.error);
+        toast.error('Failed to save changes');
+        return;
+      }
+
+      if (response.data?.success) {
+        setOriginalData(formData);
+        toast.success('Profile updated successfully');
+      } else {
+        toast.error(response.data?.error || 'Failed to save changes');
+      }
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      toast.error('Failed to save changes');
+    } finally {
+      setSaving(false);
+      setShowUnsavedModal(false);
+    }
+  };
+
+  const handleModalSave = async () => {
+    await handleSave();
+    if (pendingNavigation) {
+      pendingNavigation();
+      setPendingNavigation(null);
+    }
+  };
+
+  const handleModalDiscard = () => {
+    // Reset form to original data
+    if (originalData) {
+      setFormData(originalData);
+    }
+    setShowUnsavedModal(false);
+    if (pendingNavigation) {
+      pendingNavigation();
+      setPendingNavigation(null);
+    }
+  };
+
+  const handleModalCancel = () => {
+    setShowUnsavedModal(false);
+    setPendingNavigation(null);
+  };
+
+  // Function to handle navigation with unsaved changes check
+  const handleNavigation = (callback: () => void) => {
+    if (hasUnsavedChanges) {
+      setPendingNavigation(() => callback);
+      setShowUnsavedModal(true);
+    } else {
+      callback();
+    }
+  };
 
   const handleProfilePictureUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -520,6 +527,43 @@ const PersonalInfo = () => {
           </Button>
         </div>
       </div>
+
+      {/* Unsaved Changes Modal */}
+      <Dialog open={showUnsavedModal} onOpenChange={setShowUnsavedModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Unsaved Changes</DialogTitle>
+            <DialogDescription>
+              You have unsaved changes that will be lost if you navigate away. 
+              Would you like to save your changes before continuing?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-row justify-end gap-2">
+            <Button 
+              variant="outline" 
+              onClick={handleModalCancel}
+              disabled={saving}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={handleModalDiscard}
+              disabled={saving}
+            >
+              Discard
+            </Button>
+            <Button 
+              onClick={handleModalSave}
+              disabled={saving}
+              className="flex items-center gap-2"
+            >
+              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
