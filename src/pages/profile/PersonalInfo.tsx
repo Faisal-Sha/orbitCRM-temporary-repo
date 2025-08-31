@@ -1,5 +1,7 @@
 
 import { useState, useEffect, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigationBlocker } from "@/hooks/useNavigationBlocker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,6 +34,9 @@ interface ProfileData {
 }
 
 const PersonalInfo = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  
   const [formData, setFormData] = useState<ProfileData>({
     firstName: "",
     middleName: "",
@@ -56,11 +61,22 @@ const PersonalInfo = () => {
   const [saving, setSaving] = useState(false);
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
+  const [pendingNavigationPath, setPendingNavigationPath] = useState<string>('');
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Check if form has unsaved changes
   const hasUnsavedChanges = originalData && JSON.stringify(formData) !== JSON.stringify(originalData);
+
+  // Use navigation blocker hook
+  const { allowNavigation } = useNavigationBlocker({
+    when: !!hasUnsavedChanges,
+    onBlock: (nextLocation: string) => {
+      setPendingNavigationPath(nextLocation);
+      setPendingNavigation(() => () => allowNavigation(nextLocation));
+      setShowUnsavedModal(true);
+    }
+  });
 
   // Load profile data on component mount
   useEffect(() => {
