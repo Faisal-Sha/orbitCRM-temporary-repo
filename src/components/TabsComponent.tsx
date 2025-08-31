@@ -1,7 +1,6 @@
 
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useUnsavedChanges } from "@/contexts/UnsavedChangesContext";
 
 interface TabItem {
   value: string;
@@ -16,24 +15,9 @@ interface TabsComponentProps {
 
 const TabsComponent = ({ tabs, defaultTab }: TabsComponentProps) => {
   const [activeTab, setActiveTab] = useState(defaultTab || tabs[0].value);
-  const unsavedChangesContext = useUnsavedChanges();
-
-  const handleTabChange = (newTabValue: string) => {
-    if (newTabValue === activeTab) return;
-    
-    // If unsaved changes context is available, use intercept navigation
-    if (unsavedChangesContext) {
-      unsavedChangesContext.interceptNavigation(() => {
-        setActiveTab(newTabValue);
-      });
-    } else {
-      // No unsaved changes context, just switch tabs normally
-      setActiveTab(newTabValue);
-    }
-  };
 
   return (
-    <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+    <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="w-full">
       <TabsList className="app-tabs w-full mb-6">
         {tabs.map((tab) => (
           <TabsTrigger

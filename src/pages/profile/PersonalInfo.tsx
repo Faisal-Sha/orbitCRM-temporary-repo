@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -5,10 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Camera, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useUnsavedChanges } from "@/contexts/UnsavedChangesContext";
 
 interface ProfileData {
   firstName: string;
@@ -52,28 +53,18 @@ const PersonalInfo = () => {
   const [originalData, setOriginalData] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showUnsavedModal, setShowUnsavedModal] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const {
-    setHasUnsavedChanges,
-    setOnSave,
-    setOnDiscard,
-  } = useUnsavedChanges();
 
   // Check if form has unsaved changes
   const hasUnsavedChanges = originalData && JSON.stringify(formData) !== JSON.stringify(originalData);
 
-  // Update context when unsaved changes state changes
+  // Load profile data on component mount
   useEffect(() => {
-    setHasUnsavedChanges(!!hasUnsavedChanges);
-  }, [hasUnsavedChanges, setHasUnsavedChanges]);
-
-  // Set up save and discard handlers in context
-  useEffect(() => {
-    setOnSave(handleSave);
-    setOnDiscard(handleDiscard);
-  }, [formData, originalData, setOnSave, setOnDiscard]);
+    loadProfileData();
+  }, []);
 
   // Set up beforeunload event to warn about unsaved changes
   useEffect(() => {
@@ -87,11 +78,6 @@ const PersonalInfo = () => {
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [hasUnsavedChanges]);
-
-  // Load profile data on component mount
-  useEffect(() => {
-    loadProfileData();
-  }, []);
 
   const loadProfileData = async () => {
     try {
@@ -191,12 +177,42 @@ const PersonalInfo = () => {
       toast.error('Failed to save changes');
     } finally {
       setSaving(false);
+      setShowUnsavedModal(false);
     }
   };
 
-  const handleDiscard = () => {
+  const handleModalSave = async () => {
+    await handleSave();
+    if (pendingNavigation) {
+      pendingNavigation();
+      setPendingNavigation(null);
+    }
+  };
+
+  const handleModalDiscard = () => {
+    // Reset form to original data
     if (originalData) {
       setFormData(originalData);
+    }
+    setShowUnsavedModal(false);
+    if (pendingNavigation) {
+      pendingNavigation();
+      setPendingNavigation(null);
+    }
+  };
+
+  const handleModalCancel = () => {
+    setShowUnsavedModal(false);
+    setPendingNavigation(null);
+  };
+
+  // Function to handle navigation with unsaved changes check
+  const handleNavigation = (callback: () => void) => {
+    if (hasUnsavedChanges) {
+      setPendingNavigation(() => callback);
+      setShowUnsavedModal(true);
+    } else {
+      callback();
     }
   };
 
@@ -279,238 +295,276 @@ const PersonalInfo = () => {
       </div>
     );
   }
-
   return (
-    <div className="space-y-6">
-      {/* Personal Details Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Personal Details</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="firstName">First Name</Label>
-              <Input 
-                id="firstName" 
-                placeholder="John" 
-                value={formData.firstName}
-                onChange={(e) => handleInputChange('firstName', e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="middleName">Middle Name</Label>
-              <Input 
-                id="middleName" 
-                placeholder="Michael" 
-                value={formData.middleName}
-                onChange={(e) => handleInputChange('middleName', e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="lastName">Last Name</Label>
-              <Input 
-                id="lastName" 
-                placeholder="Doe" 
-                value={formData.lastName}
-                onChange={(e) => handleInputChange('lastName', e.target.value)}
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Profile Details Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Profile Details</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center gap-4 mb-4">
-            <Avatar className="h-20 w-20">
-              <AvatarImage src={formData.profilePic || "/placeholder-avatar.jpg"} />
-              <AvatarFallback>
-                {formData.firstName?.[0]}{formData.lastName?.[0]}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex flex-col gap-2">
-              <Button 
-                variant="outline" 
-                className="flex items-center gap-2"
-                onClick={handleChangePictureClick}
-                disabled={uploading}
-              >
-                {uploading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Uploading...
-                  </>
-                ) : (
-                  <>
-                    <Camera className="h-4 w-4" />
-                    Change Picture
-                  </>
-                )}
-              </Button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleProfilePictureUpload}
-                className="hidden"
-              />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="bio">Bio</Label>
-            <Textarea
-              id="bio"
-              placeholder="Tell us about yourself..."
-              value={formData.bio}
-              onChange={(e) => handleInputChange('bio', e.target.value)}
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Contact Details Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Contact Details</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="personalEmail">Personal Email</Label>
-              <Input 
-                id="personalEmail" 
-                type="email" 
-                placeholder="john.doe@example.com"
-                value={formData.email}
-                onChange={(e) => handleInputChange('email', e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="personalPhone">Personal Phone</Label>
-              <Input 
-                id="personalPhone" 
-                type="tel" 
-                placeholder="(555) 123-4567"
-                value={formData.phone}
-                onChange={(e) => handleInputChange('phone', e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="address1">Address Line 1</Label>
-              <Input 
-                id="address1" 
-                placeholder="123 Main Street"
-                value={formData.addressLine1}
-                onChange={(e) => handleInputChange('addressLine1', e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="address2">Address Line 2</Label>
-              <Input 
-                id="address2" 
-                placeholder="Apt 4B (optional)"
-                value={formData.addressLine2}
-                onChange={(e) => handleInputChange('addressLine2', e.target.value)}
-              />
-            </div>
+    <>
+      <div className="space-y-6">
+        {/* Personal Details Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Personal Details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="city">City</Label>
+                <Label htmlFor="firstName">First Name</Label>
                 <Input 
-                  id="city" 
-                  placeholder="New York"
-                  value={formData.city}
-                  onChange={(e) => handleInputChange('city', e.target.value)}
+                  id="firstName" 
+                  placeholder="John" 
+                  value={formData.firstName}
+                  onChange={(e) => handleInputChange('firstName', e.target.value)}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="state">State</Label>
+                <Label htmlFor="middleName">Middle Name</Label>
                 <Input 
-                  id="state" 
-                  placeholder="NY"
-                  value={formData.state}
-                  onChange={(e) => handleInputChange('state', e.target.value)}
+                  id="middleName" 
+                  placeholder="Michael" 
+                  value={formData.middleName}
+                  onChange={(e) => handleInputChange('middleName', e.target.value)}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="zipCode">Zip Code</Label>
+                <Label htmlFor="lastName">Last Name</Label>
                 <Input 
-                  id="zipCode" 
-                  placeholder="10001"
-                  value={formData.zipCode}
-                  onChange={(e) => handleInputChange('zipCode', e.target.value)}
+                  id="lastName" 
+                  placeholder="Doe" 
+                  value={formData.lastName}
+                  onChange={(e) => handleInputChange('lastName', e.target.value)}
                 />
               </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      {/* Social Media Accounts Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Social Media Accounts</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="facebook">Facebook Profile URL</Label>
-              <Input 
-                id="facebook" 
-                placeholder="https://facebook.com/johndoe"
-                value={formData.facebook}
-                onChange={(e) => handleInputChange('facebook', e.target.value)}
-              />
+        {/* Profile Details Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Profile Details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-4 mb-4">
+              <Avatar className="h-20 w-20">
+                <AvatarImage src={formData.profilePic || "/placeholder-avatar.jpg"} />
+                <AvatarFallback>
+                  {formData.firstName?.[0]}{formData.lastName?.[0]}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex flex-col gap-2">
+                <Button 
+                  variant="outline" 
+                  className="flex items-center gap-2"
+                  onClick={handleChangePictureClick}
+                  disabled={uploading}
+                >
+                  {uploading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Camera className="h-4 w-4" />
+                      Change Picture
+                    </>
+                  )}
+                </Button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleProfilePictureUpload}
+                  className="hidden"
+                />
+              </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="instagram">Instagram Profile URL</Label>
-              <Input 
-                id="instagram" 
-                placeholder="https://instagram.com/johndoe"
-                value={formData.instagram}
-                onChange={(e) => handleInputChange('instagram', e.target.value)}
+              <Label htmlFor="bio">Bio</Label>
+              <Textarea
+                id="bio"
+                placeholder="Tell us about yourself..."
+                value={formData.bio}
+                onChange={(e) => handleInputChange('bio', e.target.value)}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="tiktok">TikTok Profile URL</Label>
-              <Input 
-                id="tiktok" 
-                placeholder="https://tiktok.com/@johndoe"
-                value={formData.tiktok}
-                onChange={(e) => handleInputChange('tiktok', e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="linkedin">LinkedIn Profile URL</Label>
-              <Input 
-                id="linkedin" 
-                placeholder="https://linkedin.com/in/johndoe"
-                value={formData.linkedin}
-                onChange={(e) => handleInputChange('linkedin', e.target.value)}
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      <div className="flex justify-end">
-        <Button 
-          onClick={handleSave}
-          disabled={saving}
-          className="flex items-center gap-2"
-        >
-          {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-          Save Changes
-        </Button>
+        {/* Contact Details Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Contact Details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="personalEmail">Personal Email</Label>
+                <Input 
+                  id="personalEmail" 
+                  type="email" 
+                  placeholder="john.doe@example.com"
+                  value={formData.email}
+                  onChange={(e) => handleInputChange('email', e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="personalPhone">Personal Phone</Label>
+                <Input 
+                  id="personalPhone" 
+                  type="tel" 
+                  placeholder="(555) 123-4567"
+                  value={formData.phone}
+                  onChange={(e) => handleInputChange('phone', e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="address1">Address Line 1</Label>
+                <Input 
+                  id="address1" 
+                  placeholder="123 Main Street"
+                  value={formData.addressLine1}
+                  onChange={(e) => handleInputChange('addressLine1', e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="address2">Address Line 2</Label>
+                <Input 
+                  id="address2" 
+                  placeholder="Apt 4B (optional)"
+                  value={formData.addressLine2}
+                  onChange={(e) => handleInputChange('addressLine2', e.target.value)}
+                />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="city">City</Label>
+                  <Input 
+                    id="city" 
+                    placeholder="New York"
+                    value={formData.city}
+                    onChange={(e) => handleInputChange('city', e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="state">State</Label>
+                  <Input 
+                    id="state" 
+                    placeholder="NY"
+                    value={formData.state}
+                    onChange={(e) => handleInputChange('state', e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="zipCode">Zip Code</Label>
+                  <Input 
+                    id="zipCode" 
+                    placeholder="10001"
+                    value={formData.zipCode}
+                    onChange={(e) => handleInputChange('zipCode', e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Social Media Accounts Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Social Media Accounts</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="facebook">Facebook Profile URL</Label>
+                <Input 
+                  id="facebook" 
+                  placeholder="https://facebook.com/johndoe"
+                  value={formData.facebook}
+                  onChange={(e) => handleInputChange('facebook', e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="instagram">Instagram Profile URL</Label>
+                <Input 
+                  id="instagram" 
+                  placeholder="https://instagram.com/johndoe"
+                  value={formData.instagram}
+                  onChange={(e) => handleInputChange('instagram', e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="tiktok">TikTok Profile URL</Label>
+                <Input 
+                  id="tiktok" 
+                  placeholder="https://tiktok.com/@johndoe"
+                  value={formData.tiktok}
+                  onChange={(e) => handleInputChange('tiktok', e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="linkedin">LinkedIn Profile URL</Label>
+                <Input 
+                  id="linkedin" 
+                  placeholder="https://linkedin.com/in/johndoe"
+                  value={formData.linkedin}
+                  onChange={(e) => handleInputChange('linkedin', e.target.value)}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="flex justify-end">
+          <Button 
+            onClick={handleSave}
+            disabled={saving}
+            className="flex items-center gap-2"
+          >
+            {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+            Save Changes
+          </Button>
+        </div>
       </div>
-    </div>
+
+      {/* Unsaved Changes Modal */}
+      <Dialog open={showUnsavedModal} onOpenChange={setShowUnsavedModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Unsaved Changes</DialogTitle>
+            <DialogDescription>
+              You have unsaved changes that will be lost if you navigate away. 
+              Would you like to save your changes before continuing?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-row justify-end gap-2">
+            <Button 
+              variant="outline" 
+              onClick={handleModalCancel}
+              disabled={saving}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={handleModalDiscard}
+              disabled={saving}
+            >
+              Discard
+            </Button>
+            <Button 
+              onClick={handleModalSave}
+              disabled={saving}
+              className="flex items-center gap-2"
+            >
+              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 
