@@ -2,15 +2,19 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
+export interface Admin {
+  first_name: string;
+  last_name: string;
+  email: string;
+}
+
 export interface Organization {
   id: string;
   organization_name: string;
   organization_state: string | null;
   status: "active" | "inactive" | "deleted";
   created_at: string;
-  admin_first_name: string | null;
-  admin_last_name: string | null;
-  admin_email: string | null;
+  admins: Admin[];
   user_count: number;
   storage_used: string;
 }
@@ -310,12 +314,13 @@ export const useOrganizations = () => {
 
   const openEditDialog = (org: Organization) => {
     setSelectedOrg(org);
+    const firstAdmin = org.admins[0] || { first_name: "", last_name: "", email: "" };
     setFormData({
       name: org.organization_name,
       state: org.organization_state || "",
-      adminFirstName: org.admin_first_name || "",
-      adminLastName: org.admin_last_name || "",
-      adminEmail: org.admin_email || "",
+      adminFirstName: firstAdmin.first_name,
+      adminLastName: firstAdmin.last_name,
+      adminEmail: firstAdmin.email,
       status: org.status === "deleted" ? "inactive" : org.status as "active" | "inactive"
     });
     setIsEditDialogOpen(true);

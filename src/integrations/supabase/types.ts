@@ -839,9 +839,7 @@ export type Database = {
       get_organizations_with_admins: {
         Args: Record<PropertyKey, never>
         Returns: {
-          admin_email: string
-          admin_first_name: string
-          admin_last_name: string
+          admins: Json
           created_at: string
           id: string
           organization_name: string

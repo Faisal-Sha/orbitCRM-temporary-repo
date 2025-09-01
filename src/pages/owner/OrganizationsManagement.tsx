@@ -119,13 +119,20 @@ const OrganizationsManagement = () => {
                   <TableCell>
                     <div>
                       <div className="font-medium">
-                        {org.admin_first_name && org.admin_last_name 
-                          ? `${org.admin_first_name} ${org.admin_last_name}`
-                          : "No admin assigned"
+                        {org.admins.length === 0 
+                          ? "No admin assigned"
+                          : org.admins.length === 1
+                          ? `${org.admins[0].first_name} ${org.admins[0].last_name}`
+                          : `${org.admins.length} Admins assigned`
                         }
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        {org.admin_email || "No email"}
+                        {org.admins.length === 1 
+                          ? org.admins[0].email
+                          : org.admins.length > 1
+                          ? "Multiple admin emails"
+                          : "No email"
+                        }
                       </div>
                     </div>
                   </TableCell>
