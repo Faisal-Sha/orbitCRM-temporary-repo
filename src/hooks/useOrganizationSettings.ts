@@ -62,10 +62,27 @@ export const useOrganizationSettings = () => {
     try {
       setLoading(true);
 
+      // Check if user is authenticated first
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error('Session error:', sessionError);
+        throw new Error('Authentication session error');
+      }
+      
+      if (!session) {
+        throw new Error('User not authenticated');
+      }
+
+      console.log('User authenticated, calling get_organization_settings...');
+      
       // Use the database function to get organization settings
       const { data, error } = await supabase.rpc('get_organization_settings');
       
-      if (error) throw error;
+      if (error) {
+        console.error('RPC Error:', error);
+        throw error;
+      }
 
       if (data && typeof data === 'object' && 'success' in data) {
         const result = data as any;
