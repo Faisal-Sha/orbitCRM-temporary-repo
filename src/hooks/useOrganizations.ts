@@ -78,12 +78,38 @@ export const useOrganizations = () => {
       }
 
       // Ensure each organization has organization_state field, defaulting to null if missing
-      const normalizedData = (data || []).map((org: any) => ({
-        ...org,
-        organization_state: org.organization_state || null
-      })) as Organization[];
+      const normalizedData = (data || []).map((org: any) => {
+        console.log('Raw org from DB:', org);
+        console.log('org.admins type:', typeof org.admins);
+        console.log('org.admins value:', org.admins);
+        console.log('org.admins.length:', org.admins?.length);
+        console.log('Array.isArray(org.admins):', Array.isArray(org.admins));
+        
+        // Parse admins if it's a JSON string
+        let parsedAdmins = org.admins;
+        if (typeof org.admins === 'string') {
+          try {
+            parsedAdmins = JSON.parse(org.admins);
+            console.log('Parsed admins from string:', parsedAdmins);
+          } catch (e) {
+            console.error('Failed to parse admins JSON:', e);
+            parsedAdmins = [];
+          }
+        }
+        
+        const normalizedOrg = {
+          ...org,
+          organization_state: org.organization_state || null,
+          admins: Array.isArray(parsedAdmins) ? parsedAdmins : []
+        };
+        
+        console.log('Normalized org.admins:', normalizedOrg.admins);
+        console.log('Normalized org.admins.length:', normalizedOrg.admins.length);
+        
+        return normalizedOrg;
+      }) as Organization[];
 
-      console.log('Fetched organizations data:', normalizedData);
+      console.log('Final normalized data:', normalizedData);
       setOrganizations(normalizedData);
     } catch (error) {
       console.error('Error:', error);
