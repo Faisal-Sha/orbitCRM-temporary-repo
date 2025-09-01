@@ -676,6 +676,145 @@ export type Database = {
           },
         ]
       }
+      settings_organization: {
+        Row: {
+          address_line_1: string | null
+          address_line_2: string | null
+          country: string | null
+          created_at: string
+          created_by: string | null
+          default_currency: string | null
+          default_language: string | null
+          default_timezone: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          facebook_url: string | null
+          google_profile_url: string | null
+          id: string
+          instagram_url: string | null
+          is_deleted: boolean
+          linkedin_url: string | null
+          organization_id: string
+          organization_logo: string | null
+          tiktok_url: string | null
+          updated_at: string
+          updated_by: string | null
+          x_url: string | null
+          youtube_url: string | null
+          zip_cone: string | null
+        }
+        Insert: {
+          address_line_1?: string | null
+          address_line_2?: string | null
+          country?: string | null
+          created_at?: string
+          created_by?: string | null
+          default_currency?: string | null
+          default_language?: string | null
+          default_timezone?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          facebook_url?: string | null
+          google_profile_url?: string | null
+          id?: string
+          instagram_url?: string | null
+          is_deleted?: boolean
+          linkedin_url?: string | null
+          organization_id: string
+          organization_logo?: string | null
+          tiktok_url?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          x_url?: string | null
+          youtube_url?: string | null
+          zip_cone?: string | null
+        }
+        Update: {
+          address_line_1?: string | null
+          address_line_2?: string | null
+          country?: string | null
+          created_at?: string
+          created_by?: string | null
+          default_currency?: string | null
+          default_language?: string | null
+          default_timezone?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          facebook_url?: string | null
+          google_profile_url?: string | null
+          id?: string
+          instagram_url?: string | null
+          is_deleted?: boolean
+          linkedin_url?: string | null
+          organization_id?: string
+          organization_logo?: string | null
+          tiktok_url?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          x_url?: string | null
+          youtube_url?: string | null
+          zip_cone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "settings_organization_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "app_organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      settings_organization_domains: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          domain: string | null
+          id: string
+          is_deleted: boolean
+          organization_id: string
+          protocol: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          domain?: string | null
+          id?: string
+          is_deleted?: boolean
+          organization_id: string
+          protocol?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          domain?: string | null
+          id?: string
+          is_deleted?: boolean
+          organization_id?: string
+          protocol?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_organization_domains_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "app_organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -691,6 +830,10 @@ export type Database = {
           organization_state: string
           organization_status?: Database["public"]["Enums"]["organization_status_enum"]
         }
+        Returns: Json
+      }
+      get_organization_settings: {
+        Args: Record<PropertyKey, never>
         Returns: Json
       }
       get_organizations_with_admins: {
@@ -714,6 +857,29 @@ export type Database = {
       }
       link_user_to_person: {
         Args: { new_user_id: string; user_email: string }
+        Returns: Json
+      }
+      save_organization_settings: {
+        Args: {
+          p_address_line_1: string
+          p_address_line_2: string
+          p_country: string
+          p_default_currency: string
+          p_default_language: string
+          p_default_timezone: string
+          p_domains: Json
+          p_facebook_url: string
+          p_google_profile_url: string
+          p_instagram_url: string
+          p_linkedin_url: string
+          p_organization_logo: string
+          p_organization_name: string
+          p_organization_state: string
+          p_tiktok_url: string
+          p_x_url: string
+          p_youtube_url: string
+          p_zip_cone: string
+        }
         Returns: Json
       }
       soft_delete_organization: {
