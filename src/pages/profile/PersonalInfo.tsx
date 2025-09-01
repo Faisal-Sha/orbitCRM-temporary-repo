@@ -13,7 +13,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Camera, Loader2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useRealtimeProfile } from "@/hooks/useRealtimeProfile";
 
 interface ProfileData {
   firstName: string;
@@ -42,7 +41,6 @@ interface PersonalInfoRef {
 const PersonalInfo = forwardRef<PersonalInfoRef>((_, ref) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { profileData: realtimeProfileData, loading } = useRealtimeProfile();
   
   const [formData, setFormData] = useState<ProfileData>({
     firstName: "",
@@ -64,6 +62,7 @@ const PersonalInfo = forwardRef<PersonalInfoRef>((_, ref) => {
   });
 
   const [originalData, setOriginalData] = useState<ProfileData | null>(null);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
@@ -102,31 +101,10 @@ const PersonalInfo = forwardRef<PersonalInfoRef>((_, ref) => {
     }
   });
 
-  // Update form data when realtime profile data changes
+  // Load profile data on component mount
   useEffect(() => {
-    if (realtimeProfileData && !loading) {
-      const mappedData: ProfileData = {
-        firstName: realtimeProfileData.first_name,
-        middleName: realtimeProfileData.middle_name,
-        lastName: realtimeProfileData.last_name,
-        bio: realtimeProfileData.bio,
-        profilePic: realtimeProfileData.profile_pic,
-        email: realtimeProfileData.email,
-        phone: realtimeProfileData.phone,
-        addressLine1: realtimeProfileData.address_line_1,
-        addressLine2: realtimeProfileData.address_line_2,
-        city: realtimeProfileData.city,
-        state: realtimeProfileData.state,
-        zipCode: realtimeProfileData.zip_code,
-        facebook: realtimeProfileData.facebook,
-        instagram: realtimeProfileData.instagram,
-        tiktok: realtimeProfileData.tiktok,
-        linkedin: realtimeProfileData.linkedin,
-      };
-      setFormData(mappedData);
-      setOriginalData(mappedData);
-    }
-  }, [realtimeProfileData, loading]);
+    loadProfileData();
+  }, []);
 
   // Set up beforeunload event to warn about unsaved changes
   useEffect(() => {
@@ -141,7 +119,48 @@ const PersonalInfo = forwardRef<PersonalInfoRef>((_, ref) => {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [hasUnsavedChanges]);
 
-  // Profile data is now managed by useRealtimeProfile hook
+  const loadProfileData = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase.rpc('get_personal_profile');
+      
+      if (error) {
+        console.error('Error loading profile:', error);
+        toast.error('Failed to load profile data');
+        return;
+      }
+
+      if (data) {
+        const profileRecord = data as any;
+        const profileData: ProfileData = {
+          firstName: profileRecord.first_name || "",
+          middleName: profileRecord.middle_name || "",
+          lastName: profileRecord.last_name || "",
+          bio: profileRecord.bio || "",
+          profilePic: profileRecord.profile_pic || "",
+          email: profileRecord.email || "",
+          phone: profileRecord.phone || "",
+          addressLine1: profileRecord.address_line_1 || "",
+          addressLine2: profileRecord.address_line_2 || "",
+          city: profileRecord.city || "",
+          state: profileRecord.state || "",
+          zipCode: profileRecord.zip_code || "",
+          facebook: profileRecord.facebook || "",
+          instagram: profileRecord.instagram || "",
+          tiktok: profileRecord.tiktok || "",
+          linkedin: profileRecord.linkedin || ""
+        };
+
+        setFormData(profileData);
+        setOriginalData(profileData);
+      }
+    } catch (error) {
+      console.error('Error loading profile:', error);
+      toast.error('Failed to load profile data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleInputChange = (field: keyof ProfileData, value: string) => {
     setFormData(prev => ({
