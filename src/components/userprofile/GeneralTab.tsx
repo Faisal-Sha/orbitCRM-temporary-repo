@@ -1,10 +1,11 @@
 
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Mail, Phone, MapPin, Facebook, Instagram, Pencil, X, User, Calendar, Briefcase, ShieldCheck, Home, Users, Heart, Languages } from 'lucide-react';
 
 interface DetailItemProps {
@@ -41,11 +42,90 @@ interface GeneralTabProps {
   showApplicationInfo?: boolean;
 }
 
+interface EditableDetailItemProps {
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  options: string[];
+  isEditing: boolean;
+  onEdit: () => void;
+  onChange: (value: string) => void;
+  iconColor?: string;
+}
+
+const EditableDetailItem: React.FC<EditableDetailItemProps> = ({ 
+  icon: Icon, 
+  label, 
+  value, 
+  options, 
+  isEditing, 
+  onEdit, 
+  onChange, 
+  iconColor = "text-muted-foreground" 
+}) => (
+  <div className="flex items-start space-x-3 group">
+    <Icon className={`h-5 w-5 mt-0.5 ${iconColor}`} />
+    <div className="flex-1">
+      <p className="text-sm font-medium text-gray-700">{label}</p>
+      {isEditing ? (
+        <Select value={value} onValueChange={onChange}>
+          <SelectTrigger className="w-full mt-1">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {options.map((option) => (
+              <SelectItem key={option} value={option}>
+                {option}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      ) : (
+        <div className="flex items-center space-x-2">
+          <p className="text-sm text-gray-500">{value}</p>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={onEdit}
+          >
+            <Pencil className="h-3 w-3" />
+          </Button>
+        </div>
+      )}
+    </div>
+  </div>
+);
+
 const GeneralTab: React.FC<GeneralTabProps> = ({ user, hideUpcomingAppointments = false, showApplicationInfo = false }) => {
+  const [userRole, setUserRole] = useState("Staff");
+  const [staffType, setStaffType] = useState("Case Manager");
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const userRoleOptions = ["Staff", "Lead", "Client", "Partner", "General"];
+  const staffTypeOptions = ["Case Manager", "Assessor", "Supervisor", "Admin Support", "HR", "Marketing", "Sales Rep", "Exec"];
+
   const dummyAppointments = [
     { date: "Jun 18, 2025", time: "11:00 AM", clinician: "Dr. Emily Clark" },
     { date: "Jun 22, 2025", time: "3:30 PM", clinician: "Dr. Mike Evans" },
   ];
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setEditingField(null);
+      }
+    };
+
+    if (editingField) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [editingField]);
 
   return (
     <ScrollArea className="h-full">
@@ -117,6 +197,38 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ user, hideUpcomingAppointments 
             <DetailItem icon={Mail} label="Email" value="jane.contact@example.com" />
             <DetailItem icon={Phone} label="Phone" value="555-987-6543" />
             <DetailItem icon={Users} label="Relationship" value="Spouse" />
+          </div>
+        </SectionCard>
+
+        {/* User Data */}
+        <SectionCard title="User Data">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4" ref={containerRef}>
+            <EditableDetailItem
+              icon={ShieldCheck}
+              label="User Role"
+              value={userRole}
+              options={userRoleOptions}
+              isEditing={editingField === 'userRole'}
+              onEdit={() => setEditingField('userRole')}
+              onChange={(value) => {
+                setUserRole(value);
+                setEditingField(null);
+              }}
+              iconColor="text-blue-500"
+            />
+            <EditableDetailItem
+              icon={Briefcase}
+              label="Staff Type"
+              value={staffType}
+              options={staffTypeOptions}
+              isEditing={editingField === 'staffType'}
+              onEdit={() => setEditingField('staffType')}
+              onChange={(value) => {
+                setStaffType(value);
+                setEditingField(null);
+              }}
+              iconColor="text-green-500"
+            />
           </div>
         </SectionCard>
       </div>
