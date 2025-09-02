@@ -184,7 +184,7 @@ export const useOrganizationSettings = () => {
         p_google_profile_url: formData.google_profile_url,
         p_youtube_url: formData.youtube_url,
         p_domains: JSON.stringify(formData.domains.filter(d => d.domain.trim()))
-      });
+      } as any);
 
       if (error) throw error;
 
