@@ -267,6 +267,45 @@ export type Database = {
         }
         Relationships: []
       }
+      app_user_staff_types: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          id: string
+          is_deleted: boolean
+          label_color: string | null
+          staff_type: Database["public"]["Enums"]["staff_type_enum"]
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          id?: string
+          is_deleted?: boolean
+          label_color?: string | null
+          staff_type: Database["public"]["Enums"]["staff_type_enum"]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          id?: string
+          is_deleted?: boolean
+          label_color?: string | null
+          staff_type?: Database["public"]["Enums"]["staff_type_enum"]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       app_users: {
         Row: {
           account_email: string
@@ -695,7 +734,6 @@ export type Database = {
           is_deleted: boolean
           linkedin_url: string | null
           organization_id: string
-          organization_logo: string | null
           tiktok_url: string | null
           updated_at: string
           updated_by: string | null
@@ -721,7 +759,6 @@ export type Database = {
           is_deleted?: boolean
           linkedin_url?: string | null
           organization_id: string
-          organization_logo?: string | null
           tiktok_url?: string | null
           updated_at?: string
           updated_by?: string | null
@@ -747,7 +784,6 @@ export type Database = {
           is_deleted?: boolean
           linkedin_url?: string | null
           organization_id?: string
-          organization_logo?: string | null
           tiktok_url?: string | null
           updated_at?: string
           updated_by?: string | null
@@ -870,7 +906,6 @@ export type Database = {
           p_google_profile_url: string
           p_instagram_url: string
           p_linkedin_url: string
-          p_organization_logo: string
           p_organization_name: string
           p_organization_state: string
           p_tiktok_url: string
@@ -939,6 +974,18 @@ export type Database = {
         | "orgnaization"
         | "other"
       referral_type_enum: "client" | "staff"
+      staff_type_enum:
+        | "specialist_marketer"
+        | "clinical_assessor"
+        | "clinical_supervisor"
+        | "case_manager"
+        | "admin_support"
+        | "sales_rep"
+        | "specialist_hr"
+        | "specialist_it"
+        | "specialist_finance"
+        | "leadership_team_lead"
+        | "leadership_exec"
       user_roles_enum:
         | "owner"
         | "admin"
@@ -1092,6 +1139,19 @@ export const Constants = {
         "other",
       ],
       referral_type_enum: ["client", "staff"],
+      staff_type_enum: [
+        "specialist_marketer",
+        "clinical_assessor",
+        "clinical_supervisor",
+        "case_manager",
+        "admin_support",
+        "sales_rep",
+        "specialist_hr",
+        "specialist_it",
+        "specialist_finance",
+        "leadership_team_lead",
+        "leadership_exec",
+      ],
       user_roles_enum: [
         "owner",
         "admin",
