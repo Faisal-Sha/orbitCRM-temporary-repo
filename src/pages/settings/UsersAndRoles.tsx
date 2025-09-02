@@ -5,10 +5,12 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Users, Shield, UserPlus, Settings } from "lucide-react";
 import { useState } from "react";
+import UsersManagement from "@/components/settings/usersandroles/UsersManagement";
 import UserRoles from "@/components/settings/usersandroles/UserRoles";
 import StaffTypes from "@/components/settings/usersandroles/StaffTypes";
 
 const UsersAndRoles = () => {
+  const [showUsersManagement, setShowUsersManagement] = useState(false);
   const [showUserRoles, setShowUserRoles] = useState(false);
   const [showStaffTypes, setShowStaffTypes] = useState(false);
 
@@ -39,6 +41,10 @@ const UsersAndRoles = () => {
     { name: "Billing Specialist", count: 6 },
   ];
 
+  if (showUsersManagement) {
+    return <UsersManagement onBack={() => setShowUsersManagement(false)} />;
+  }
+
   if (showUserRoles) {
     return <UserRoles onBack={() => setShowUserRoles(false)} />;
   }
@@ -49,6 +55,44 @@ const UsersAndRoles = () => {
 
   return (
     <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              User Management (30)
+            </CardTitle>
+            <Button onClick={() => setShowUsersManagement(true)}>
+              Manage Users
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {displayUsers.map((user, index) => (
+              <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                <div className="flex items-center gap-3">
+                  <Avatar>
+                    <AvatarFallback>{user.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="font-medium">{user.name}</p>
+                    <p className="text-sm text-gray-500">{user.email}</p>
+                    <p className="text-xs text-gray-400">Last logged in {user.lastLogin}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline">{user.role}</Badge>
+                  <Badge variant={user.status === 'Active' ? 'default' : 'secondary'}>
+                    {user.status}
+                  </Badge>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">

@@ -67,7 +67,7 @@ const Organization = () => {
             />
           </div>
           
-          <div className="hidden">
+          <div>
             <Label>Logo Upload</Label>
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
               <Upload className="h-8 w-8 mx-auto mb-2 text-gray-400" />
