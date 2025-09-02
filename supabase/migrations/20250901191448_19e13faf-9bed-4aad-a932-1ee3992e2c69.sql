@@ -114,14 +114,15 @@ AS $function$
 DECLARE
   org_id UUID;
   app_user_id UUID;
-  person_id UUID;
+  people_person_id UUID;
   domain_record jsonb;
   result JSON;
+  current_user_id UUID := auth.uid();
 BEGIN
   -- Get app_users record
   SELECT id INTO app_user_id
   FROM public.app_users
-  WHERE user_id = auth.uid()
+  WHERE user_id = current_user_id
   LIMIT 1;
 
   IF app_user_id IS NULL THEN
@@ -129,26 +130,25 @@ BEGIN
   END IF;
 
   -- Get people record linked to this app_user
-  SELECT id INTO person_id
+  SELECT id INTO people_person_id
   FROM public.people
   WHERE user_account_id = app_user_id AND is_deleted = false
   LIMIT 1;
 
-  IF person_id IS NULL THEN
+  IF people_person_id IS NULL THEN
     RETURN json_build_object('success', false, 'message', 'Person record not found');
   END IF;
 
   -- Get user's organization (check both admin and regular people tables)
-  -- FIX: Use function variable name to avoid column name collision
   SELECT organization_id INTO org_id
   FROM public.app_organization_admins
-  WHERE app_organization_admins.person_id = save_organization_settings.person_id AND is_deleted = false
+  WHERE person_id = people_person_id AND is_deleted = false
   LIMIT 1;
 
   IF org_id IS NULL THEN
     SELECT organization_id INTO org_id
     FROM public.app_organization_people
-    WHERE app_organization_people.person_id = save_organization_settings.person_id AND is_deleted = false
+    WHERE person_id = people_person_id AND is_deleted = false
     LIMIT 1;
   END IF;
 
@@ -161,9 +161,13 @@ BEGIN
   SET 
     organization_name = p_organization_name,
     organization_state = p_organization_state,
-    updated_by = app_user_id,
+    updated_by = current_user_id,
     updated_at = now()
   WHERE id = org_id;
+
+  -- First, delete any existing settings for this organization
+  DELETE FROM public.settings_organization
+  WHERE organization_id = org_id;
 
   -- Upsert settings_organization table
   INSERT INTO public.settings_organization (
@@ -202,54 +206,46 @@ BEGIN
     p_linkedin_url,
     p_google_profile_url,
     p_youtube_url,
-    app_user_id,
-    app_user_id
-  ) ON CONFLICT (organization_id) DO UPDATE SET
-    organization_logo = EXCLUDED.organization_logo,
-    address_line_1 = EXCLUDED.address_line_1,
-    address_line_2 = EXCLUDED.address_line_2,
-    zip_cone = EXCLUDED.zip_cone,
-    country = EXCLUDED.country,
-    default_language = EXCLUDED.default_language,
-    default_currency = EXCLUDED.default_currency,
-    default_timezone = EXCLUDED.default_timezone,
-    facebook_url = EXCLUDED.facebook_url,
-    instagram_url = EXCLUDED.instagram_url,
-    x_url = EXCLUDED.x_url,
-    tiktok_url = EXCLUDED.tiktok_url,
-    linkedin_url = EXCLUDED.linkedin_url,
-    google_profile_url = EXCLUDED.google_profile_url,
-    youtube_url = EXCLUDED.youtube_url,
-    updated_by = app_user_id,
-    updated_at = now();
+    current_user_id,
+    current_user_id
+  );
 
   -- Soft delete existing domains
   UPDATE public.settings_organization_domains
   SET 
     is_deleted = true,
-    deleted_by = app_user_id,
+    deleted_by = current_user_id,
     deleted_at = now()
   WHERE organization_id = org_id AND is_deleted = false;
 
-  -- Insert new domains
-  FOR domain_record IN SELECT * FROM jsonb_array_elements(p_domains)
-  LOOP
-    IF domain_record->>'domain' IS NOT NULL AND trim(domain_record->>'domain') != '' THEN
-      INSERT INTO public.settings_organization_domains (
-        organization_id,
-        protocol,
-        domain,
-        created_by,
-        updated_by
-      ) VALUES (
-        org_id,
-        domain_record->>'protocol',
-        trim(domain_record->>'domain'),
-        app_user_id,
-        app_user_id
-      );
-    END IF;
-  END LOOP;
+  -- Insert new domains if p_domains is not null
+  IF p_domains IS NOT NULL THEN
+    -- Handle both array and single object cases
+    FOR domain_record IN 
+      SELECT * FROM jsonb_array_elements(
+        CASE 
+          WHEN jsonb_typeof(p_domains) = 'array' THEN p_domains 
+          ELSE jsonb_build_array(p_domains)
+        END
+      )
+    LOOP
+      IF domain_record->>'domain' IS NOT NULL AND trim(domain_record->>'domain') != '' THEN
+        INSERT INTO public.settings_organization_domains (
+          organization_id,
+          protocol,
+          domain,
+          created_by,
+          updated_by
+        ) VALUES (
+          org_id,
+          domain_record->>'protocol',
+          trim(domain_record->>'domain'),
+          current_user_id,
+          current_user_id
+        );
+      END IF;
+    END LOOP;
+  END IF;
 
   SELECT json_build_object(
     'success', true,

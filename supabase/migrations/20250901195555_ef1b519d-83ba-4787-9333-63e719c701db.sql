@@ -8,7 +8,7 @@ AS $function$
 DECLARE
   org_id UUID;
   app_user_id UUID;
-  person_id UUID;
+  people_person_id UUID;
   org_json JSON;
   settings_json JSON;
   domains_json JSON;
@@ -33,31 +33,31 @@ BEGIN
   END IF;
 
   -- Get people record linked to this app_user
-  SELECT id INTO person_id
+  SELECT id INTO people_person_id
   FROM public.people
   WHERE user_account_id = app_user_id AND is_deleted = false
   LIMIT 1;
 
-  IF person_id IS NULL THEN
+  IF people_person_id IS NULL THEN
     RETURN json_build_object('success', false, 'message', 'Person record not found for app_user: ' || app_user_id::text);
   END IF;
 
   -- Get user's organization (check admin table first)
   SELECT organization_id INTO org_id
   FROM public.app_organization_admins
-  WHERE person_id = get_organization_settings.person_id AND is_deleted = false
+  WHERE person_id = people_person_id AND is_deleted = false
   LIMIT 1;
 
   -- If not an admin, check regular people table
   IF org_id IS NULL THEN
     SELECT organization_id INTO org_id
     FROM public.app_organization_people
-    WHERE person_id = get_organization_settings.person_id AND is_deleted = false
+    WHERE person_id = people_person_id AND is_deleted = false
     LIMIT 1;
   END IF;
 
   IF org_id IS NULL THEN
-    RETURN json_build_object('success', false, 'message', 'No organization found for person: ' || person_id::text);
+    RETURN json_build_object('success', false, 'message', 'No organization found for person: ' || people_person_id::text);
   END IF;
 
   -- Get organization data
