@@ -14,7 +14,6 @@ export interface OrganizationFormData {
   organization_name: string;
   organization_state: string;
   // settings_organization fields  
-  organization_logo: string;
   address_line_1: string;
   address_line_2: string;
   zip_cone: string; // Note: typo in DB schema
@@ -36,7 +35,6 @@ export const useOrganizationSettings = () => {
   const [formData, setFormData] = useState<OrganizationFormData>({
     organization_name: '',
     organization_state: '',
-    organization_logo: '',
     address_line_1: '',
     address_line_2: '',
     zip_cone: '',
@@ -98,7 +96,6 @@ export const useOrganizationSettings = () => {
             id: org.id || '',
             organization_name: org.organization_name || '',
             organization_state: org.organization_state || '',
-            organization_logo: settings.organization_logo || '',
             address_line_1: settings.address_line_1 || '',
             address_line_2: settings.address_line_2 || '',
             zip_cone: settings.zip_cone || '',
@@ -172,7 +169,6 @@ export const useOrganizationSettings = () => {
       const { data, error } = await supabase.rpc('save_organization_settings', {
         p_organization_name: formData.organization_name,
         p_organization_state: formData.organization_state,
-        p_organization_logo: formData.organization_logo,
         p_address_line_1: formData.address_line_1,
         p_address_line_2: formData.address_line_2,
         p_zip_cone: formData.zip_cone,

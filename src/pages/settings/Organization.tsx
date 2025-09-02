@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Building2, Upload, Globe, Users, Plus, X, Loader2 } from "lucide-react";
+import { Building2, Globe, Users, Plus, X, Loader2 } from "lucide-react";
 import { useOrganizationSettings } from "@/hooks/useOrganizationSettings";
 
 const Organization = () => {
@@ -65,15 +65,6 @@ const Organization = () => {
               value={formData.organization_name}
               onChange={(e) => updateFormField('organization_name', e.target.value)}
             />
-          </div>
-          
-          <div>
-            <Label>Logo Upload</Label>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-              <Upload className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-              <p className="text-sm text-gray-500">Click to upload or drag and drop</p>
-              <p className="text-xs text-gray-400">PNG, JPG up to 2MB</p>
-            </div>
           </div>
 
           <div className="space-y-4">
