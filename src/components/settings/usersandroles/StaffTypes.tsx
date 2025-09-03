@@ -30,8 +30,6 @@ interface StaffType {
   id: string;
   name: string;
   count: number;
-  description: string;
-  requirements: string;
   permissions: string[];
 }
 
@@ -46,24 +44,9 @@ interface StaffTypesProps {
 }
 
 const StaffTypes: React.FC<StaffTypesProps> = ({ onBack }) => {
-  const [staffTypes, setStaffTypes] = useState<StaffType[]>([
-    { id: '1', name: "Licensed Clinician", count: 25, description: "Licensed mental health professionals", requirements: "Master's Degree, State License", permissions: ["view_patients", "create_notes"] },
-    { id: '2', name: "Support Staff", count: 18, description: "Administrative and support personnel", requirements: "High School Diploma", permissions: ["schedule_appointments"] },
-    { id: '3', name: "Administrative", count: 12, description: "Office management and coordination", requirements: "Associate Degree preferred", permissions: ["schedule_appointments", "billing_access"] },
-    { id: '4', name: "Management", count: 8, description: "Supervisory and leadership roles", requirements: "Bachelor's Degree, Experience", permissions: ["manage_users", "view_reports", "edit_settings"] },
-    { id: '5', name: "Billing Specialist", count: 6, description: "Medical billing and insurance processing", requirements: "Certification preferred", permissions: ["billing_access"] }
-  ]);
+  const [staffTypes, setStaffTypes] = useState<StaffType[]>([]);
 
-  const availablePermissions: Permission[] = [
-    { id: 'manage_users', name: 'Manage Users', description: 'Create, edit, and delete user accounts' },
-    { id: 'view_reports', name: 'View Reports', description: 'Access organizational reports and analytics' },
-    { id: 'edit_settings', name: 'Edit Settings', description: 'Modify system and organization settings' },
-    { id: 'view_patients', name: 'View Patients', description: 'Access patient information and records' },
-    { id: 'create_notes', name: 'Create Notes', description: 'Add clinical notes and documentation' },
-    { id: 'schedule_appointments', name: 'Schedule Appointments', description: 'Manage patient scheduling' },
-    { id: 'billing_access', name: 'Billing Access', description: 'View and manage billing information' },
-    { id: 'audit_logs', name: 'Audit Logs', description: 'Access system audit and activity logs' }
-  ];
+  const availablePermissions: Permission[] = [];
 
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -75,8 +58,7 @@ const StaffTypes: React.FC<StaffTypesProps> = ({ onBack }) => {
 
   const itemsPerPage = 25;
   const filteredStaffTypes = staffTypes.filter(staffType => 
-    staffType.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    staffType.description.toLowerCase().includes(searchTerm.toLowerCase())
+    staffType.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const totalPages = Math.ceil(filteredStaffTypes.length / itemsPerPage);
@@ -89,8 +71,6 @@ const StaffTypes: React.FC<StaffTypesProps> = ({ onBack }) => {
       id: '',
       name: '',
       count: 0,
-      description: '',
-      requirements: '',
       permissions: []
     });
     setIsModalOpen(true);
@@ -172,7 +152,6 @@ const StaffTypes: React.FC<StaffTypesProps> = ({ onBack }) => {
               <TableRow>
                 <TableHead>Staff Type</TableHead>
                 <TableHead>Count</TableHead>
-                <TableHead>Requirements</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -180,16 +159,10 @@ const StaffTypes: React.FC<StaffTypesProps> = ({ onBack }) => {
               {paginatedStaffTypes.map((staffType) => (
                 <TableRow key={staffType.id}>
                   <TableCell>
-                    <div>
-                      <p className="font-medium">{staffType.name}</p>
-                      <p className="text-sm text-gray-500">{staffType.description}</p>
-                    </div>
+                    <p className="font-medium">{staffType.name}</p>
                   </TableCell>
                   <TableCell>
                     <Badge variant="secondary">{staffType.count} staff</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <p className="text-sm">{staffType.requirements}</p>
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
@@ -266,46 +239,18 @@ const StaffTypes: React.FC<StaffTypesProps> = ({ onBack }) => {
                 </div>
               </div>
               <div>
-                <Label htmlFor="description">Description</Label>
-                <Input
-                  id="description"
-                  value={editingStaffType.description}
-                  onChange={(e) => setEditingStaffType({ ...editingStaffType, description: e.target.value })}
-                  placeholder="Staff type description"
-                />
-              </div>
-              <div>
-                <Label htmlFor="requirements">Requirements</Label>
-                <Input
-                  id="requirements"
-                  value={editingStaffType.requirements}
-                  onChange={(e) => setEditingStaffType({ ...editingStaffType, requirements: e.target.value })}
-                  placeholder="Education, certification, or experience requirements"
-                />
-              </div>
-              
-              <div className="space-y-3">
-                <Label className="flex items-center gap-2">
-                  <Lock className="h-4 w-4" />
-                  Permissions
-                </Label>
-                <div className="border rounded-lg p-4 space-y-3 max-h-60 overflow-y-auto">
+                <Label>Permissions</Label>
+                <div className="grid grid-cols-2 gap-2 mt-2 max-h-60 overflow-y-auto border p-4 rounded">
                   {availablePermissions.map((permission) => (
-                    <div key={permission.id} className="flex items-start space-x-2">
+                    <div key={permission.id} className="flex items-center space-x-2">
                       <Checkbox
-                        id={`${editingStaffType.id}-${permission.id}`}
+                        id={permission.id}
                         checked={editingStaffType.permissions.includes(permission.id)}
                         onCheckedChange={(checked) => handlePermissionChange(permission.id, checked as boolean)}
                       />
-                      <div className="space-y-1">
-                        <Label 
-                          htmlFor={`${editingStaffType.id}-${permission.id}`}
-                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >
-                          {permission.name}
-                        </Label>
-                        <p className="text-xs text-gray-500">{permission.description}</p>
-                      </div>
+                      <Label htmlFor={permission.id} className="text-sm">
+                        {permission.name}
+                      </Label>
                     </div>
                   ))}
                 </div>

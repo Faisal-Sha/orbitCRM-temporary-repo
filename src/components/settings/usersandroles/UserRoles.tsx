@@ -30,7 +30,6 @@ interface Role {
   name: string;
   users: number;
   permissions: string[];
-  description: string;
 }
 
 interface UserRolesProps {
@@ -38,21 +37,7 @@ interface UserRolesProps {
 }
 
 const UserRoles: React.FC<UserRolesProps> = ({ onBack }) => {
-  const [roles, setRoles] = useState<Role[]>([
-    { id: '1', name: "Administrator", users: 8, permissions: ["Full Access", "User Management", "System Settings", "Reports"], description: "Complete system access and control" },
-    { id: '2', name: "Clinician", users: 15, permissions: ["Patient Records", "Appointments", "Notes", "Assessments"], description: "Clinical access for patient care" },
-    { id: '3', name: "Receptionist", users: 5, permissions: ["Appointments", "Basic Patient Info", "Phone Access"], description: "Front desk and scheduling access" },
-    { id: '4', name: "Supervisor", users: 3, permissions: ["Team Management", "Reports", "Quality Assurance"], description: "Team oversight and reporting" },
-    { id: '5', name: "Billing Staff", users: 4, permissions: ["Billing", "Insurance", "Financial Reports"], description: "Financial and billing operations" },
-    // Add 12 more dummy roles to reach 17 total
-    ...Array.from({ length: 12 }, (_, i) => ({
-      id: (i + 6).toString(),
-      name: `Role ${i + 6}`,
-      users: Math.floor(Math.random() * 10) + 1,
-      permissions: [`Permission ${i + 1}`, `Access ${i + 1}`, `Feature ${i + 1}`],
-      description: `Description for role ${i + 6}`
-    }))
-  ]);
+  const [roles, setRoles] = useState<Role[]>([]);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -62,18 +47,11 @@ const UserRoles: React.FC<UserRolesProps> = ({ onBack }) => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [roleToDelete, setRoleToDelete] = useState<string | null>(null);
 
-  const availablePermissions = [
-    "Full Access", "User Management", "System Settings", "Reports",
-    "Patient Records", "Appointments", "Notes", "Assessments",
-    "Basic Patient Info", "Phone Access", "Team Management",
-    "Quality Assurance", "Billing", "Insurance", "Financial Reports",
-    "Data Export", "Communication", "Forms", "Calendar Management"
-  ];
+  const availablePermissions: string[] = [];
 
   const itemsPerPage = 25;
   const filteredRoles = roles.filter(role => 
-    role.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    role.description.toLowerCase().includes(searchTerm.toLowerCase())
+    role.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const totalPages = Math.ceil(filteredRoles.length / itemsPerPage);
@@ -86,8 +64,7 @@ const UserRoles: React.FC<UserRolesProps> = ({ onBack }) => {
       id: '',
       name: '',
       users: 0,
-      permissions: [],
-      description: ''
+      permissions: []
     });
     setIsModalOpen(true);
   };
@@ -175,7 +152,6 @@ const UserRoles: React.FC<UserRolesProps> = ({ onBack }) => {
                 <TableHead>Role Name</TableHead>
                 <TableHead>Users</TableHead>
                 <TableHead>Permissions</TableHead>
-                <TableHead>Description</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -201,9 +177,6 @@ const UserRoles: React.FC<UserRolesProps> = ({ onBack }) => {
                         </Badge>
                       )}
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    <p className="text-sm text-gray-600">{role.description}</p>
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
@@ -278,15 +251,6 @@ const UserRoles: React.FC<UserRolesProps> = ({ onBack }) => {
                     className="bg-gray-100 cursor-not-allowed"
                   />
                 </div>
-              </div>
-              <div>
-                <Label htmlFor="description">Description</Label>
-                <Input
-                  id="description"
-                  value={editingRole.description}
-                  onChange={(e) => setEditingRole({ ...editingRole, description: e.target.value })}
-                  placeholder="Role description"
-                />
               </div>
               <div>
                 <Label>Permissions</Label>

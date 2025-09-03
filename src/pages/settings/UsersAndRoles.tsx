@@ -13,31 +13,13 @@ const UsersAndRoles = () => {
   const [showStaffTypes, setShowStaffTypes] = useState(false);
 
   // Show up to 5 users on main tab
-  const displayUsers = [
-    { name: "Dr. Sarah Johnson", email: "sarah@healthcare.com", role: "Administrator", status: "Active", lastLogin: "2024-06-28" },
-    { name: "Mike Chen", email: "mike@healthcare.com", role: "Clinician", status: "Active", lastLogin: "2024-06-29" },
-    { name: "Lisa Rodriguez", email: "lisa@healthcare.com", role: "Receptionist", status: "Inactive", lastLogin: "2024-06-25" },
-    { name: "Dr. James Wilson", email: "james@healthcare.com", role: "Administrator", status: "Active", lastLogin: "2024-06-30" },
-    { name: "Anna Thompson", email: "anna@healthcare.com", role: "Clinician", status: "Active", lastLogin: "2024-06-29" },
-  ];
+  const displayUsers: any[] = [];
 
   // Show up to 5 roles on main tab
-  const displayRoles = [
-    { name: "Administrator", users: 8, permissions: "Full Access" },
-    { name: "Clinician", users: 15, permissions: "Clinical Access" },
-    { name: "Receptionist", users: 5, permissions: "Limited Access" },
-    { name: "Supervisor", users: 3, permissions: "Management Access" },
-    { name: "Billing Staff", users: 4, permissions: "Financial Access" },
-  ];
+  const displayRoles: any[] = [];
 
   // Show up to 5 staff types on main tab
-  const displayStaffTypes = [
-    { name: "Licensed Clinician", count: 25 },
-    { name: "Support Staff", count: 18 },
-    { name: "Administrative", count: 12 },
-    { name: "Management", count: 8 },
-    { name: "Billing Specialist", count: 6 },
-  ];
+  const displayStaffTypes: any[] = [];
 
   if (showUserRoles) {
     return <UserRoles onBack={() => setShowUserRoles(false)} />;
@@ -54,7 +36,7 @@ const UsersAndRoles = () => {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Shield className="h-5 w-5" />
-              Roles & Permissions (17)
+              Roles & Permissions (0)
             </CardTitle>
             <Button onClick={() => setShowUserRoles(true)}>
               Manage Roles
@@ -80,7 +62,7 @@ const UsersAndRoles = () => {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Users className="h-5 w-5" />
-              Staff Types (10)
+              Staff Types (0)
             </CardTitle>
             <Button onClick={() => setShowStaffTypes(true)}>
               Manage Staff Types
