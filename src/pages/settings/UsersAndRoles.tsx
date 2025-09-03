@@ -3,20 +3,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Users, Shield, UserPlus, Settings } from "lucide-react";
+import { Users, Shield, UserPlus, Settings, Loader2 } from "lucide-react";
 import { useState } from "react";
 import UserRoles from "@/components/settings/usersandroles/UserRoles";
 import StaffTypes from "@/components/settings/usersandroles/StaffTypes";
+import { useUserRoles } from "@/hooks/useUserRoles";
 
 const UsersAndRoles = () => {
   const [showUserRoles, setShowUserRoles] = useState(false);
   const [showStaffTypes, setShowStaffTypes] = useState(false);
-
-  // Show up to 5 users on main tab
-  const displayUsers: any[] = [];
+  const { roles, loading } = useUserRoles();
 
   // Show up to 5 roles on main tab
-  const displayRoles: any[] = [];
+  const displayRoles = roles.slice(0, 5);
 
   // Show up to 5 staff types on main tab
   const displayStaffTypes: any[] = [];
@@ -36,7 +35,7 @@ const UsersAndRoles = () => {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Shield className="h-5 w-5" />
-              Roles & Permissions (0)
+              Roles & Permissions ({loading ? '...' : roles.length})
             </CardTitle>
             <Button onClick={() => setShowUserRoles(true)}>
               Manage Roles
@@ -44,16 +43,39 @@ const UsersAndRoles = () => {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {displayRoles.map((role, index) => (
-              <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                <div>
-                  <p className="font-medium">{role.name}</p>
-                  <p className="text-sm text-gray-500">{role.users} users • {role.permissions}</p>
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              Loading roles...
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {displayRoles.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Shield className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No roles configured yet</p>
+                  <p className="text-sm">Click "Manage Roles" to get started</p>
                 </div>
-              </div>
-            ))}
-          </div>
+              ) : (
+                displayRoles.map((role) => (
+                  <div key={role.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div>
+                      <p className="font-medium capitalize">{role.role_name}</p>
+                      <p className="text-sm text-muted-foreground">{role.user_count} users • Permissions not configured</p>
+                    </div>
+                    <Badge variant="outline">{role.user_count}</Badge>
+                  </div>
+                ))
+              )}
+              {roles.length > 5 && (
+                <div className="text-center pt-4">
+                  <Button variant="outline" onClick={() => setShowUserRoles(true)}>
+                    View All {roles.length} Roles
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 

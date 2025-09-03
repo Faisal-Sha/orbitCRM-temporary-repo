@@ -23,35 +23,31 @@ import {
   PaginationNext, 
   PaginationPrevious 
 } from "@/components/ui/pagination";
-import { ArrowLeft, Search, Plus, Edit, Trash2 } from "lucide-react";
-
-interface Role {
-  id: string;
-  name: string;
-  users: number;
-  permissions: string[];
-}
+import { ArrowLeft, Search, Plus, Edit, Trash2, Loader2 } from "lucide-react";
+import { useUserRoles, UserRole } from "@/hooks/useUserRoles";
 
 interface UserRolesProps {
   onBack: () => void;
 }
 
 const UserRoles: React.FC<UserRolesProps> = ({ onBack }) => {
-  const [roles, setRoles] = useState<Role[]>([]);
+  const { roles, loading, addRole, updateRole, deleteRole } = useUserRoles();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingRole, setEditingRole] = useState<Role | null>(null);
+  const [editingRole, setEditingRole] = useState<UserRole | null>(null);
   const [isAddMode, setIsAddMode] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [roleToDelete, setRoleToDelete] = useState<string | null>(null);
+  const [roleName, setRoleName] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const availablePermissions: string[] = [];
 
   const itemsPerPage = 25;
   const filteredRoles = roles.filter(role => 
-    role.name.toLowerCase().includes(searchTerm.toLowerCase())
+    role.role_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const totalPages = Math.ceil(filteredRoles.length / itemsPerPage);
@@ -60,31 +56,42 @@ const UserRoles: React.FC<UserRolesProps> = ({ onBack }) => {
 
   const handleAddRole = () => {
     setIsAddMode(true);
-    setEditingRole({
-      id: '',
-      name: '',
-      users: 0,
-      permissions: []
-    });
+    setEditingRole(null);
+    setRoleName('');
     setIsModalOpen(true);
   };
 
-  const handleEditRole = (role: Role) => {
+  const handleEditRole = (role: UserRole) => {
     setIsAddMode(false);
-    setEditingRole({ ...role, permissions: [...role.permissions] });
+    setEditingRole(role);
+    setRoleName(role.role_name);
     setIsModalOpen(true);
   };
 
-  const handleSaveRole = () => {
-    if (editingRole) {
+  const handleSaveRole = async () => {
+    if (!roleName.trim()) {
+      return;
+    }
+
+    setSaving(true);
+    try {
       if (isAddMode) {
-        const newRole = { ...editingRole, id: (roles.length + 1).toString() };
-        setRoles([...roles, newRole]);
-      } else {
-        setRoles(roles.map(r => r.id === editingRole.id ? editingRole : r));
+        const result = await addRole(roleName.trim());
+        if (result.success) {
+          setIsModalOpen(false);
+          setRoleName('');
+          setEditingRole(null);
+        }
+      } else if (editingRole) {
+        const result = await updateRole(editingRole.id, roleName.trim());
+        if (result.success) {
+          setIsModalOpen(false);
+          setRoleName('');
+          setEditingRole(null);
+        }
       }
-      setIsModalOpen(false);
-      setEditingRole(null);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -93,28 +100,18 @@ const UserRoles: React.FC<UserRolesProps> = ({ onBack }) => {
     setDeleteDialogOpen(true);
   };
 
-  const confirmDeleteRole = () => {
+  const confirmDeleteRole = async () => {
     if (roleToDelete) {
-      setRoles(roles.filter(r => r.id !== roleToDelete));
-      setDeleteDialogOpen(false);
-      setRoleToDelete(null);
+      const result = await deleteRole(roleToDelete);
+      if (result.success) {
+        setDeleteDialogOpen(false);
+        setRoleToDelete(null);
+      }
     }
   };
 
   const handlePermissionChange = (permission: string, checked: boolean) => {
-    if (editingRole) {
-      if (checked) {
-        setEditingRole({
-          ...editingRole,
-          permissions: [...editingRole.permissions, permission]
-        });
-      } else {
-        setEditingRole({
-          ...editingRole,
-          permissions: editingRole.permissions.filter(p => p !== permission)
-        });
-      }
-    }
+    // Permissions functionality will be implemented in future update
   };
 
   return (
@@ -146,52 +143,58 @@ const UserRoles: React.FC<UserRolesProps> = ({ onBack }) => {
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Role Name</TableHead>
-                <TableHead>Users</TableHead>
-                <TableHead>Permissions</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {paginatedRoles.map((role) => (
-                <TableRow key={role.id}>
-                  <TableCell>
-                    <p className="font-medium">{role.name}</p>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">{role.users} users</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {role.permissions.slice(0, 2).map((permission, index) => (
-                        <Badge key={index} variant="outline" className="text-xs">
-                          {permission}
-                        </Badge>
-                      ))}
-                      {role.permissions.length > 2 && (
-                        <Badge variant="outline" className="text-xs">
-                          +{role.permissions.length - 2} more
-                        </Badge>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button variant="ghost" size="sm" onClick={() => handleEditRole(role)}>
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDeleteRole(role.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin mr-2" />
+              Loading roles...
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Role Name</TableHead>
+                  <TableHead>Users</TableHead>
+                  <TableHead>Permissions</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {paginatedRoles.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                      No roles found
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  paginatedRoles.map((role) => (
+                    <TableRow key={role.id}>
+                      <TableCell>
+                        <p className="font-medium capitalize">{role.role_name}</p>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">{role.user_count} users</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-xs">
+                          Not configured
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button variant="ghost" size="sm" onClick={() => handleEditRole(role)}>
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleDeleteRole(role.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          )}
 
           {totalPages > 1 && (
             <Pagination className="mt-4">
@@ -230,55 +233,48 @@ const UserRoles: React.FC<UserRolesProps> = ({ onBack }) => {
           <DialogHeader>
             <DialogTitle>{isAddMode ? 'Add Role' : 'Edit Role'}</DialogTitle>
           </DialogHeader>
-          {editingRole && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="role-name">Role Name</Label>
-                  <Input
-                    id="role-name"
-                    value={editingRole.name}
-                    onChange={(e) => setEditingRole({ ...editingRole, name: e.target.value })}
-                  />
-                </div>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="role-name">Role Name</Label>
+                <Input
+                  id="role-name"
+                  value={roleName}
+                  onChange={(e) => setRoleName(e.target.value)}
+                  placeholder="Enter role name..."
+                />
+              </div>
+              {!isAddMode && editingRole && (
                 <div>
                   <Label htmlFor="users-count">Number of Users</Label>
                   <Input
                     id="users-count"
                     type="number"
-                    value={editingRole.users}
+                    value={editingRole.user_count}
                     disabled
-                    className="bg-gray-100 cursor-not-allowed"
+                    className="bg-muted cursor-not-allowed"
                   />
                 </div>
-              </div>
-              <div>
-                <Label>Permissions</Label>
-                <div className="grid grid-cols-2 gap-2 mt-2 max-h-60 overflow-y-auto border p-4 rounded">
-                  {availablePermissions.map((permission) => (
-                    <div key={permission} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={permission}
-                        checked={editingRole.permissions.includes(permission)}
-                        onCheckedChange={(checked) => handlePermissionChange(permission, checked as boolean)}
-                      />
-                      <Label htmlFor={permission} className="text-sm">
-                        {permission}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setIsModalOpen(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleSaveRole}>
-                  {isAddMode ? 'Add Role' : 'Save Changes'}
-                </Button>
+              )}
+            </div>
+            <div>
+              <Label>Permissions</Label>
+              <div className="grid grid-cols-2 gap-2 mt-2 max-h-60 overflow-y-auto border p-4 rounded bg-muted/50">
+                <p className="text-sm text-muted-foreground col-span-2 text-center py-4">
+                  Permissions configuration will be available in a future update
+                </p>
               </div>
             </div>
-          )}
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setIsModalOpen(false)} disabled={saving}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveRole} disabled={!roleName.trim() || saving}>
+                {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                {isAddMode ? 'Add Role' : 'Save Changes'}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 

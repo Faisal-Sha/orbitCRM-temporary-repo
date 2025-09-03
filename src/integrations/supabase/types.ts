@@ -236,7 +236,6 @@ export type Database = {
           deleted_by: string | null
           id: string
           is_deleted: boolean
-          label_color: string | null
           role_name: Database["public"]["Enums"]["user_roles_enum"]
           updated_at: string
           updated_by: string | null
@@ -248,7 +247,6 @@ export type Database = {
           deleted_by?: string | null
           id?: string
           is_deleted?: boolean
-          label_color?: string | null
           role_name?: Database["public"]["Enums"]["user_roles_enum"]
           updated_at?: string
           updated_by?: string | null
@@ -260,8 +258,46 @@ export type Database = {
           deleted_by?: string | null
           id?: string
           is_deleted?: boolean
-          label_color?: string | null
           role_name?: Database["public"]["Enums"]["user_roles_enum"]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      app_user_staff_types: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          id: string
+          is_deleted: boolean
+          label_color: string | null
+          staff_type: Database["public"]["Enums"]["staff_type_enum"]
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          id?: string
+          is_deleted?: boolean
+          label_color?: string | null
+          staff_type: Database["public"]["Enums"]["staff_type_enum"]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          id?: string
+          is_deleted?: boolean
+          label_color?: string | null
+          staff_type?: Database["public"]["Enums"]["staff_type_enum"]
           updated_at?: string
           updated_by?: string | null
         }
@@ -820,6 +856,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_user_role: {
+        Args: { p_role_name: string }
+        Returns: Json
+      }
       create_organization_with_admin: {
         Args: {
           admin_email: string
@@ -830,6 +870,14 @@ export type Database = {
           organization_state: string
           organization_status?: Database["public"]["Enums"]["organization_status_enum"]
         }
+        Returns: Json
+      }
+      current_user_has_admin_role: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      delete_user_role: {
+        Args: { p_role_id: string }
         Returns: Json
       }
       get_organization_settings: {
@@ -853,6 +901,16 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Json
       }
+      get_user_roles_with_counts: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          created_at: string
+          id: string
+          role_name: string
+          updated_at: string
+          user_count: number
+        }[]
+      }
       link_user_to_person: {
         Args: { new_user_id: string; user_email: string }
         Returns: Json
@@ -870,7 +928,6 @@ export type Database = {
           p_google_profile_url: string
           p_instagram_url: string
           p_linkedin_url: string
-          p_organization_logo: string
           p_organization_name: string
           p_organization_state: string
           p_tiktok_url: string
@@ -922,6 +979,10 @@ export type Database = {
         }
         Returns: Json
       }
+      update_user_role: {
+        Args: { p_role_id: string; p_role_name: string }
+        Returns: Json
+      }
     }
     Enums: {
       emergency_relationship_enum:
@@ -939,6 +1000,18 @@ export type Database = {
         | "orgnaization"
         | "other"
       referral_type_enum: "client" | "staff"
+      staff_type_enum:
+        | "specialist_marketer"
+        | "clinical_assessor"
+        | "clinical_supervisor"
+        | "case_manager"
+        | "admin_support"
+        | "sales_rep"
+        | "specialist_hr"
+        | "specialist_it"
+        | "specialist_finance"
+        | "leadership_team_lead"
+        | "leadership_exec"
       user_roles_enum:
         | "owner"
         | "admin"
@@ -1092,6 +1165,19 @@ export const Constants = {
         "other",
       ],
       referral_type_enum: ["client", "staff"],
+      staff_type_enum: [
+        "specialist_marketer",
+        "clinical_assessor",
+        "clinical_supervisor",
+        "case_manager",
+        "admin_support",
+        "sales_rep",
+        "specialist_hr",
+        "specialist_it",
+        "specialist_finance",
+        "leadership_team_lead",
+        "leadership_exec",
+      ],
       user_roles_enum: [
         "owner",
         "admin",
