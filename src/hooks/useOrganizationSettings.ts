@@ -172,7 +172,6 @@ export const useOrganizationSettings = () => {
       const { data, error } = await supabase.rpc('save_organization_settings', {
         p_organization_name: formData.organization_name,
         p_organization_state: formData.organization_state,
-        p_organization_logo: formData.organization_logo,
         p_address_line_1: formData.address_line_1,
         p_address_line_2: formData.address_line_2,
         p_zip_cone: formData.zip_cone,

@@ -89,7 +89,6 @@ $function$;
 CREATE OR REPLACE FUNCTION public.save_organization_settings(
   p_organization_name text,
   p_organization_state text,
-  p_organization_logo text,
   p_address_line_1 text,
   p_address_line_2 text,
   p_zip_cone text,
@@ -168,7 +167,6 @@ BEGIN
     updated_by
   ) VALUES (
     org_id,
-    p_organization_logo,
     p_address_line_1,
     p_address_line_2,
     p_zip_cone,
