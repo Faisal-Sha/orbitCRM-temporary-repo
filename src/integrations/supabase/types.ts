@@ -358,6 +358,7 @@ export type Database = {
           deleted_by: string | null
           id: string
           is_deleted: boolean
+          role_label_id: string | null
           role_name: Database["public"]["Enums"]["user_roles_enum"]
           updated_at: string
           updated_by: string | null
@@ -369,6 +370,7 @@ export type Database = {
           deleted_by?: string | null
           id?: string
           is_deleted?: boolean
+          role_label_id?: string | null
           role_name?: Database["public"]["Enums"]["user_roles_enum"]
           updated_at?: string
           updated_by?: string | null
@@ -380,11 +382,20 @@ export type Database = {
           deleted_by?: string | null
           id?: string
           is_deleted?: boolean
+          role_label_id?: string | null
           role_name?: Database["public"]["Enums"]["user_roles_enum"]
           updated_at?: string
           updated_by?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "app_user_roles_role_label_id_fkey"
+            columns: ["role_label_id"]
+            isOneToOne: false
+            referencedRelation: "app_data_labels"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       app_user_staff_types: {
         Row: {
