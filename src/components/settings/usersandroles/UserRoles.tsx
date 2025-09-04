@@ -63,7 +63,7 @@ const UserRoles: React.FC<UserRolesProps> = ({ onBack }) => {
     setIsAddMode(true);
     setEditingRole(null);
     setRoleName('');
-    setSelectedLabelId('');
+    setSelectedLabelId('no-label');
     setIsModalOpen(true);
   };
 
@@ -71,7 +71,7 @@ const UserRoles: React.FC<UserRolesProps> = ({ onBack }) => {
     setIsAddMode(false);
     setEditingRole(role);
     setRoleName(role.role_name);
-    setSelectedLabelId(role.role_label_id || '');
+    setSelectedLabelId(role.role_label_id || 'no-label');
     setIsModalOpen(true);
   };
 
@@ -82,20 +82,21 @@ const UserRoles: React.FC<UserRolesProps> = ({ onBack }) => {
 
     setSaving(true);
     try {
+      const labelId = selectedLabelId === 'no-label' ? undefined : selectedLabelId;
       if (isAddMode) {
-        const result = await addRole(roleName.trim(), selectedLabelId || undefined);
+        const result = await addRole(roleName.trim(), labelId);
         if (result.success) {
           setIsModalOpen(false);
           setRoleName('');
-          setSelectedLabelId('');
+          setSelectedLabelId('no-label');
           setEditingRole(null);
         }
       } else if (editingRole) {
-        const result = await updateRole(editingRole.id, roleName.trim(), selectedLabelId || undefined);
+        const result = await updateRole(editingRole.id, roleName.trim(), labelId);
         if (result.success) {
           setIsModalOpen(false);
           setRoleName('');
-          setSelectedLabelId('');
+          setSelectedLabelId('no-label');
           setEditingRole(null);
         }
       }
@@ -265,7 +266,7 @@ const UserRoles: React.FC<UserRolesProps> = ({ onBack }) => {
                     <SelectValue placeholder="Select a label..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No Label</SelectItem>
+                    <SelectItem value="no-label">No Label</SelectItem>
                     {labels.map((label) => (
                       <SelectItem key={label.id} value={label.id}>
                         <div className="flex items-center gap-2">
