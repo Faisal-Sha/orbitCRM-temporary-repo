@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import DeleteConfirmationDialog from "./DeleteConfirmationDialog";
 import { 
   Table, 
@@ -24,42 +24,45 @@ import {
   PaginationNext, 
   PaginationPrevious 
 } from "@/components/ui/pagination";
-import { ArrowLeft, Search, Plus, Edit, Trash2, Lock } from "lucide-react";
+import { ArrowLeft, Search, Plus, Edit, Trash2, Loader2 } from "lucide-react";
+import { useStaffTypes, StaffTypeEnum } from "@/hooks/useStaffTypes";
 
-interface StaffType {
-  id: string;
-  name: string;
-  count: number;
-  permissions: string[];
-}
-
-interface Permission {
-  id: string;
-  name: string;
-  description: string;
-}
+// Staff type enum values from database
+const STAFF_TYPE_OPTIONS = [
+  { value: 'specialist_marketer', label: 'Specialist - Marketer' },
+  { value: 'clinical_assessor', label: 'Clinical Assessor' },
+  { value: 'clinical_supervisor', label: 'Clinical Supervisor' },
+  { value: 'case_manager', label: 'Case Manager' },
+  { value: 'admin_support', label: 'Admin Support' },
+  { value: 'sales_rep', label: 'Sales Representative' },
+  { value: 'specialist_hr', label: 'Specialist - HR' },
+  { value: 'specialist_it', label: 'Specialist - IT' },
+  { value: 'specialist_finance', label: 'Specialist - Finance' },
+  { value: 'leadership_team_lead', label: 'Leadership - Team Lead' },
+  { value: 'leadership_exec', label: 'Leadership - Executive' }
+];
 
 interface StaffTypesProps {
   onBack: () => void;
 }
 
 const StaffTypes: React.FC<StaffTypesProps> = ({ onBack }) => {
-  const [staffTypes, setStaffTypes] = useState<StaffType[]>([]);
-
-  const availablePermissions: Permission[] = [];
+  const { staffTypes, loading, addStaffType, updateStaffType, deleteStaffType } = useStaffTypes();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingStaffType, setEditingStaffType] = useState<StaffType | null>(null);
+  const [editingStaffType, setEditingStaffType] = useState<{ id?: string; staff_type: StaffTypeEnum; } | null>(null);
   const [isAddMode, setIsAddMode] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [staffTypeToDelete, setStaffTypeToDelete] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const itemsPerPage = 25;
-  const filteredStaffTypes = staffTypes.filter(staffType => 
-    staffType.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredStaffTypes = staffTypes.filter(staffType => {
+    const staffTypeLabel = STAFF_TYPE_OPTIONS.find(opt => opt.value === staffType.staff_type)?.label || staffType.staff_type;
+    return staffTypeLabel.toLowerCase().includes(searchTerm.toLowerCase());
+  });
 
   const totalPages = Math.ceil(filteredStaffTypes.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -68,30 +71,40 @@ const StaffTypes: React.FC<StaffTypesProps> = ({ onBack }) => {
   const handleAddStaffType = () => {
     setIsAddMode(true);
     setEditingStaffType({
-      id: '',
-      name: '',
-      count: 0,
-      permissions: []
+      staff_type: '' as StaffTypeEnum
     });
     setIsModalOpen(true);
   };
 
-  const handleEditStaffType = (staffType: StaffType) => {
+  const handleEditStaffType = (staffType: any) => {
     setIsAddMode(false);
-    setEditingStaffType({ ...staffType });
+    setEditingStaffType({ 
+      id: staffType.id,
+      staff_type: staffType.staff_type 
+    });
     setIsModalOpen(true);
   };
 
-  const handleSaveStaffType = () => {
-    if (editingStaffType) {
+  const handleSaveStaffType = async () => {
+    if (!editingStaffType?.staff_type) return;
+    
+    setSaving(true);
+    try {
       if (isAddMode) {
-        const newStaffType = { ...editingStaffType, id: (staffTypes.length + 1).toString() };
-        setStaffTypes([...staffTypes, newStaffType]);
-      } else {
-        setStaffTypes(staffTypes.map(st => st.id === editingStaffType.id ? editingStaffType : st));
+        const result = await addStaffType(editingStaffType.staff_type);
+        if (result.success) {
+          setIsModalOpen(false);
+          setEditingStaffType(null);
+        }
+      } else if (editingStaffType.id) {
+        const result = await updateStaffType(editingStaffType.id, editingStaffType.staff_type);
+        if (result.success) {
+          setIsModalOpen(false);
+          setEditingStaffType(null);
+        }
       }
-      setIsModalOpen(false);
-      setEditingStaffType(null);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -100,21 +113,11 @@ const StaffTypes: React.FC<StaffTypesProps> = ({ onBack }) => {
     setDeleteDialogOpen(true);
   };
 
-  const confirmDeleteStaffType = () => {
+  const confirmDeleteStaffType = async () => {
     if (staffTypeToDelete) {
-      setStaffTypes(staffTypes.filter(st => st.id !== staffTypeToDelete));
+      await deleteStaffType(staffTypeToDelete);
       setDeleteDialogOpen(false);
       setStaffTypeToDelete(null);
-    }
-  };
-
-  const handlePermissionChange = (permissionId: string, checked: boolean) => {
-    if (editingStaffType) {
-      const updatedPermissions = checked 
-        ? [...editingStaffType.permissions, permissionId]
-        : editingStaffType.permissions.filter(p => p !== permissionId);
-      
-      setEditingStaffType({ ...editingStaffType, permissions: updatedPermissions });
     }
   };
 
@@ -147,37 +150,49 @@ const StaffTypes: React.FC<StaffTypesProps> = ({ onBack }) => {
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Staff Type</TableHead>
-                <TableHead>Count</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {paginatedStaffTypes.map((staffType) => (
-                <TableRow key={staffType.id}>
-                  <TableCell>
-                    <p className="font-medium">{staffType.name}</p>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">{staffType.count} staff</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button variant="ghost" size="sm" onClick={() => handleEditStaffType(staffType)}>
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDeleteStaffType(staffType.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              Loading staff types...
+            </div>
+          ) : (
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Staff Type</TableHead>
+                    <TableHead>Count</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedStaffTypes.map((staffType) => {
+                    const staffTypeLabel = STAFF_TYPE_OPTIONS.find(opt => opt.value === staffType.staff_type)?.label || staffType.staff_type;
+                    return (
+                      <TableRow key={staffType.id}>
+                        <TableCell>
+                          <p className="font-medium">{staffTypeLabel}</p>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="secondary">{staffType.count} staff</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button variant="ghost" size="sm" onClick={() => handleEditStaffType(staffType)}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleDeleteStaffType(staffType.id)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </>
+          )}
 
           {totalPages > 1 && (
             <Pagination className="mt-4">
@@ -218,50 +233,38 @@ const StaffTypes: React.FC<StaffTypesProps> = ({ onBack }) => {
           </DialogHeader>
           {editingStaffType && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="name">Staff Type Name</Label>
-                  <Input
-                    id="name"
-                    value={editingStaffType.name}
-                    onChange={(e) => setEditingStaffType({ ...editingStaffType, name: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="count">Staff Count</Label>
-                  <Input
-                    id="count"
-                    type="number"
-                    value={editingStaffType.count}
-                    disabled
-                    className="bg-gray-100 cursor-not-allowed"
-                  />
-                </div>
-              </div>
               <div>
-                <Label>Permissions</Label>
-                <div className="grid grid-cols-2 gap-2 mt-2 max-h-60 overflow-y-auto border p-4 rounded">
-                  {availablePermissions.map((permission) => (
-                    <div key={permission.id} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={permission.id}
-                        checked={editingStaffType.permissions.includes(permission.id)}
-                        onCheckedChange={(checked) => handlePermissionChange(permission.id, checked as boolean)}
-                      />
-                      <Label htmlFor={permission.id} className="text-sm">
-                        {permission.name}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
+                <Label htmlFor="staffType">Staff Type</Label>
+                <Select 
+                  value={editingStaffType.staff_type} 
+                  onValueChange={(value) => setEditingStaffType({ ...editingStaffType, staff_type: value as StaffTypeEnum })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a staff type..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {STAFF_TYPE_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setIsModalOpen(false)}>
+                <Button variant="outline" onClick={() => setIsModalOpen(false)} disabled={saving}>
                   Cancel
                 </Button>
-                <Button onClick={handleSaveStaffType}>
-                  {isAddMode ? 'Add Staff Type' : 'Save Changes'}
+                <Button onClick={handleSaveStaffType} disabled={saving || !editingStaffType.staff_type}>
+                  {saving ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      {isAddMode ? 'Adding...' : 'Saving...'}
+                    </>
+                  ) : (
+                    isAddMode ? 'Add Staff Type' : 'Save Changes'
+                  )}
                 </Button>
               </div>
             </div>
