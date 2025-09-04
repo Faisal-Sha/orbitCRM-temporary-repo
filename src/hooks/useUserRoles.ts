@@ -8,6 +8,11 @@ export interface UserRole {
   user_count: number;
   created_at: string;
   updated_at: string;
+  role_label_id?: string;
+  label_name?: string;
+  label_color?: string;
+  text_color?: string;
+  font_weight?: string;
 }
 
 interface RpcResponse {
@@ -48,10 +53,11 @@ export const useUserRoles = () => {
     }
   };
 
-  const addRole = async (roleName: string) => {
+  const addRole = async (roleName: string, roleLabelId?: string) => {
     try {
       const { data, error: addError } = await supabase.rpc('add_user_role', {
-        p_role_name: roleName
+        p_role_name: roleName,
+        p_role_label_id: roleLabelId || null
       });
 
       if (addError) {
@@ -74,11 +80,12 @@ export const useUserRoles = () => {
     }
   };
 
-  const updateRole = async (roleId: string, roleName: string) => {
+  const updateRole = async (roleId: string, roleName: string, roleLabelId?: string) => {
     try {
       const { data, error: updateError } = await supabase.rpc('update_user_role', {
         p_role_id: roleId,
-        p_role_name: roleName
+        p_role_name: roleName,
+        p_role_label_id: roleLabelId || null
       });
 
       if (updateError) {

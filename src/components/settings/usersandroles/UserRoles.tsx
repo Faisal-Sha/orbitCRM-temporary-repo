@@ -6,7 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import DeleteConfirmationDialog from "./DeleteConfirmationDialog";
+import { RoleLabel } from "@/components/ui/role-label";
 import { 
   Table, 
   TableBody, 
@@ -25,6 +27,7 @@ import {
 } from "@/components/ui/pagination";
 import { ArrowLeft, Search, Plus, Edit, Trash2, Loader2 } from "lucide-react";
 import { useUserRoles, UserRole } from "@/hooks/useUserRoles";
+import { useDataLabels } from "@/hooks/useDataLabels";
 
 interface UserRolesProps {
   onBack: () => void;
@@ -32,6 +35,7 @@ interface UserRolesProps {
 
 const UserRoles: React.FC<UserRolesProps> = ({ onBack }) => {
   const { roles, loading, addRole, updateRole, deleteRole } = useUserRoles();
+  const { data: labels = [], isLoading: labelsLoading } = useDataLabels();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -41,6 +45,7 @@ const UserRoles: React.FC<UserRolesProps> = ({ onBack }) => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [roleToDelete, setRoleToDelete] = useState<string | null>(null);
   const [roleName, setRoleName] = useState('');
+  const [selectedLabelId, setSelectedLabelId] = useState<string>('');
   const [saving, setSaving] = useState(false);
 
   const availablePermissions: string[] = [];
@@ -58,6 +63,7 @@ const UserRoles: React.FC<UserRolesProps> = ({ onBack }) => {
     setIsAddMode(true);
     setEditingRole(null);
     setRoleName('');
+    setSelectedLabelId('');
     setIsModalOpen(true);
   };
 
@@ -65,6 +71,7 @@ const UserRoles: React.FC<UserRolesProps> = ({ onBack }) => {
     setIsAddMode(false);
     setEditingRole(role);
     setRoleName(role.role_name);
+    setSelectedLabelId(role.role_label_id || '');
     setIsModalOpen(true);
   };
 
@@ -76,17 +83,19 @@ const UserRoles: React.FC<UserRolesProps> = ({ onBack }) => {
     setSaving(true);
     try {
       if (isAddMode) {
-        const result = await addRole(roleName.trim());
+        const result = await addRole(roleName.trim(), selectedLabelId || undefined);
         if (result.success) {
           setIsModalOpen(false);
           setRoleName('');
+          setSelectedLabelId('');
           setEditingRole(null);
         }
       } else if (editingRole) {
-        const result = await updateRole(editingRole.id, roleName.trim());
+        const result = await updateRole(editingRole.id, roleName.trim(), selectedLabelId || undefined);
         if (result.success) {
           setIsModalOpen(false);
           setRoleName('');
+          setSelectedLabelId('');
           setEditingRole(null);
         }
       }
@@ -169,7 +178,12 @@ const UserRoles: React.FC<UserRolesProps> = ({ onBack }) => {
                   paginatedRoles.map((role) => (
                     <TableRow key={role.id}>
                       <TableCell>
-                        <p className="font-medium capitalize">{role.role_name}</p>
+                        <RoleLabel
+                          roleName={role.role_name}
+                          labelColor={role.label_color}
+                          textColor={role.text_color}
+                          fontWeight={role.font_weight}
+                        />
                       </TableCell>
                       <TableCell>
                         <Badge variant="secondary">{role.user_count} users</Badge>
@@ -243,6 +257,28 @@ const UserRoles: React.FC<UserRolesProps> = ({ onBack }) => {
                   onChange={(e) => setRoleName(e.target.value)}
                   placeholder="Enter role name..."
                 />
+              </div>
+              <div>
+                <Label htmlFor="role-label">Label (Optional)</Label>
+                <Select value={selectedLabelId} onValueChange={setSelectedLabelId}>
+                  <SelectTrigger id="role-label">
+                    <SelectValue placeholder="Select a label..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">No Label</SelectItem>
+                    {labels.map((label) => (
+                      <SelectItem key={label.id} value={label.id}>
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-4 h-4 rounded"
+                            style={{ backgroundColor: label.color }}
+                          />
+                          {label.name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               {!isAddMode && editingRole && (
                 <div>

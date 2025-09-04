@@ -1004,7 +1004,9 @@ export type Database = {
         Returns: Json
       }
       add_user_role: {
-        Args: { p_role_name: string }
+        Args:
+          | { p_role_label_id?: string; p_role_name: string }
+          | { p_role_name: string }
         Returns: Json
       }
       create_organization_with_admin: {
@@ -1068,8 +1070,13 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: {
           created_at: string
+          font_weight: string
           id: string
+          label_color: string
+          label_name: string
+          role_label_id: string
           role_name: string
+          text_color: string
           updated_at: string
           user_count: number
         }[]
@@ -1158,7 +1165,9 @@ export type Database = {
         Returns: Json
       }
       update_user_role: {
-        Args: { p_role_id: string; p_role_name: string }
+        Args:
+          | { p_role_id: string; p_role_label_id?: string; p_role_name: string }
+          | { p_role_id: string; p_role_name: string }
         Returns: Json
       }
     }

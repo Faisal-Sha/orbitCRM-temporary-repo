@@ -8,6 +8,7 @@ import { useState } from "react";
 import UserRoles from "@/components/settings/usersandroles/UserRoles";
 import StaffTypes from "@/components/settings/usersandroles/StaffTypes";
 import { useUserRoles } from "@/hooks/useUserRoles";
+import { RoleLabel } from "@/components/ui/role-label";
 
 const UsersAndRoles = () => {
   const [showUserRoles, setShowUserRoles] = useState(false);
@@ -57,7 +58,13 @@ const UsersAndRoles = () => {
                 displayRoles.map((role) => (
                   <div key={role.id} className="flex items-center justify-between p-4 border rounded-lg">
                     <div>
-                      <p className="font-medium capitalize">{role.role_name}</p>
+                      <RoleLabel
+                        roleName={role.role_name}
+                        labelColor={role.label_color}
+                        textColor={role.text_color}
+                        fontWeight={role.font_weight}
+                        className="mb-2"
+                      />
                       <p className="text-sm text-muted-foreground">{role.user_count} users • Permissions not configured</p>
                     </div>
                     <Badge variant="outline">{role.user_count}</Badge>
