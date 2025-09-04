@@ -6,9 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Edit2, Plus, Trash2, X } from "lucide-react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 
 interface Program {
   id: string;
@@ -17,8 +14,8 @@ interface Program {
 }
 
 const ProgramsGoalsConfig = () => {
-  const queryClient = useQueryClient();
-  
+  const [programs, setPrograms] = useState<Program[]>([]);
+
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -27,89 +24,6 @@ const ProgramsGoalsConfig = () => {
   const [newProgram, setNewProgram] = useState({ name: '', goals: [''] });
   const [newGoal, setNewGoal] = useState('');
 
-  // Fetch programs with goals
-  const { data: programs = [], isLoading, error } = useQuery({
-    queryKey: ['programs-goals'],
-    queryFn: async (): Promise<Program[]> => {
-      const { data, error } = await supabase.rpc('get_programs_with_goals');
-      if (error) throw error;
-      
-      // Type assertion since we know the structure from the database function
-      return (data as unknown as Program[]) || [];
-    },
-  });
-
-  // Create program mutation
-  const createProgramMutation = useMutation({
-    mutationFn: async (program: { name: string; goals: string[] }) => {
-      const goalsArray = program.goals
-        .filter(goal => goal.trim() !== '')
-        .map(goal => ({ name: goal.trim() }));
-      
-      const { data, error } = await supabase.rpc('add_program_with_goals', {
-        p_program_name: program.name,
-        p_goals: goalsArray
-      });
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['programs-goals'] });
-      toast.success('Program created successfully');
-      setNewProgram({ name: '', goals: [''] });
-      setIsAddModalOpen(false);
-    },
-    onError: (error: any) => {
-      toast.error(error.message || 'Failed to create program');
-    },
-  });
-
-  // Update program mutation
-  const updateProgramMutation = useMutation({
-    mutationFn: async (program: Program) => {
-      const goalsArray = program.goals
-        .filter(goal => goal.trim() !== '')
-        .map(goal => ({ name: goal.trim() }));
-      
-      const { data, error } = await supabase.rpc('update_program_with_goals', {
-        p_program_id: program.id,
-        p_program_name: program.name,
-        p_goals: goalsArray
-      });
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['programs-goals'] });
-      toast.success('Program updated successfully');
-      setIsEditModalOpen(false);
-      setEditingProgram(null);
-    },
-    onError: (error: any) => {
-      toast.error(error.message || 'Failed to update program');
-    },
-  });
-
-  // Delete program mutation
-  const deleteProgramMutation = useMutation({
-    mutationFn: async (programId: string) => {
-      const { data, error } = await supabase.rpc('delete_program_with_goals', {
-        p_program_id: programId
-      });
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['programs-goals'] });
-      toast.success('Program deleted successfully');
-      setIsDeleteModalOpen(false);
-      setDeletingProgram(null);
-    },
-    onError: (error: any) => {
-      toast.error(error.message || 'Failed to delete program');
-    },
-  });
-
   const handleEdit = (program: Program) => {
     setEditingProgram({ ...program });
     setIsEditModalOpen(true);
@@ -117,16 +31,25 @@ const ProgramsGoalsConfig = () => {
 
   const handleSave = () => {
     if (editingProgram) {
-      updateProgramMutation.mutate(editingProgram);
+      setPrograms(programs.map(p => 
+        p.id === editingProgram.id ? editingProgram : p
+      ));
+      setIsEditModalOpen(false);
+      setEditingProgram(null);
     }
   };
 
   const handleAdd = () => {
+    const id = (programs.length + 1).toString();
     const validGoals = newProgram.goals.filter(goal => goal.trim() !== '');
-    createProgramMutation.mutate({
+    setPrograms([...programs, {
+      id,
       name: newProgram.name,
       goals: validGoals
-    });
+    }]);
+    
+    setNewProgram({ name: '', goals: [''] });
+    setIsAddModalOpen(false);
   };
 
   const handleDeleteClick = (program: Program) => {
@@ -136,7 +59,9 @@ const ProgramsGoalsConfig = () => {
 
   const confirmDelete = () => {
     if (deletingProgram) {
-      deleteProgramMutation.mutate(deletingProgram.id);
+      setPrograms(programs.filter(p => p.id !== deletingProgram.id));
+      setIsDeleteModalOpen(false);
+      setDeletingProgram(null);
     }
   };
 
@@ -189,25 +114,9 @@ const ProgramsGoalsConfig = () => {
     });
   };
 
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        <p className="text-sm text-muted-foreground text-center py-8">Loading programs...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="space-y-4">
-        <p className="text-sm text-destructive text-center py-8">Failed to load programs. Please try again.</p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-4">
-      {!Array.isArray(programs) || programs.length === 0 ? (
+      {programs.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-8">No programs & goals configured yet.</p>
       ) : (
         programs.map((program) => (
@@ -291,12 +200,7 @@ const ProgramsGoalsConfig = () => {
                 <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>
                   Cancel
                 </Button>
-                <Button 
-                  onClick={handleSave}
-                  disabled={updateProgramMutation.isPending}
-                >
-                  {updateProgramMutation.isPending ? 'Saving...' : 'Save Changes'}
-                </Button>
+                <Button onClick={handleSave}>Save Changes</Button>
               </div>
             </div>
           )}
@@ -356,12 +260,7 @@ const ProgramsGoalsConfig = () => {
               <Button variant="outline" onClick={() => setIsAddModalOpen(false)}>
                 Cancel
               </Button>
-              <Button 
-                onClick={handleAdd}
-                disabled={createProgramMutation.isPending}
-              >
-                {createProgramMutation.isPending ? 'Adding...' : 'Add Program'}
-              </Button>
+              <Button onClick={handleAdd}>Add Program</Button>
             </div>
           </div>
         </DialogContent>
@@ -379,12 +278,8 @@ const ProgramsGoalsConfig = () => {
               <Button variant="outline" onClick={() => setIsDeleteModalOpen(false)}>
                 Cancel
               </Button>
-              <Button 
-                variant="destructive" 
-                onClick={confirmDelete}
-                disabled={deleteProgramMutation.isPending}
-              >
-                {deleteProgramMutation.isPending ? 'Deleting...' : 'Delete'}
+              <Button variant="destructive" onClick={confirmDelete}>
+                Delete
               </Button>
             </div>
           </div>
