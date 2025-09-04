@@ -128,17 +128,7 @@ const Data = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Badge style={{ backgroundColor: '#ef4444', color: 'white' }} className="border-0">
-                High Priority
-              </Badge>
-              <Badge style={{ backgroundColor: '#3b82f6', color: 'white' }} className="border-0">
-                In Progress
-              </Badge>
-              <Badge style={{ backgroundColor: '#f59e0b', color: 'white' }} className="border-0">
-                Urgent
-              </Badge>
-            </div>
+            <p className="text-sm text-muted-foreground">No labels configured yet.</p>
           </div>
         </CardContent>
       </Card>
@@ -157,30 +147,7 @@ const Data = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="p-3 border rounded">
-              <p className="font-medium mb-2">Wellbeing</p>
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="outline">Body & Fitness</Badge>
-                <Badge variant="outline">Life Balance</Badge>
-                <Badge variant="outline">Relationships</Badge>
-              </div>
-            </div>
-            <div className="p-3 border rounded">
-              <p className="font-medium mb-2">Stability</p>
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="outline">Job</Badge>
-                <Badge variant="outline">Money</Badge>
-                <Badge variant="outline">Other</Badge>
-              </div>
-            </div>
-            <div className="p-3 border rounded">
-              <p className="font-medium mb-2">Achievement</p>
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="outline">Business</Badge>
-                <Badge variant="outline">Digital Skills</Badge>
-                <Badge variant="outline">Higher Education</Badge>
-              </div>
-            </div>
+            <p className="text-sm text-muted-foreground">No programs & goals configured yet.</p>
           </div>
         </CardContent>
       </Card>

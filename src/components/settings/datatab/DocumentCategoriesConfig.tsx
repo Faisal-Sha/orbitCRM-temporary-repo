@@ -17,43 +17,7 @@ interface DocumentCategory {
 }
 
 const DocumentCategoriesConfig = () => {
-  const [categories, setCategories] = useState<DocumentCategory[]>([
-    { 
-      id: '1', 
-      name: 'Clinical Notes', 
-      description: 'Patient clinical documentation and progress notes',
-      fileTypes: ['pdf', 'doc', 'docx'],
-      color: '#3b82f6'
-    },
-    { 
-      id: '2', 
-      name: 'Assessment Forms', 
-      description: 'Patient intake and assessment documentation',
-      fileTypes: ['pdf', 'doc', 'docx', 'jpg', 'png'],
-      color: '#10b981'
-    },
-    { 
-      id: '3', 
-      name: 'Treatment Plans', 
-      description: 'Patient treatment plans and care protocols',
-      fileTypes: ['pdf', 'doc', 'docx'],
-      color: '#f59e0b'
-    },
-    { 
-      id: '4', 
-      name: 'Insurance Documents', 
-      description: 'Insurance authorizations and billing documents',
-      fileTypes: ['pdf', 'jpg', 'png'],
-      color: '#ef4444'
-    },
-    { 
-      id: '5', 
-      name: 'Consent Forms', 
-      description: 'Patient consent and authorization forms',
-      fileTypes: ['pdf', 'jpg', 'png'],
-      color: '#8b5cf6'
-    }
-  ]);
+  const [categories, setCategories] = useState<DocumentCategory[]>([]);
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -129,35 +93,39 @@ const DocumentCategoriesConfig = () => {
   return (
     <div className="space-y-4">
       <div className="space-y-3">
-        {categories.map((category) => (
-          <div key={category.id} className="flex items-center justify-between p-3 border rounded">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-2">
-                <div 
-                  className="w-4 h-4 rounded" 
-                  style={{ backgroundColor: category.color }}
-                ></div>
-                <p className="font-medium">{category.name}</p>
+        {categories.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-8">No document categories configured yet.</p>
+        ) : (
+          categories.map((category) => (
+            <div key={category.id} className="flex items-center justify-between p-3 border rounded">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <div 
+                    className="w-4 h-4 rounded" 
+                    style={{ backgroundColor: category.color }}
+                  ></div>
+                  <p className="font-medium">{category.name}</p>
+                </div>
+                <p className="text-sm text-gray-500 mb-2">{category.description}</p>
+                <div className="flex flex-wrap gap-1">
+                  {category.fileTypes.map((fileType) => (
+                    <Badge key={fileType} variant="outline" className="text-xs">
+                      {fileType.toUpperCase()}
+                    </Badge>
+                  ))}
+                </div>
               </div>
-              <p className="text-sm text-gray-500 mb-2">{category.description}</p>
-              <div className="flex flex-wrap gap-1">
-                {category.fileTypes.map((fileType) => (
-                  <Badge key={fileType} variant="outline" className="text-xs">
-                    {fileType.toUpperCase()}
-                  </Badge>
-                ))}
+              <div className="flex gap-2">
+                <Button variant="ghost" size="sm" onClick={() => handleEdit(category)}>
+                  <Edit2 className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => handleDeleteClick(category)}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
             </div>
-            <div className="flex gap-2">
-              <Button variant="ghost" size="sm" onClick={() => handleEdit(category)}>
-                <Edit2 className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => handleDeleteClick(category)}>
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
 
       <Button onClick={() => setIsAddModalOpen(true)} className="w-full">

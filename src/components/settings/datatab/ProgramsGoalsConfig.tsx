@@ -14,23 +14,7 @@ interface Program {
 }
 
 const ProgramsGoalsConfig = () => {
-  const [programs, setPrograms] = useState<Program[]>([
-    {
-      id: '1',
-      name: 'Wellbeing',
-      goals: ['Body & Fitness', 'Life Balance', 'Relationships']
-    },
-    {
-      id: '2', 
-      name: 'Stability',
-      goals: ['Job', 'Money', 'Other']
-    },
-    {
-      id: '3',
-      name: 'Achievement', 
-      goals: ['Business', 'Digital Skills', 'Higher Education']
-    }
-  ]);
+  const [programs, setPrograms] = useState<Program[]>([]);
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -132,26 +116,30 @@ const ProgramsGoalsConfig = () => {
 
   return (
     <div className="space-y-4">
-      {programs.map((program) => (
-        <div key={program.id} className="p-3 border rounded">
-          <div className="flex items-center justify-between mb-2">
-            <p className="font-medium">{program.name}</p>
-            <div className="flex gap-2">
-              <Button variant="ghost" size="sm" onClick={() => handleEdit(program)}>
-                <Edit2 className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => handleDeleteClick(program)}>
-                <Trash2 className="h-4 w-4" />
-              </Button>
+      {programs.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-8">No programs & goals configured yet.</p>
+      ) : (
+        programs.map((program) => (
+          <div key={program.id} className="p-3 border rounded">
+            <div className="flex items-center justify-between mb-2">
+              <p className="font-medium">{program.name}</p>
+              <div className="flex gap-2">
+                <Button variant="ghost" size="sm" onClick={() => handleEdit(program)}>
+                  <Edit2 className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => handleDeleteClick(program)}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {program.goals.map((goal, index) => (
+                <Badge key={index} variant="outline">{goal}</Badge>
+              ))}
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {program.goals.map((goal, index) => (
-              <Badge key={index} variant="outline">{goal}</Badge>
-            ))}
-          </div>
-        </div>
-      ))}
+        ))
+      )}
       
       <Button onClick={() => setIsAddModalOpen(true)} className="w-full">
         <Plus className="h-4 w-4 mr-2" />

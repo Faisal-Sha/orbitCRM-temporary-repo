@@ -24,51 +24,7 @@ interface KPI {
 }
 
 const KPIConfig = () => {
-  const [kpis, setKpis] = useState<KPI[]>([
-    { 
-      id: '1', 
-      name: 'Client Satisfaction Score', 
-      category: 'Quality',
-      targetType: 'percentage', 
-      unit: '%',
-      targetValues: [
-        { id: '1-1', name: 'Minimum', value: 75 },
-        { id: '1-2', name: 'Target', value: 85 },
-        { id: '1-3', name: 'Excellent', value: 95 }
-      ]
-    },
-    { 
-      id: '2', 
-      name: 'Session Completion Rate', 
-      category: 'Engagement',
-      targetType: 'percentage', 
-      unit: '%',
-      targetValues: [
-        { id: '2-1', name: 'Target', value: 90 }
-      ]
-    },
-    { 
-      id: '3', 
-      name: 'Treatment Goal Achievement', 
-      category: 'Outcomes',
-      targetType: 'percentage', 
-      unit: '%',
-      targetValues: [
-        { id: '3-1', name: 'Minimum', value: 60 },
-        { id: '3-2', name: 'Target', value: 75 }
-      ]
-    },
-    { 
-      id: '4', 
-      name: 'Average Sessions per Client', 
-      category: 'Utilization',
-      targetType: 'number', 
-      unit: 'sessions',
-      targetValues: [
-        { id: '4-1', name: 'Target', value: 12 }
-      ]
-    }
-  ]);
+  const [kpis, setKpis] = useState<KPI[]>([]);
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -191,32 +147,36 @@ const KPIConfig = () => {
   return (
     <div className="space-y-4">
       <div className="space-y-3">
-        {kpis.map((kpi) => (
-          <div key={kpi.id} className="flex items-center justify-between p-3 border rounded">
-            <div>
-              <p className="font-medium">{kpi.name}</p>
-              <div className="flex items-center gap-2 mt-1">
-                <Badge variant="outline">{kpi.category}</Badge>
-                <Badge variant="outline">{kpi.targetType}</Badge>
-                <div className="flex gap-1">
-                  {kpi.targetValues.map((tv) => (
-                    <span key={tv.id} className="text-sm text-gray-500">
-                      {tv.name}: {tv.value}{kpi.unit}
-                    </span>
-                  ))}
+        {kpis.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-8">No KPIs configured yet.</p>
+        ) : (
+          kpis.map((kpi) => (
+            <div key={kpi.id} className="flex items-center justify-between p-3 border rounded">
+              <div>
+                <p className="font-medium">{kpi.name}</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <Badge variant="outline">{kpi.category}</Badge>
+                  <Badge variant="outline">{kpi.targetType}</Badge>
+                  <div className="flex gap-1">
+                    {kpi.targetValues.map((tv) => (
+                      <span key={tv.id} className="text-sm text-gray-500">
+                        {tv.name}: {tv.value}{kpi.unit}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
+              <div className="flex gap-2">
+                <Button variant="ghost" size="sm" onClick={() => handleEdit(kpi)}>
+                  <Edit2 className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => handleDeleteClick(kpi)}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-            <div className="flex gap-2">
-              <Button variant="ghost" size="sm" onClick={() => handleEdit(kpi)}>
-                <Edit2 className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => handleDeleteClick(kpi)}>
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
 
       <Button onClick={() => setIsAddModalOpen(true)} className="w-full">
