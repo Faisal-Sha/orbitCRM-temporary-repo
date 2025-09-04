@@ -14,8 +14,8 @@ const UsersAndRoles = () => {
   const [showStaffTypes, setShowStaffTypes] = useState(false);
   const { roles, loading } = useUserRoles();
 
-  // Show up to 5 roles on main tab
-  const displayRoles = roles.slice(0, 5);
+  // Show up to 3 roles on main tab
+  const displayRoles = roles.slice(0, 3);
 
   // Show up to 5 staff types on main tab
   const displayStaffTypes: any[] = [];
@@ -37,9 +37,6 @@ const UsersAndRoles = () => {
               <Shield className="h-5 w-5" />
               Roles & Permissions ({loading ? '...' : roles.length})
             </CardTitle>
-            <Button onClick={() => setShowUserRoles(true)}>
-              Manage Roles
-            </Button>
           </div>
         </CardHeader>
         <CardContent>
@@ -67,13 +64,11 @@ const UsersAndRoles = () => {
                   </div>
                 ))
               )}
-              {roles.length > 5 && (
-                <div className="text-center pt-4">
-                  <Button variant="outline" onClick={() => setShowUserRoles(true)}>
-                    View All {roles.length} Roles
-                  </Button>
-                </div>
-              )}
+              <div className="text-center pt-4">
+                <Button variant="outline" onClick={() => setShowUserRoles(true)}>
+                  View All Roles
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>
