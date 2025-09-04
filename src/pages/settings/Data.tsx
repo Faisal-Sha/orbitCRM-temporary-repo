@@ -2,8 +2,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Database, Target, Folder, Tag } from "lucide-react";
+import { Database, Target, Folder, Tag, Loader2 } from "lucide-react";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import LabelsConfig from "@/components/settings/datatab/LabelsConfig";
 import ProgramsGoalsConfig from "@/components/settings/datatab/ProgramsGoalsConfig";
 import DocumentCategoriesConfig from "@/components/settings/datatab/DocumentCategoriesConfig";
@@ -14,6 +16,30 @@ const Data = () => {
   const [showProgramsGoals, setShowProgramsGoals] = useState(false);
   const [showCategories, setShowCategories] = useState(false);
   const [showKPIs, setShowKPIs] = useState(false);
+
+  // Fetch labels data
+  const { data: labels = [], isLoading: labelsLoading } = useQuery({
+    queryKey: ['data-labels'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_data_labels' as any);
+      if (error) throw error;
+      return Array.isArray(data) ? data : [];
+    },
+  });
+
+  // Fetch programs data
+  const { data: programs = [], isLoading: programsLoading } = useQuery({
+    queryKey: ['programs-goals'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_programs_with_goals' as any);
+      if (error) throw error;
+      return Array.isArray(data) ? data : [];
+    },
+  });
+
+  // Show up to 3 items for preview
+  const displayLabels = labels.slice(0, 3);
+  const displayPrograms = programs.slice(0, 3);
 
   // Navigation handlers
   if (showLabels) {
@@ -119,17 +145,50 @@ const Data = () => {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Tag className="h-5 w-5" />
-              Labels
+              Labels ({labelsLoading ? '...' : labels.length})
             </CardTitle>
-            <Button onClick={() => setShowLabels(true)}>
-              Manage
-            </Button>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">No labels configured yet.</p>
-          </div>
+          {labelsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              Loading labels...
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {displayLabels.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Tag className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No labels configured yet</p>
+                  <p className="text-sm">Click "View All Labels" to get started</p>
+                </div>
+              ) : (
+                displayLabels.map((label) => (
+                  <div key={label.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <Badge 
+                        variant="outline"
+                        style={{
+                          backgroundColor: label.color,
+                          color: label.textColor,
+                          fontWeight: label.fontWeight
+                        }}
+                      >
+                        {label.name}
+                      </Badge>
+                      <span className="text-sm text-muted-foreground capitalize">{label.category}</span>
+                    </div>
+                  </div>
+                ))
+              )}
+              <div className="text-center pt-4">
+                <Button variant="outline" onClick={() => setShowLabels(true)}>
+                  View All Labels
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -138,17 +197,42 @@ const Data = () => {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Target className="h-5 w-5" />
-              Programs & Goals
+              Programs & Goals ({programsLoading ? '...' : programs.length})
             </CardTitle>
-            <Button onClick={() => setShowProgramsGoals(true)}>
-              Manage
-            </Button>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">No programs & goals configured yet.</p>
-          </div>
+          {programsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              Loading programs...
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {displayPrograms.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Target className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No programs & goals configured yet</p>
+                  <p className="text-sm">Click "View All Programs & Goals" to get started</p>
+                </div>
+              ) : (
+                displayPrograms.map((program) => (
+                  <div key={program.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div>
+                      <p className="font-medium">{program.name}</p>
+                      <p className="text-sm text-muted-foreground">{program.goals.length} goals</p>
+                    </div>
+                    <Badge variant="outline">{program.goals.length}</Badge>
+                  </div>
+                ))
+              )}
+              <div className="text-center pt-4">
+                <Button variant="outline" onClick={() => setShowProgramsGoals(true)}>
+                  View All Programs & Goals
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
