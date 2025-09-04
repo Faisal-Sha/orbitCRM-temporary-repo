@@ -6,6 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Edit2, Plus, Trash2 } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface LabelItem {
   id: string;
@@ -16,8 +19,14 @@ interface LabelItem {
   fontWeight: 'normal' | 'bold';
 }
 
+interface ApiResponse {
+  success: boolean;
+  message: string;
+  label_id?: string;
+}
+
 const LabelsConfig = () => {
-  const [labels, setLabels] = useState<LabelItem[]>([]);
+  const queryClient = useQueryClient();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -32,6 +41,98 @@ const LabelsConfig = () => {
     fontWeight: 'normal' as 'normal' | 'bold'
   });
   const [showCustomPicker, setShowCustomPicker] = useState(false);
+
+  // Fetch labels from backend
+  const { data: labels, isLoading, error } = useQuery({
+    queryKey: ['data-labels'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_data_labels');
+      if (error) throw error;
+      return (data as unknown as LabelItem[]) || [];
+    }
+  });
+
+  // Add label mutation
+  const addLabelMutation = useMutation({
+    mutationFn: async (newLabelData: typeof newLabel) => {
+      const { data, error } = await supabase.rpc('add_data_label', {
+        p_label_name: newLabelData.name,
+        p_label_category: newLabelData.category,
+        p_label_color: newLabelData.color,
+        p_text_color: newLabelData.textColor,
+        p_font_weight: newLabelData.fontWeight
+      });
+      if (error) throw error;
+      const response = data as unknown as ApiResponse;
+      if (!response.success) throw new Error(response.message);
+      return response;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['data-labels'] });
+      toast.success('Label added successfully');
+      setNewLabel({ 
+        name: '', 
+        category: '', 
+        color: '#3b82f6',
+        textColor: 'white' as 'black' | 'white',
+        fontWeight: 'normal' as 'normal' | 'bold'
+      });
+      setShowCustomPicker(false);
+      setIsAddModalOpen(false);
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to add label');
+    }
+  });
+
+  // Update label mutation
+  const updateLabelMutation = useMutation({
+    mutationFn: async (labelData: LabelItem) => {
+      const { data, error } = await supabase.rpc('update_data_label', {
+        p_label_id: labelData.id,
+        p_label_name: labelData.name,
+        p_label_category: labelData.category,
+        p_label_color: labelData.color,
+        p_text_color: labelData.textColor,
+        p_font_weight: labelData.fontWeight
+      });
+      if (error) throw error;
+      const response = data as unknown as ApiResponse;
+      if (!response.success) throw new Error(response.message);
+      return response;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['data-labels'] });
+      toast.success('Label updated successfully');
+      setIsModalOpen(false);
+      setEditingLabel(null);
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to update label');
+    }
+  });
+
+  // Delete label mutation
+  const deleteLabelMutation = useMutation({
+    mutationFn: async (labelId: string) => {
+      const { data, error } = await supabase.rpc('delete_data_label', {
+        p_label_id: labelId
+      });
+      if (error) throw error;
+      const response = data as unknown as ApiResponse;
+      if (!response.success) throw new Error(response.message);
+      return response;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['data-labels'] });
+      toast.success('Label deleted successfully');
+      setIsDeleteModalOpen(false);
+      setDeletingLabel(null);
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to delete label');
+    }
+  });
 
   const colorPalette = [
     '#ef4444', '#f97316', '#f59e0b', '#84cc16', '#22c55e',
@@ -51,34 +152,16 @@ const LabelsConfig = () => {
 
   const handleSave = () => {
     if (editingLabel) {
-      setLabels(labels.map(l => 
-        l.id === editingLabel.id ? editingLabel : l
-      ));
-      setIsModalOpen(false);
-      setEditingLabel(null);
+      updateLabelMutation.mutate(editingLabel);
     }
   };
 
   const handleAdd = () => {
-    const id = (labels.length + 1).toString();
-    setLabels([...labels, {
-      id,
-      name: newLabel.name,
-      category: newLabel.category,
-      color: newLabel.color,
-      textColor: newLabel.textColor,
-      fontWeight: newLabel.fontWeight
-    }]);
-    
-    setNewLabel({ 
-      name: '', 
-      category: '', 
-      color: '#3b82f6',
-      textColor: 'white' as 'black' | 'white',
-      fontWeight: 'normal' as 'normal' | 'bold'
-    });
-    setShowCustomPicker(false);
-    setIsAddModalOpen(false);
+    if (!newLabel.name.trim()) {
+      toast.error('Label name is required');
+      return;
+    }
+    addLabelMutation.mutate(newLabel);
   };
 
   const handleDeleteClick = (label: LabelItem) => {
@@ -88,9 +171,7 @@ const LabelsConfig = () => {
 
   const confirmDelete = () => {
     if (deletingLabel) {
-      setLabels(labels.filter(l => l.id !== deletingLabel.id));
-      setIsDeleteModalOpen(false);
-      setDeletingLabel(null);
+      deleteLabelMutation.mutate(deletingLabel.id);
     }
   };
 
@@ -99,6 +180,26 @@ const LabelsConfig = () => {
     color: textColor,
     fontWeight: fontWeight
   });
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <div className="text-center py-8">
+          <p className="text-sm text-muted-foreground">Loading labels...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-4">
+        <div className="text-center py-8">
+          <p className="text-sm text-destructive">Failed to load labels. Please try again.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_data_labels: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          font_weight: string | null
+          id: string
+          label_category: string | null
+          label_color: string | null
+          label_name: string | null
+          text_color: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          font_weight?: string | null
+          id?: string
+          label_category?: string | null
+          label_color?: string | null
+          label_name?: string | null
+          text_color?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          font_weight?: string | null
+          id?: string
+          label_category?: string | null
+          label_color?: string | null
+          label_name?: string | null
+          text_color?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       app_global_people: {
         Row: {
           created_at: string
@@ -856,6 +895,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_data_label: {
+        Args: {
+          p_font_weight: string
+          p_label_category: string
+          p_label_color: string
+          p_label_name: string
+          p_text_color: string
+        }
+        Returns: Json
+      }
       add_user_role: {
         Args: { p_role_name: string }
         Returns: Json
@@ -876,8 +925,16 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
+      delete_data_label: {
+        Args: { p_label_id: string }
+        Returns: Json
+      }
       delete_user_role: {
         Args: { p_role_id: string }
+        Returns: Json
+      }
+      get_data_labels: {
+        Args: Record<PropertyKey, never>
         Returns: Json
       }
       get_organization_settings: {
@@ -939,6 +996,17 @@ export type Database = {
       }
       soft_delete_organization: {
         Args: { deleting_user_id: string; org_id: string }
+        Returns: Json
+      }
+      update_data_label: {
+        Args: {
+          p_font_weight: string
+          p_label_category: string
+          p_label_color: string
+          p_label_id: string
+          p_label_name: string
+          p_text_color: string
+        }
         Returns: Json
       }
       update_organization_with_admin: {
