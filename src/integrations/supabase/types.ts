@@ -53,6 +53,89 @@ export type Database = {
         }
         Relationships: []
       }
+      app_data_programs: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          id: string
+          is_deleted: boolean
+          program_name: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          id?: string
+          is_deleted?: boolean
+          program_name?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          id?: string
+          is_deleted?: boolean
+          program_name?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      app_data_programs_goals: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          goal_name: string | null
+          id: string
+          is_deleted: boolean
+          program_id: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          goal_name?: string | null
+          id?: string
+          is_deleted?: boolean
+          program_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          goal_name?: string | null
+          id?: string
+          is_deleted?: boolean
+          program_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_data_programs_goals_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "app_data_programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       app_global_people: {
         Row: {
           created_at: string
@@ -905,6 +988,10 @@ export type Database = {
         }
         Returns: Json
       }
+      add_program_with_goals: {
+        Args: { p_goals: Json; p_program_name: string }
+        Returns: Json
+      }
       add_user_role: {
         Args: { p_role_name: string }
         Returns: Json
@@ -927,6 +1014,10 @@ export type Database = {
       }
       delete_data_label: {
         Args: { p_label_id: string }
+        Returns: Json
+      }
+      delete_program_with_goals: {
+        Args: { p_program_id: string }
         Returns: Json
       }
       delete_user_role: {
@@ -955,6 +1046,10 @@ export type Database = {
         }[]
       }
       get_personal_profile: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      get_programs_with_goals: {
         Args: Record<PropertyKey, never>
         Returns: Json
       }
@@ -1045,6 +1140,10 @@ export type Database = {
           p_updated_by: string
           p_zip_code: string
         }
+        Returns: Json
+      }
+      update_program_with_goals: {
+        Args: { p_goals: Json; p_program_id: string; p_program_name: string }
         Returns: Json
       }
       update_user_role: {
