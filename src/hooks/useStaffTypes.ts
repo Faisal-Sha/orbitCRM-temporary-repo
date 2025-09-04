@@ -49,9 +49,17 @@ export const useStaffTypes = () => {
 
   const addStaffType = async (staffType: StaffTypeEnum) => {
     try {
+      // Get current user ID for created_by and updated_by fields
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
       const { data, error } = await supabase
         .from('app_user_staff_types')
-        .insert({ staff_type: staffType })
+        .insert({ 
+          staff_type: staffType,
+          created_by: user.id,
+          updated_by: user.id
+        })
         .select()
         .single();
 
@@ -71,9 +79,16 @@ export const useStaffTypes = () => {
 
   const updateStaffType = async (id: string, staffType: StaffTypeEnum) => {
     try {
+      // Get current user ID for updated_by field
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
       const { data, error } = await supabase
         .from('app_user_staff_types')
-        .update({ staff_type: staffType })
+        .update({ 
+          staff_type: staffType,
+          updated_by: user.id
+        })
         .eq('id', id)
         .select()
         .single();
@@ -95,9 +110,17 @@ export const useStaffTypes = () => {
 
   const deleteStaffType = async (id: string) => {
     try {
+      // Get current user ID for deleted_by field
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
       const { error } = await supabase
         .from('app_user_staff_types')
-        .update({ is_deleted: true })
+        .update({ 
+          is_deleted: true,
+          deleted_by: user.id,
+          deleted_at: new Date().toISOString()
+        })
         .eq('id', id);
 
       if (error) throw error;

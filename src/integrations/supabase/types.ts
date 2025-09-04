@@ -405,7 +405,6 @@ export type Database = {
           deleted_by: string | null
           id: string
           is_deleted: boolean
-          label_color: string | null
           staff_type: Database["public"]["Enums"]["staff_type_enum"]
           updated_at: string
           updated_by: string | null
@@ -417,7 +416,6 @@ export type Database = {
           deleted_by?: string | null
           id?: string
           is_deleted?: boolean
-          label_color?: string | null
           staff_type: Database["public"]["Enums"]["staff_type_enum"]
           updated_at?: string
           updated_by?: string | null
@@ -429,7 +427,6 @@ export type Database = {
           deleted_by?: string | null
           id?: string
           is_deleted?: boolean
-          label_color?: string | null
           staff_type?: Database["public"]["Enums"]["staff_type_enum"]
           updated_at?: string
           updated_by?: string | null
