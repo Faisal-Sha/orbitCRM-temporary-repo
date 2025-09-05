@@ -70,13 +70,13 @@ const OrganizationsManagement = () => {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>
-            <h2 className="text-2xl font-bold tracking-tight">Organizations Management</h2>
-            <p className="text-muted-foreground">Manage all organizations on the platform</p>
+            <h2 className="text-2xl font-bold tracking-tight">Agencies Management</h2>
+            <p className="text-muted-foreground">Manage all agencies on the platform</p>
           </div>
         </div>
         <Card>
           <CardContent className="p-6">
-            <div className="text-center">Loading organizations...</div>
+            <div className="text-center">Loading agencies...</div>
           </CardContent>
         </Card>
       </div>
@@ -87,12 +87,12 @@ const OrganizationsManagement = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Organizations Management</h2>
-          <p className="text-muted-foreground">Manage all organizations on the platform</p>
+          <h2 className="text-2xl font-bold tracking-tight">Agencies Management</h2>
+          <p className="text-muted-foreground">Manage all agencies on the platform</p>
         </div>
         <Button onClick={openAddDialog} className="flex items-center gap-2">
           <Plus className="h-4 w-4" />
-          Add Organization
+          Add Agency
         </Button>
       </div>
 
@@ -101,7 +101,7 @@ const OrganizationsManagement = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Organization</TableHead>
+                <TableHead>Agency</TableHead>
                 <TableHead>State</TableHead>
                 <TableHead>Admin</TableHead>
                 <TableHead>Users</TableHead>
@@ -170,19 +170,19 @@ const OrganizationsManagement = () => {
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Add New Organization</DialogTitle>
+            <DialogTitle>Add New Agency</DialogTitle>
             <DialogDescription>
-              Create a new organization account on the platform.
+              Create a new agency account on the platform.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="name">Organization Name</Label>
+              <Label htmlFor="name">Agency Name</Label>
               <Input
                 id="name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Enter organization name"
+                placeholder="Enter agency name"
               />
             </div>
             <div className="grid gap-2">
@@ -245,7 +245,7 @@ const OrganizationsManagement = () => {
             <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleAdd}>Add Organization</Button>
+            <Button onClick={handleAdd}>Add Agency</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -254,19 +254,19 @@ const OrganizationsManagement = () => {
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit Organization</DialogTitle>
+            <DialogTitle>Edit Agency</DialogTitle>
             <DialogDescription>
-              Update organization details and settings.
+              Update agency details and settings.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="editName">Organization Name</Label>
+              <Label htmlFor="editName">Agency Name</Label>
               <Input
                 id="editName"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Enter organization name"
+                placeholder="Enter agency name"
               />
             </div>
             <div className="grid gap-2">
@@ -344,7 +344,7 @@ const OrganizationsManagement = () => {
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Delete Organization</DialogTitle>
+            <DialogTitle>Delete Agency</DialogTitle>
             <DialogDescription>
               Are you sure you want to delete "{selectedOrg?.organization_name}"?
             </DialogDescription>
@@ -354,7 +354,7 @@ const OrganizationsManagement = () => {
               Cancel
             </Button>
             <Button variant="destructive" onClick={handleDelete}>
-              Delete Organization
+              Delete Agency
             </Button>
           </DialogFooter>
         </DialogContent>

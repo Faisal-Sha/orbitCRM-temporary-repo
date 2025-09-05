@@ -136,7 +136,7 @@ const RegisterPage = () => {
           </CardTitle>
           <CardDescription className="text-center">
             {isInvitation 
-              ? "Complete your organization admin account setup" 
+              ? "Complete your agency admin account setup" 
               : "Sign up to get started with your account"
             }
           </CardDescription>
@@ -145,7 +145,7 @@ const RegisterPage = () => {
           <form onSubmit={handleRegister} className="space-y-4">
             {isInvitation && (
               <div className="space-y-2">
-                <Label htmlFor="organization">Organization</Label>
+                <Label htmlFor="organization">Agency</Label>
                 <Input
                   id="organization"
                   value={organizationName}

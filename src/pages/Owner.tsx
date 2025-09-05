@@ -8,11 +8,11 @@ const Owner = () => {
   return (
     <PageContainer 
       title="Owner Dashboard" 
-      description="Manage platform organizations and system-wide settings"
+      description="Manage platform agencies and system-wide settings"
     >
       <Tabs defaultValue="organizations" className="w-full">
         <TabsList className="grid w-full grid-cols-1 max-w-md">
-          <TabsTrigger value="organizations">Organizations</TabsTrigger>
+          <TabsTrigger value="organizations">Agencies</TabsTrigger>
         </TabsList>
         <TabsContent value="organizations" className="mt-6">
           <OrganizationsManagement />
