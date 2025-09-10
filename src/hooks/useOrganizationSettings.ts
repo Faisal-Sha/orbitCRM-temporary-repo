@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { Json } from '@/integrations/supabase/types';
 
 interface OrganizationDomain {
   id?: string;
@@ -186,7 +187,7 @@ export const useOrganizationSettings = () => {
         p_linkedin_url: formData.linkedin_url,
         p_google_profile_url: formData.google_profile_url,
         p_youtube_url: formData.youtube_url,
-        p_domains: JSON.stringify(formData.domains.filter(d => d.domain.trim()))
+        p_domains: formData.domains.filter(d => d.domain.trim()) as unknown as Json
       });
 
       if (error) throw error;

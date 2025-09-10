@@ -1,4 +1,3 @@
-import React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,18 +25,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Plus, Edit, Trash2 } from "lucide-react";
-import { useOrganizations, type Organization } from "@/hooks/useOrganizations";
+import { useAgencies } from "@/hooks/useAgencies";
 
-const OrganizationsManagement = () => {
+const AgencyManagement = () => {
   const {
-    organizations,
+    agencies,
     loading,
     isAddDialogOpen,
     isEditDialogOpen,
     isDeleteDialogOpen,
-    selectedOrg,
+    selectedAgency,
     formData,
     usStates,
     setFormData,
@@ -50,7 +49,7 @@ const OrganizationsManagement = () => {
     openAddDialog,
     openEditDialog,
     openDeleteDialog,
-  } = useOrganizations();
+  } = useAgencies();
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -112,47 +111,47 @@ const OrganizationsManagement = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {organizations.map((org) => (
-                <TableRow key={org.id}>
-                  <TableCell className="font-medium">{org.organization_name}</TableCell>
-                  <TableCell>{org.organization_state || "N/A"}</TableCell>
+              {agencies.map((agency) => (
+                <TableRow key={agency.id}>
+                  <TableCell className="font-medium">{agency.agency_name}</TableCell>
+                  <TableCell>{agency.agency_state || "N/A"}</TableCell>
                   <TableCell>
                     <div>
                       <div className="font-medium">
-                        {org.admins.length === 0 
+                        {agency.admins.length === 0 
                           ? "No admin assigned"
-                          : org.admins.length === 1
-                          ? `${org.admins[0].first_name} ${org.admins[0].last_name}`
-                          : `${org.admins.length} Admins assigned`
+                          : agency.admins.length === 1
+                          ? `${agency.admins[0].first_name} ${agency.admins[0].last_name}`
+                          : `${agency.admins.length} Admins assigned`
                         }
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        {org.admins.length === 1 
-                          ? org.admins[0].email
-                          : org.admins.length > 1
+                        {agency.admins.length === 1 
+                          ? agency.admins[0].email
+                          : agency.admins.length > 1
                           ? "Multiple admin emails"
                           : "No email"
                         }
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell>{org.user_count}</TableCell>
-                  <TableCell>{org.storage_used}</TableCell>
-                  <TableCell>{new Date(org.created_at).toLocaleDateString()}</TableCell>
-                  <TableCell>{getStatusBadge(org.status)}</TableCell>
+                  <TableCell>{agency.user_count}</TableCell>
+                  <TableCell>{agency.storage_used}</TableCell>
+                  <TableCell>{new Date(agency.created_at).toLocaleDateString()}</TableCell>
+                  <TableCell>{getStatusBadge(agency.status)}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => openEditDialog(org)}
+                        onClick={() => openEditDialog(agency)}
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => openDeleteDialog(org)}
+                        onClick={() => openDeleteDialog(agency)}
                         className="text-red-600 hover:text-red-700"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -346,7 +345,7 @@ const OrganizationsManagement = () => {
           <DialogHeader>
             <DialogTitle>Delete Agency</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete "{selectedOrg?.organization_name}"?
+              Are you sure you want to delete "{selectedAgency?.agency_name}"?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -363,4 +362,4 @@ const OrganizationsManagement = () => {
   );
 };
 
-export default OrganizationsManagement;
+export default AgencyManagement;

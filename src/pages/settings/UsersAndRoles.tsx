@@ -2,8 +2,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Users, Shield, UserPlus, Settings, Loader2 } from "lucide-react";
+import { Users, Shield, Loader2 } from "lucide-react";
 import { useState } from "react";
 import UserRoles from "@/components/settings/usersandroles/UserRoles";
 import StaffTypes from "@/components/settings/usersandroles/StaffTypes";
@@ -125,7 +124,19 @@ const UsersAndRoles = () => {
                 displayStaffTypes.map((staffType) => (
                   <div key={staffType.id} className="flex items-center justify-between p-4 border rounded-lg">
                     <div>
-                      <p className="font-medium">{STAFF_TYPE_LABELS[staffType.staff_type] || staffType.staff_type}</p>
+                      {staffType.label_color ? (
+                        <RoleLabel 
+                        roleName={STAFF_TYPE_LABELS[staffType.staff_type] || staffType.staff_type}
+                        labelColor={staffType.label_color}
+                        textColor={staffType.text_color || 'black'}
+                        fontWeight={staffType.font_weight || 'normal'}
+                        className="mb-1"
+                        />
+                      ) : (
+                        <p className="font-medium">
+                          {STAFF_TYPE_LABELS[staffType.staff_type] || staffType.staff_type}
+                        </p>
+                      )}
                       <p className="text-sm text-muted-foreground">{staffType.count} staff members</p>
                     </div>
                     <Badge variant="outline">{staffType.count}</Badge>

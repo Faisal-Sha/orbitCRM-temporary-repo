@@ -1,8 +1,15 @@
--- Drop the existing trigger first
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+-- Create function to update timestamps
+CREATE OR REPLACE FUNCTION public.update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
--- Drop the existing function
-DROP FUNCTION IF EXISTS public.handle_new_user();
+CREATE TRIGGER update_users_updated_at BEFORE
+UPDATE ON public.app_users FOR EACH ROW
+EXECUTE FUNCTION public.update_updated_at_column();
 
 -- Create a comprehensive user registration function that handles both scenarios
 CREATE OR REPLACE FUNCTION public.handle_user_registration()
@@ -75,3 +82,30 @@ $$;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_user_registration();
+
+
+-- Create trigger to sync auth.users email changes to app_users table
+CREATE OR REPLACE FUNCTION public.sync_auth_email_to_app_users()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+BEGIN
+  -- Update account_email in app_users when auth.users email changes
+  UPDATE public.app_users 
+  SET 
+    account_email = NEW.email,
+    updated_at = now()
+  WHERE user_id = NEW.id;
+
+  RETURN NEW;
+END;
+$$;
+
+-- Create trigger on auth.users table for email sync
+DROP TRIGGER IF EXISTS sync_email_on_auth_users_update ON auth.users;
+CREATE TRIGGER sync_email_on_auth_users_update
+  AFTER UPDATE OF email ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.sync_auth_email_to_app_users();

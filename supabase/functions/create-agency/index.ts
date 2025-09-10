@@ -2,17 +2,16 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.56.0";
 import { Resend } from "npm:resend@2.0.0";
 
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface CreateOrganizationRequest {
-  organizationName: string;
-  organizationState: string;
-  organizationStatus: "active" | "inactive";
+interface CreateAgencyRequest {
+  agencyName: string;
+  agencyState: string;
+  agencyStatus: "active" | "inactive";
   adminFirstName: string;
   adminLastName: string;
   adminEmail: string;
@@ -25,25 +24,33 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const key = Deno.env.get("RESEND_API_KEY");
+  if (!key) {
+    console.error("RESEND_API_KEY missing");
+    return new Response(JSON.stringify({ ok: false, error: "RESEND_API_KEY not set" }),
+      { status: 500, headers: { "Content-Type": "application/json" } });
+  }
+
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const resend = new Resend(key);
 
     const { 
-      organizationName, 
-      organizationState, 
-      organizationStatus,
+      agencyName, 
+      agencyState, 
+      agencyStatus,
       adminFirstName, 
       adminLastName, 
       adminEmail,
       createdByUserId
-    }: CreateOrganizationRequest = await req.json();
+    }: CreateAgencyRequest = await req.json();
 
-    console.log("Creating organization with data:", {
-      organizationName,
-      organizationState,
-      organizationStatus,
+    console.log("Creating agency with data:", {
+      agencyName,
+      agencyState,
+      agencyStatus,
       adminFirstName,
       adminLastName,
       adminEmail,
@@ -51,34 +58,34 @@ const handler = async (req: Request): Promise<Response> => {
     });
 
     // Step 1: Create organization and admin using database function
-    const { data, error } = await supabase.rpc('create_organization_with_admin', {
-      organization_name: organizationName,
-      organization_state: organizationState,
+    const { data, error } = await supabase.rpc('create_agency_with_admin', {
+      agency_name: agencyName,
+      agency_state: agencyState,
       admin_first_name: adminFirstName,
       admin_last_name: adminLastName,
       admin_email: adminEmail,
       created_by_user_id: createdByUserId,
-      organization_status: organizationStatus
+      agency_status: agencyStatus
     });
 
     if (error) {
-      console.error('Error creating organization:', error);
-      throw new Error(`Failed to create organization: ${error.message}`);
+      console.error('Error creating agency:', error);
+      throw new Error(`Failed to create agency: ${error.message}`);
     }
 
-    console.log("Organization created successfully:", data);
+    console.log("Agency created successfully:", data);
 
     // Step 2: Send invitation email
     const siteUrl = Deno.env.get('SITE_BASE_URL') || 'https://preview--lovable-supabase-integration.lovable.app';
     console.log('SITE_BASE_URL from environment:', Deno.env.get('SITE_BASE_URL'));
     console.log('Using siteUrl for invitation:', siteUrl);
-    const invitationUrl = `${siteUrl}/register?first_name=${encodeURIComponent(adminFirstName)}&last_name=${encodeURIComponent(adminLastName)}&email=${encodeURIComponent(adminEmail)}&organization_name=${encodeURIComponent(organizationName)}&invitation=true`;
+    const invitationUrl = `${siteUrl}/register?first_name=${encodeURIComponent(adminFirstName)}&last_name=${encodeURIComponent(adminLastName)}&email=${encodeURIComponent(adminEmail)}&agency_name=${encodeURIComponent(agencyName)}&invitation=true`;
     console.log('Generated invitation URL:', invitationUrl);
 
     const emailResponse = await resend.emails.send({
       from: "Admin Invitation <onboarding@resend.dev>",
       to: [adminEmail],
-      subject: `You've been invited as an admin for ${organizationName}`,
+      subject: `You've been invited as an admin for ${agencyName}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h1 style="color: #333; margin-bottom: 24px;">Admin Invitation</h1>
@@ -88,7 +95,7 @@ const handler = async (req: Request): Promise<Response> => {
           </p>
           
           <p style="color: #666; font-size: 16px; line-height: 1.5; margin-bottom: 24px;">
-            You have been invited to be an administrator for <strong>${organizationName}</strong>. 
+            You have been invited to be an administrator for <strong>${agencyName}</strong>. 
             Please click the link below to create your account and get started.
           </p>
           
@@ -114,8 +121,8 @@ const handler = async (req: Request): Promise<Response> => {
 
     return new Response(JSON.stringify({ 
       success: true, 
-      message: "Organization created and invitation sent successfully",
-      organizationId: data.organization_id,
+      message: "Agency created and invitation sent successfully",
+      agencyId: data.agency_id,
       personId: data.person_id,
       invitationSent: true
     }), {
@@ -126,7 +133,7 @@ const handler = async (req: Request): Promise<Response> => {
       },
     });
   } catch (error: any) {
-    console.error("Error in create-organization function:", error);
+    console.error("Error in create-agency function:", error);
     return new Response(
       JSON.stringify({ 
         success: false,

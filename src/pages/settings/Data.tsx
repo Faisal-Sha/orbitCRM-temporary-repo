@@ -1,15 +1,14 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Database, Target, Folder, Tag, Loader2 } from "lucide-react";
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import LabelsConfig from "@/components/settings/datatab/LabelsConfig";
 import ProgramsGoalsConfig from "@/components/settings/datatab/ProgramsGoalsConfig";
 import DocumentCategoriesConfig from "@/components/settings/datatab/DocumentCategoriesConfig";
 import KPIConfig from "@/components/settings/datatab/KPIConfig";
+import { useDataLabels } from "@/hooks/useDataLabels";
+import { useProgramsGoals } from "@/hooks/useProgramsGoals";
 
 const Data = () => {
   const [showLabels, setShowLabels] = useState(false);
@@ -17,31 +16,15 @@ const Data = () => {
   const [showCategories, setShowCategories] = useState(false);
   const [showKPIs, setShowKPIs] = useState(false);
 
-  // Fetch labels data
-  const { data: labels = [], isLoading: labelsLoading } = useQuery({
-    queryKey: ['data-labels'],
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_data_labels' as any);
-      if (error) throw error;
-      return Array.isArray(data) ? data : [];
-    },
-  });
-
-  // Fetch programs data
-  const { data: programs = [], isLoading: programsLoading } = useQuery({
-    queryKey: ['programs-goals'],
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_programs_with_goals' as any);
-      if (error) throw error;
-      return Array.isArray(data) ? data : [];
-    },
-  });
+  // Hooks
+  const { labels, loading: labelsLoading } = useDataLabels();
+  const { programs, loading: programsLoading } = useProgramsGoals();
 
   // Show up to 3 items for preview
-  const displayLabels = labels.slice(0, 3);
-  const displayPrograms = programs.slice(0, 3);
+  const displayLabels = (labels ?? []).slice(0, 3);
+  const displayPrograms = (programs ?? []).slice(0, 3);
 
-  // Navigation handlers
+  // Routed views (same pattern as User & Roles)
   if (showLabels) {
     return (
       <div className="space-y-6">
@@ -140,12 +123,13 @@ const Data = () => {
 
   return (
     <div className="space-y-6">
+      {/* Labels Preview */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Tag className="h-5 w-5" />
-              Labels ({labelsLoading ? '...' : labels.length})
+              Labels ({labelsLoading ? "..." : labels?.length ?? 0})
             </CardTitle>
           </div>
         </CardHeader>
@@ -167,13 +151,14 @@ const Data = () => {
                 displayLabels.map((label) => (
                   <div key={label.id} className="flex items-center justify-between p-4 border rounded-lg">
                     <div className="flex items-center gap-3">
-                      <Badge 
+                      <Badge
                         variant="outline"
                         style={{
                           backgroundColor: label.color,
                           color: label.textColor,
-                          fontWeight: label.fontWeight
+                          fontWeight: label.fontWeight,
                         }}
+                        className="border-0"
                       >
                         {label.name}
                       </Badge>
@@ -192,12 +177,13 @@ const Data = () => {
         </CardContent>
       </Card>
 
+      {/* Programs & Goals Preview */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Target className="h-5 w-5" />
-              Programs & Goals ({programsLoading ? '...' : programs.length})
+              Programs & Goals ({programsLoading ? "..." : programs?.length ?? 0})
             </CardTitle>
           </div>
         </CardHeader>
@@ -217,10 +203,15 @@ const Data = () => {
                 </div>
               ) : (
                 displayPrograms.map((program) => (
-                  <div key={program.id} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div
+                    key={program.id}
+                    className="flex items-center justify-between p-4 border rounded-lg"
+                  >
                     <div>
                       <p className="font-medium">{program.name}</p>
-                      <p className="text-sm text-muted-foreground">{program.goals.length} goals</p>
+                      <p className="text-sm text-muted-foreground">
+                        {program.goals.length} goals
+                      </p>
                     </div>
                     <Badge variant="outline">{program.goals.length}</Badge>
                   </div>
@@ -236,6 +227,7 @@ const Data = () => {
         </CardContent>
       </Card>
 
+      {/* KPI & Doc Categories */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
@@ -245,7 +237,9 @@ const Data = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-gray-500 mb-4">Define key performance indicators and treatment outcomes</p>
+            <p className="text-sm text-gray-500 mb-4">
+              Define key performance indicators and treatment outcomes
+            </p>
             <Button onClick={() => setShowKPIs(true)}>Manage</Button>
           </CardContent>
         </Card>
@@ -258,7 +252,9 @@ const Data = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-gray-500 mb-4">Manage document categories and file types</p>
+            <p className="text-sm text-gray-500 mb-4">
+              Manage document categories and file types
+            </p>
             <Button onClick={() => setShowCategories(true)}>Manage</Button>
           </CardContent>
         </Card>

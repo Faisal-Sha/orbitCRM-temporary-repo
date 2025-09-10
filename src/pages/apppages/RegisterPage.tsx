@@ -21,7 +21,7 @@ const RegisterPage = () => {
   const { toast } = useToast();
 
   const isInvitation = searchParams.get("invitation") === "true";
-  const [organizationName, setOrganizationName] = useState("");
+  const [agencyName, setAgencyName] = useState("");
 
   useEffect(() => {
     // Pre-fill form from invitation URL parameters
@@ -29,12 +29,12 @@ const RegisterPage = () => {
       const firstNameParam = searchParams.get("first_name");
       const lastNameParam = searchParams.get("last_name");
       const emailParam = searchParams.get("email");
-      const organizationParam = searchParams.get("organization_name");
+      const agencyNameParam = searchParams.get("agency_name");
       
       if (firstNameParam) setFirstName(firstNameParam);
       if (lastNameParam) setLastName(lastNameParam);
       if (emailParam) setEmail(emailParam);
-      if (organizationParam) setOrganizationName(organizationParam);
+      if (agencyNameParam) setAgencyName(agencyNameParam);
     }
   }, [searchParams, isInvitation]);
 
@@ -148,7 +148,7 @@ const RegisterPage = () => {
                 <Label htmlFor="organization">Agency</Label>
                 <Input
                   id="organization"
-                  value={organizationName}
+                  value={agencyName}
                   readOnly
                   disabled
                   className="bg-muted text-muted-foreground"

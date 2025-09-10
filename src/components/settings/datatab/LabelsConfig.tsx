@@ -1,190 +1,169 @@
-
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Edit2, Plus, Trash2 } from "lucide-react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { Edit2, Plus, Trash2, Loader2 } from "lucide-react";
+import { useDataLabels, DataLabel } from "@/hooks/useDataLabels";
 import { toast } from "sonner";
 
-interface LabelItem {
-  id: string;
-  name: string;
-  category: string;
-  color: string;
-  textColor: 'black' | 'white';
-  fontWeight: 'normal' | 'bold';
-}
+type TextColor = "black" | "white";
+type FontWeight = "normal" | "bold";
 
-interface ApiResponse {
-  success: boolean;
-  message: string;
-  label_id?: string;
-}
-
-const LabelsConfig = () => {
-  const queryClient = useQueryClient();
+const LabelsConfig: React.FC = () => {
+  const { labels = [], loading, error, addLabel, updateLabel, deleteLabel } = useDataLabels();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [editingLabel, setEditingLabel] = useState<LabelItem | null>(null);
-  const [deletingLabel, setDeletingLabel] = useState<LabelItem | null>(null);
-  const [newLabel, setNewLabel] = useState({ 
-    name: '', 
-    category: '', 
-    color: '#3b82f6',
-    textColor: 'white' as 'black' | 'white',
-    fontWeight: 'normal' as 'normal' | 'bold'
+
+  const [editingLabel, setEditingLabel] = useState<DataLabel | null>(null);
+  const [deletingLabel, setDeletingLabel] = useState<DataLabel | null>(null);
+
+  const [newLabel, setNewLabel] = useState<{
+    name: string;
+    category: string;
+    color: string;
+    textColor: TextColor;
+    fontWeight: FontWeight;
+  }>({
+    name: "",
+    category: "",
+    color: "#3b82f6",
+    textColor: "white",
+    fontWeight: "normal",
   });
+
   const [showCustomPicker, setShowCustomPicker] = useState(false);
 
-  // Fetch labels from backend
-  const { data: labels, isLoading, error } = useQuery({
-    queryKey: ['data-labels'],
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_data_labels');
-      if (error) throw error;
-      return (data as unknown as LabelItem[]) || [];
-    }
-  });
-
-  // Add label mutation
-  const addLabelMutation = useMutation({
-    mutationFn: async (newLabelData: typeof newLabel) => {
-      const { data, error } = await supabase.rpc('add_data_label', {
-        p_label_name: newLabelData.name,
-        p_label_category: newLabelData.category,
-        p_label_color: newLabelData.color,
-        p_text_color: newLabelData.textColor,
-        p_font_weight: newLabelData.fontWeight
-      });
-      if (error) throw error;
-      const response = data as unknown as ApiResponse;
-      if (!response.success) throw new Error(response.message);
-      return response;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['data-labels'] });
-      toast.success('Label added successfully');
-      setNewLabel({ 
-        name: '', 
-        category: '', 
-        color: '#3b82f6',
-        textColor: 'white' as 'black' | 'white',
-        fontWeight: 'normal' as 'normal' | 'bold'
-      });
-      setShowCustomPicker(false);
-      setIsAddModalOpen(false);
-    },
-    onError: (error: any) => {
-      toast.error(error.message || 'Failed to add label');
-    }
-  });
-
-  // Update label mutation
-  const updateLabelMutation = useMutation({
-    mutationFn: async (labelData: LabelItem) => {
-      const { data, error } = await supabase.rpc('update_data_label', {
-        p_label_id: labelData.id,
-        p_label_name: labelData.name,
-        p_label_category: labelData.category,
-        p_label_color: labelData.color,
-        p_text_color: labelData.textColor,
-        p_font_weight: labelData.fontWeight
-      });
-      if (error) throw error;
-      const response = data as unknown as ApiResponse;
-      if (!response.success) throw new Error(response.message);
-      return response;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['data-labels'] });
-      toast.success('Label updated successfully');
-      setIsModalOpen(false);
-      setEditingLabel(null);
-    },
-    onError: (error: any) => {
-      toast.error(error.message || 'Failed to update label');
-    }
-  });
-
-  // Delete label mutation
-  const deleteLabelMutation = useMutation({
-    mutationFn: async (labelId: string) => {
-      const { data, error } = await supabase.rpc('delete_data_label', {
-        p_label_id: labelId
-      });
-      if (error) throw error;
-      const response = data as unknown as ApiResponse;
-      if (!response.success) throw new Error(response.message);
-      return response;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['data-labels'] });
-      toast.success('Label deleted successfully');
-      setIsDeleteModalOpen(false);
-      setDeletingLabel(null);
-    },
-    onError: (error: any) => {
-      toast.error(error.message || 'Failed to delete label');
-    }
-  });
+  // local pending flags (UI-only)
+  const [addPending, setAddPending] = useState(false);
+  const [editPending, setEditPending] = useState(false);
+  const [deletePending, setDeletePending] = useState(false);
 
   const colorPalette = [
-    '#ef4444', '#f97316', '#f59e0b', '#84cc16', '#22c55e',
-    '#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899'
+    "#ef4444",
+    "#f97316",
+    "#f59e0b",
+    "#84cc16",
+    "#22c55e",
+    "#10b981",
+    "#06b6d4",
+    "#3b82f6",
+    "#8b5cf6",
+    "#ec4899",
   ];
 
-  // Brighter variations of existing colors
   const brighterColorPalette = [
-    '#ff6b6b', '#ff8a5c', '#ffc947', '#a3e635', '#4ade80',
-    '#34d399', '#22d3ee', '#60a5fa', '#a78bfa', '#f472b6'
+    "#ff6b6b",
+    "#ff8a5c",
+    "#ffc947",
+    "#a3e635",
+    "#4ade80",
+    "#34d399",
+    "#22d3ee",
+    "#60a5fa",
+    "#a78bfa",
+    "#f472b6",
   ];
 
-  const handleEdit = (label: LabelItem) => {
+  const getLabelStyle = (
+    color: string,
+    textColor: TextColor = "white",
+    fontWeight: FontWeight = "normal"
+  ) => ({
+    backgroundColor: color,
+    color: textColor,
+    fontWeight,
+  });
+
+  // —— Edit
+  const handleEdit = (label: DataLabel) => {
     setEditingLabel({ ...label });
     setIsModalOpen(true);
   };
 
-  const handleSave = () => {
-    if (editingLabel) {
-      updateLabelMutation.mutate(editingLabel);
-    }
-  };
-
-  const handleAdd = () => {
-    if (!newLabel.name.trim()) {
-      toast.error('Label name is required');
+  const handleSave = async () => {
+    if (!editingLabel) return;
+    if (!editingLabel.name.trim()) {
+      toast.error("Label name is required");
       return;
     }
-    addLabelMutation.mutate(newLabel);
+    setEditPending(true);
+    try {
+      const res = await updateLabel(editingLabel.id, {
+        name: editingLabel.name,
+        category: editingLabel.category ?? "",
+        color: editingLabel.color,
+        textColor: (editingLabel.textColor as TextColor) ?? "white",
+        fontWeight: (editingLabel.fontWeight as FontWeight) ?? "normal",
+      });
+      if (res.success) {
+        setIsModalOpen(false);
+        setEditingLabel(null);
+      }
+    } finally {
+      setEditPending(false);
+    }
   };
 
-  const handleDeleteClick = (label: LabelItem) => {
+  // —— Add
+  const handleAdd = async () => {
+    if (!newLabel.name.trim()) {
+      toast.error("Label name is required");
+      return;
+    }
+    setAddPending(true);
+    try {
+      const res = await addLabel({
+        name: newLabel.name,
+        category: newLabel.category,
+        color: newLabel.color,
+        textColor: newLabel.textColor,
+        fontWeight: newLabel.fontWeight,
+      });
+      if (res.success) {
+        setNewLabel({
+          name: "",
+          category: "",
+          color: "#3b82f6",
+          textColor: "white",
+          fontWeight: "normal",
+        });
+        setShowCustomPicker(false);
+        setIsAddModalOpen(false);
+      }
+    } finally {
+      setAddPending(false);
+    }
+  };
+
+  // —— Delete
+  const handleDeleteClick = (label: DataLabel) => {
     setDeletingLabel(label);
     setIsDeleteModalOpen(true);
   };
 
-  const confirmDelete = () => {
-    if (deletingLabel) {
-      deleteLabelMutation.mutate(deletingLabel.id);
+  const confirmDelete = async () => {
+    if (!deletingLabel) return;
+    setDeletePending(true);
+    try {
+      const res = await deleteLabel(deletingLabel.id);
+      if (res.success) {
+        setIsDeleteModalOpen(false);
+        setDeletingLabel(null);
+      }
+    } finally {
+      setDeletePending(false);
     }
   };
 
-  const getLabelStyle = (color: string, textColor: 'black' | 'white' = 'white', fontWeight: 'normal' | 'bold' = 'normal') => ({
-    backgroundColor: color,
-    color: textColor,
-    fontWeight: fontWeight
-  });
-
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="space-y-4">
-        <div className="text-center py-8">
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-5 w-5 animate-spin mr-2" />
           <p className="text-sm text-muted-foreground">Loading labels...</p>
         </div>
       </div>
@@ -210,8 +189,12 @@ const LabelsConfig = () => {
           labels.map((label) => (
             <div key={label.id} className="flex items-center justify-between p-3 border rounded">
               <div className="flex items-center gap-3">
-                <Badge 
-                  style={getLabelStyle(label.color, label.textColor, label.fontWeight)}
+                <Badge
+                  style={getLabelStyle(
+                    label.color,
+                    (label.textColor as TextColor) ?? "white",
+                    (label.fontWeight as FontWeight) ?? "normal"
+                  )}
                   className="border-0"
                 >
                   {label.name}
@@ -271,7 +254,7 @@ const LabelsConfig = () => {
                         key={color}
                         type="button"
                         className={`w-8 h-8 rounded-full border-2 ${
-                          newLabel.color === color ? 'border-gray-900' : 'border-gray-300'
+                          newLabel.color === color ? "border-gray-900" : "border-gray-300"
                         }`}
                         style={{ backgroundColor: color }}
                         onClick={() => setNewLabel({ ...newLabel, color })}
@@ -287,7 +270,7 @@ const LabelsConfig = () => {
                         key={color}
                         type="button"
                         className={`w-8 h-8 rounded-full border-2 ${
-                          newLabel.color === color ? 'border-gray-900' : 'border-gray-300'
+                          newLabel.color === color ? "border-gray-900" : "border-gray-300"
                         }`}
                         style={{ backgroundColor: color }}
                         onClick={() => setNewLabel({ ...newLabel, color })}
@@ -325,17 +308,17 @@ const LabelsConfig = () => {
                   <div className="flex gap-2">
                     <Button
                       type="button"
-                      variant={newLabel.textColor === 'white' ? "default" : "outline"}
+                      variant={newLabel.textColor === "white" ? "default" : "outline"}
                       size="sm"
-                      onClick={() => setNewLabel({ ...newLabel, textColor: 'white' })}
+                      onClick={() => setNewLabel({ ...newLabel, textColor: "white" })}
                     >
                       White
                     </Button>
                     <Button
                       type="button"
-                      variant={newLabel.textColor === 'black' ? "default" : "outline"}
+                      variant={newLabel.textColor === "black" ? "default" : "outline"}
                       size="sm"
-                      onClick={() => setNewLabel({ ...newLabel, textColor: 'black' })}
+                      onClick={() => setNewLabel({ ...newLabel, textColor: "black" })}
                     >
                       Black
                     </Button>
@@ -346,17 +329,17 @@ const LabelsConfig = () => {
                   <div className="flex gap-2">
                     <Button
                       type="button"
-                      variant={newLabel.fontWeight === 'normal' ? "default" : "outline"}
+                      variant={newLabel.fontWeight === "normal" ? "default" : "outline"}
                       size="sm"
-                      onClick={() => setNewLabel({ ...newLabel, fontWeight: 'normal' })}
+                      onClick={() => setNewLabel({ ...newLabel, fontWeight: "normal" })}
                     >
                       Normal
                     </Button>
                     <Button
                       type="button"
-                      variant={newLabel.fontWeight === 'bold' ? "default" : "outline"}
+                      variant={newLabel.fontWeight === "bold" ? "default" : "outline"}
                       size="sm"
-                      onClick={() => setNewLabel({ ...newLabel, fontWeight: 'bold' })}
+                      onClick={() => setNewLabel({ ...newLabel, fontWeight: "bold" })}
                     >
                       Bold
                     </Button>
@@ -367,19 +350,22 @@ const LabelsConfig = () => {
             <div>
               <Label>Sample Label</Label>
               <div className="mt-2">
-                <Badge 
+                <Badge
                   style={getLabelStyle(newLabel.color, newLabel.textColor, newLabel.fontWeight)}
                   className="border-0"
                 >
-                  {newLabel.name || 'Label Name'}
+                  {newLabel.name || "Label Name"}
                 </Badge>
               </div>
             </div>
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setIsAddModalOpen(false)}>
+              <Button variant="outline" onClick={() => setIsAddModalOpen(false)} disabled={addPending}>
                 Cancel
               </Button>
-              <Button onClick={handleAdd}>Add Label</Button>
+              <Button onClick={handleAdd} disabled={addPending}>
+                {addPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                Add Label
+              </Button>
             </div>
           </div>
         </DialogContent>
@@ -398,21 +384,25 @@ const LabelsConfig = () => {
                 <Input
                   id="edit-label-name"
                   value={editingLabel.name}
-                  onChange={(e) => setEditingLabel({
-                    ...editingLabel,
-                    name: e.target.value
-                  })}
+                  onChange={(e) =>
+                    setEditingLabel({
+                      ...editingLabel,
+                      name: e.target.value,
+                    })
+                  }
                 />
               </div>
               <div>
                 <Label htmlFor="edit-category">Category</Label>
                 <Input
                   id="edit-category"
-                  value={editingLabel.category}
-                  onChange={(e) => setEditingLabel({
-                    ...editingLabel,
-                    category: e.target.value
-                  })}
+                  value={editingLabel.category ?? ""}
+                  onChange={(e) =>
+                    setEditingLabel({
+                      ...editingLabel,
+                      category: e.target.value,
+                    })
+                  }
                 />
               </div>
               <div>
@@ -426,7 +416,7 @@ const LabelsConfig = () => {
                           key={color}
                           type="button"
                           className={`w-8 h-8 rounded-full border-2 ${
-                            editingLabel.color === color ? 'border-gray-900' : 'border-gray-300'
+                            editingLabel.color === color ? "border-gray-900" : "border-gray-300"
                           }`}
                           style={{ backgroundColor: color }}
                           onClick={() => setEditingLabel({ ...editingLabel, color })}
@@ -442,7 +432,7 @@ const LabelsConfig = () => {
                           key={color}
                           type="button"
                           className={`w-8 h-8 rounded-full border-2 ${
-                            editingLabel.color === color ? 'border-gray-900' : 'border-gray-300'
+                            editingLabel.color === color ? "border-gray-900" : "border-gray-300"
                           }`}
                           style={{ backgroundColor: color }}
                           onClick={() => setEditingLabel({ ...editingLabel, color })}
@@ -464,7 +454,9 @@ const LabelsConfig = () => {
                         <input
                           type="color"
                           value={editingLabel.color}
-                          onChange={(e) => setEditingLabel({ ...editingLabel, color: e.target.value })}
+                          onChange={(e) =>
+                            setEditingLabel({ ...editingLabel, color: e.target.value })
+                          }
                           className="w-10 h-8 border rounded cursor-pointer"
                         />
                       )}
@@ -480,17 +472,31 @@ const LabelsConfig = () => {
                     <div className="flex gap-2">
                       <Button
                         type="button"
-                        variant={editingLabel.textColor === 'white' ? "default" : "outline"}
+                        variant={
+                          (editingLabel.textColor as TextColor) === "white" ? "default" : "outline"
+                        }
                         size="sm"
-                        onClick={() => setEditingLabel({ ...editingLabel, textColor: 'white' })}
+                        onClick={() =>
+                          setEditingLabel({
+                            ...editingLabel,
+                            textColor: "white",
+                          })
+                        }
                       >
                         White
                       </Button>
                       <Button
                         type="button"
-                        variant={editingLabel.textColor === 'black' ? "default" : "outline"}
+                        variant={
+                          (editingLabel.textColor as TextColor) === "black" ? "default" : "outline"
+                        }
                         size="sm"
-                        onClick={() => setEditingLabel({ ...editingLabel, textColor: 'black' })}
+                        onClick={() =>
+                          setEditingLabel({
+                            ...editingLabel,
+                            textColor: "black",
+                          })
+                        }
                       >
                         Black
                       </Button>
@@ -501,17 +507,35 @@ const LabelsConfig = () => {
                     <div className="flex gap-2">
                       <Button
                         type="button"
-                        variant={editingLabel.fontWeight === 'normal' ? "default" : "outline"}
+                        variant={
+                          (editingLabel.fontWeight as FontWeight) === "normal"
+                            ? "default"
+                            : "outline"
+                        }
                         size="sm"
-                        onClick={() => setEditingLabel({ ...editingLabel, fontWeight: 'normal' })}
+                        onClick={() =>
+                          setEditingLabel({
+                            ...editingLabel,
+                            fontWeight: "normal",
+                          })
+                        }
                       >
                         Normal
                       </Button>
                       <Button
                         type="button"
-                        variant={editingLabel.fontWeight === 'bold' ? "default" : "outline"}
+                        variant={
+                          (editingLabel.fontWeight as FontWeight) === "bold"
+                            ? "default"
+                            : "outline"
+                        }
                         size="sm"
-                        onClick={() => setEditingLabel({ ...editingLabel, fontWeight: 'bold' })}
+                        onClick={() =>
+                          setEditingLabel({
+                            ...editingLabel,
+                            fontWeight: "bold",
+                          })
+                        }
                       >
                         Bold
                       </Button>
@@ -522,8 +546,12 @@ const LabelsConfig = () => {
               <div>
                 <Label>Sample Label</Label>
                 <div className="mt-2">
-                  <Badge 
-                    style={getLabelStyle(editingLabel.color, editingLabel.textColor, editingLabel.fontWeight)}
+                  <Badge
+                    style={getLabelStyle(
+                      editingLabel.color,
+                      (editingLabel.textColor as TextColor) ?? "white",
+                      (editingLabel.fontWeight as FontWeight) ?? "normal"
+                    )}
                     className="border-0"
                   >
                     {editingLabel.name}
@@ -531,10 +559,13 @@ const LabelsConfig = () => {
                 </div>
               </div>
               <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setIsModalOpen(false)}>
+                <Button variant="outline" onClick={() => setIsModalOpen(false)} disabled={editPending}>
                   Cancel
                 </Button>
-                <Button onClick={handleSave}>Save Changes</Button>
+                <Button onClick={handleSave} disabled={editPending}>
+                  {editPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                  Save Changes
+                </Button>
               </div>
             </div>
           )}
@@ -548,12 +579,16 @@ const LabelsConfig = () => {
             <DialogTitle>Delete Label</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <p>Are you sure you want to delete the label "{deletingLabel?.name}"? This action cannot be undone.</p>
+            <p>
+              Are you sure you want to delete the label "{deletingLabel?.name}"? This action cannot
+              be undone.
+            </p>
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setIsDeleteModalOpen(false)}>
+              <Button variant="outline" onClick={() => setIsDeleteModalOpen(false)} disabled={deletePending}>
                 Cancel
               </Button>
-              <Button variant="destructive" onClick={confirmDelete}>
+              <Button variant="destructive" onClick={confirmDelete} disabled={deletePending}>
+                {deletePending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                 Delete
               </Button>
             </div>

@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import DeleteConfirmationDialog from "./DeleteConfirmationDialog";
 import { RoleLabel } from "@/components/ui/role-label";
@@ -35,7 +34,7 @@ interface UserRolesProps {
 
 const UserRoles: React.FC<UserRolesProps> = ({ onBack }) => {
   const { roles, loading, addRole, updateRole, deleteRole } = useUserRoles();
-  const { data: labels = [], isLoading: labelsLoading } = useDataLabels();
+  const { labels = [], loading: labelsLoading } = useDataLabels();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);

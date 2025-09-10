@@ -1,6 +1,6 @@
 project_id = "zihgewzxoeozgfhyczhf"
 
-[functions.create-organization]
+[functions.create-agency]
 verify_jwt = true
 
 [functions.update-personal-profile]

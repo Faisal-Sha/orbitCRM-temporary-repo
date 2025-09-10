@@ -1,233 +1,178 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Edit2, Plus, Trash2, X } from "lucide-react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { Edit2, Plus, Trash2, X, Loader2 } from "lucide-react";
+import { useProgramsGoals } from "@/hooks/useProgramsGoals";
 
-interface Program {
-  id: string;
-  name: string;
-  goals: string[];
-}
-
-const ProgramsGoalsConfig = () => {
-  const queryClient = useQueryClient();
-
-  // Fetch programs data
-  const { data: programs = [], isLoading } = useQuery({
-    queryKey: ['programs-goals'],
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_programs_with_goals' as any);
-      if (error) throw error;
-      return Array.isArray(data) ? data : [];
-    },
-  });
-
-  // Mutations
-  const addProgramMutation = useMutation({
-    mutationFn: async ({ name, goals }: { name: string; goals: string[] }) => {
-      const { data, error } = await supabase.rpc('add_program_with_goals' as any, {
-        p_program_name: name,
-        p_goals: goals.map(goal => ({ name: goal }))
-      });
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['programs-goals'] });
-      toast.success('Program added successfully');
-    },
-    onError: (error) => {
-      toast.error('Failed to add program: ' + error.message);
-    },
-  });
-
-  const updateProgramMutation = useMutation({
-    mutationFn: async ({ id, name, goals }: { id: string; name: string; goals: string[] }) => {
-      const { data, error } = await supabase.rpc('update_program_with_goals' as any, {
-        p_program_id: id,
-        p_program_name: name,
-        p_goals: goals.map(goal => ({ name: goal }))
-      });
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['programs-goals'] });
-      toast.success('Program updated successfully');
-    },
-    onError: (error) => {
-      toast.error('Failed to update program: ' + error.message);
-    },
-  });
-
-  const deleteProgramMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { data, error } = await supabase.rpc('delete_program_with_goals' as any, {
-        p_program_id: id
-      });
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['programs-goals'] });
-      toast.success('Program deleted successfully');
-    },
-    onError: (error) => {
-      toast.error('Failed to delete program: ' + error.message);
-    },
-  });
+const ProgramsGoalsConfig: React.FC = () => {
+  const {
+    programs,
+    loading,
+    saving,
+    addProgram,
+    updateProgram,
+    deleteProgram,
+  } = useProgramsGoals();
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [editingProgram, setEditingProgram] = useState<Program | null>(null);
-  const [deletingProgram, setDeletingProgram] = useState<Program | null>(null);
-  const [newProgram, setNewProgram] = useState({ name: '', goals: [''] });
-  const [newGoal, setNewGoal] = useState('');
 
-  const handleEdit = (program: Program) => {
-    setEditingProgram({ ...program });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState<string>("");
+  const [editingGoals, setEditingGoals] = useState<string[]>([]);
+  const [newGoal, setNewGoal] = useState("");
+
+  const [addName, setAddName] = useState("");
+  const [addGoals, setAddGoals] = useState<string[]>([""]);
+  const [addNewGoal, setAddNewGoal] = useState("");
+
+  const [deletingProgramId, setDeletingProgramId] = useState<string | null>(null);
+  const [deletingProgramName, setDeletingProgramName] = useState<string>("");
+
+  // --- Edit flow
+  const handleOpenEdit = (p: { id: string; name: string; goals: string[] }) => {
+    setEditingId(p.id);
+    setEditingName(p.name);
+    setEditingGoals(p.goals.slice());
     setIsEditModalOpen(true);
   };
 
-  const handleSave = () => {
-    if (editingProgram) {
-      updateProgramMutation.mutate({
-        id: editingProgram.id,
-        name: editingProgram.name,
-        goals: editingProgram.goals
-      });
+  const handleSaveEdit = async () => {
+    if (!editingId) return;
+
+     // include any pending newGoal if the user didn't hit +
+  const mergedGoals = [
+    ...editingGoals.filter(g => g.trim() !== ""),
+    ...(newGoal.trim() ? [newGoal.trim()] : []),
+  ];
+    const res = await updateProgram(editingId, editingName, mergedGoals);
+    if (res.success) {
       setIsEditModalOpen(false);
-      setEditingProgram(null);
+      setEditingId(null);
+      setEditingName("");
+      setEditingGoals([]);
+      setNewGoal("");
     }
   };
 
-  const handleAdd = () => {
-    const validGoals = newProgram.goals.filter(goal => goal.trim() !== '');
-    if (newProgram.name.trim() && validGoals.length > 0) {
-      addProgramMutation.mutate({
-        name: newProgram.name,
-        goals: validGoals
-      });
-      setNewProgram({ name: '', goals: [''] });
+  const handleRemoveEditGoal = (index: number) => {
+    setEditingGoals((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleAddEditGoal = () => {
+    if (!newGoal.trim()) return;
+    setEditingGoals((prev) => [...prev.filter((g) => g.trim() !== ""), newGoal.trim()]);
+    setNewGoal("");
+  };
+
+  // --- Add flow
+  const handleOpenAdd = () => {
+    setAddName("");
+    setAddGoals([""]);
+    setAddNewGoal("");
+    setIsAddModalOpen(true);
+  };
+
+  const handleAddProgram = async () => {
+    // const valid = addGoals.filter((g) => g.trim() !== "");
+    const merged = [
+      ...addGoals.filter(g => g.trim() !== ""),
+      ...(addNewGoal.trim() ? [addNewGoal.trim()] : []),
+    ];
+    const res = await addProgram(addName, merged);
+    if (res.success) {
       setIsAddModalOpen(false);
-    } else {
-      toast.error('Please provide a program name and at least one goal');
+      setAddName("");
+      setAddGoals([""]);
+      setAddNewGoal("");
     }
   };
 
-  const handleDeleteClick = (program: Program) => {
-    setDeletingProgram(program);
+  const handleRemoveAddGoal = (index: number) => {
+    setAddGoals((prev) => {
+      const next = prev.filter((_, i) => i !== index);
+      return next.length ? next : [""];
+    });
+  };
+
+  const handleUpdateAddGoal = (index: number, value: string) => {
+    setAddGoals((prev) => {
+      const next = prev.slice();
+      next[index] = value;
+      return next;
+    });
+  };
+
+  const handleAppendAddGoal = () => {
+    if (!addNewGoal.trim()) return;
+    setAddGoals((prev) => [...prev.filter((g) => g.trim() !== ""), addNewGoal.trim(), ""]);
+    setAddNewGoal("");
+  };
+
+  // --- Delete flow
+  const handleOpenDelete = (p: { id: string; name: string }) => {
+    setDeletingProgramId(p.id);
+    setDeletingProgramName(p.name);
     setIsDeleteModalOpen(true);
   };
 
-  const confirmDelete = () => {
-    if (deletingProgram) {
-      deleteProgramMutation.mutate(deletingProgram.id);
+  const confirmDelete = async () => {
+    if (!deletingProgramId) return;
+    const res = await deleteProgram(deletingProgramId);
+    if (res.success) {
       setIsDeleteModalOpen(false);
-      setDeletingProgram(null);
+      setDeletingProgramId(null);
+      setDeletingProgramName("");
     }
   };
 
-  const addGoalToEditingProgram = () => {
-    if (editingProgram && newGoal.trim()) {
-      setEditingProgram({
-        ...editingProgram,
-        goals: [...editingProgram.goals, newGoal.trim()]
-      });
-      setNewGoal('');
-    }
-  };
-
-  const removeGoalFromEditingProgram = (index: number) => {
-    if (editingProgram) {
-      setEditingProgram({
-        ...editingProgram,
-        goals: editingProgram.goals.filter((_, i) => i !== index)
-      });
-    }
-  };
-
-  const addGoalToNewProgram = () => {
-    if (newGoal.trim()) {
-      setNewProgram({
-        ...newProgram,
-        goals: [...newProgram.goals.filter(g => g.trim() !== ''), newGoal.trim(), '']
-      });
-      setNewGoal('');
-    }
-  };
-
-  const removeGoalFromNewProgram = (index: number) => {
-    const updatedGoals = newProgram.goals.filter((_, i) => i !== index);
-    if (updatedGoals.length === 0) {
-      updatedGoals.push('');
-    }
-    setNewProgram({
-      ...newProgram,
-      goals: updatedGoals
-    });
-  };
-
-  const updateNewProgramGoal = (index: number, value: string) => {
-    const updatedGoals = [...newProgram.goals];
-    updatedGoals[index] = value;
-    setNewProgram({
-      ...newProgram,
-      goals: updatedGoals
-    });
-  };
-
-  if (isLoading) {
+  if (loading) {
     return (
-      <div className="space-y-4">
-        <div className="text-center py-8">
-          <p className="text-sm text-muted-foreground">Loading programs & goals...</p>
-        </div>
+      <div className="flex items-center justify-center py-10">
+        <Loader2 className="h-5 w-5 animate-spin mr-2" />
+        Loading programs & goals...
       </div>
     );
-  }
+    }
 
   return (
     <div className="space-y-4">
       {programs.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-center py-8">No programs & goals configured yet.</p>
+        <p className="text-sm text-muted-foreground text-center py-8">
+          No programs & goals configured yet.
+        </p>
       ) : (
-        programs.map((program) => (
-          <div key={program.id} className="p-3 border rounded">
+        programs.map((p) => (
+          <div key={p.id} className="p-3 border rounded">
             <div className="flex items-center justify-between mb-2">
-              <p className="font-medium">{program.name}</p>
+              <p className="font-medium">{p.name}</p>
               <div className="flex gap-2">
-                <Button variant="ghost" size="sm" onClick={() => handleEdit(program)}>
+                <Button variant="ghost" size="sm" onClick={() => handleOpenEdit(p)}>
                   <Edit2 className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => handleDeleteClick(program)}>
+                <Button variant="ghost" size="sm" onClick={() => handleOpenDelete(p)}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              {program.goals.map((goal, index) => (
-                <Badge key={index} variant="outline">{goal}</Badge>
+              {p.goals.map((g, i) => (
+                <Badge key={i} variant="outline">
+                  {g}
+                </Badge>
               ))}
             </div>
           </div>
         ))
       )}
-      
-      <Button 
-        onClick={() => setIsAddModalOpen(true)} 
-        className="w-full"
-        disabled={addProgramMutation.isPending}
-      >
+
+      <Button onClick={handleOpenAdd} className="w-full" disabled={saving}>
         <Plus className="h-4 w-4 mr-2" />
-        {addProgramMutation.isPending ? 'Adding...' : 'Add Program'}
+        {saving ? "Working..." : "Add Program"}
       </Button>
 
       {/* Edit Program Modal */}
@@ -236,63 +181,56 @@ const ProgramsGoalsConfig = () => {
           <DialogHeader>
             <DialogTitle>Edit Program</DialogTitle>
           </DialogHeader>
-          {editingProgram && (
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="edit-program-name">Program Name</Label>
-                <Input
-                  id="edit-program-name"
-                  value={editingProgram.name}
-                  onChange={(e) => setEditingProgram({
-                    ...editingProgram,
-                    name: e.target.value
-                  })}
-                />
-              </div>
-              <div>
-                <Label>Goals</Label>
-                <div className="space-y-2">
-                  {editingProgram.goals.map((goal, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <Badge variant="outline" className="flex-1 justify-between">
-                        {goal}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeGoalFromEditingProgram(index)}
-                          className="h-auto p-1 ml-2"
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </Badge>
-                    </div>
-                  ))}
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Add new goal"
-                      value={newGoal}
-                      onChange={(e) => setNewGoal(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && addGoalToEditingProgram()}
-                    />
-                    <Button onClick={addGoalToEditingProgram} size="sm">
-                      <Plus className="h-4 w-4" />
-                    </Button>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="edit-program-name">Program Name</Label>
+              <Input
+                id="edit-program-name"
+                value={editingName}
+                onChange={(e) => setEditingName(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label>Goals</Label>
+              <div className="space-y-2">
+                {editingGoals.map((g, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <Badge variant="outline" className="flex-1 justify-between">
+                      {g}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRemoveEditGoal(idx)}
+                        className="h-auto p-1 ml-2"
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </Badge>
                   </div>
+                ))}
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Add new goal"
+                    value={newGoal}
+                    onChange={(e) => setNewGoal(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddEditGoal()}
+                  />
+                  <Button onClick={handleAddEditGoal} size="sm">
+                    <Plus className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={handleSave}
-                  disabled={updateProgramMutation.isPending}
-                >
-                  {updateProgramMutation.isPending ? 'Saving...' : 'Save Changes'}
-                </Button>
-              </div>
             </div>
-          )}
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setIsEditModalOpen(false)} disabled={saving}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveEdit} disabled={saving}>
+                {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                Save Changes
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -307,26 +245,22 @@ const ProgramsGoalsConfig = () => {
               <Label htmlFor="new-program-name">Program Name</Label>
               <Input
                 id="new-program-name"
-                value={newProgram.name}
-                onChange={(e) => setNewProgram({ ...newProgram, name: e.target.value })}
+                value={addName}
+                onChange={(e) => setAddName(e.target.value)}
               />
             </div>
             <div>
               <Label>Goals</Label>
               <div className="space-y-2">
-                {newProgram.goals.map((goal, index) => (
+                {addGoals.map((goal, index) => (
                   <div key={index} className="flex items-center gap-2">
                     <Input
                       placeholder="Goal name"
                       value={goal}
-                      onChange={(e) => updateNewProgramGoal(index, e.target.value)}
+                      onChange={(e) => handleUpdateAddGoal(index, e.target.value)}
                     />
-                    {newProgram.goals.length > 1 && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeGoalFromNewProgram(index)}
-                      >
+                    {addGoals.length > 1 && (
+                      <Button variant="ghost" size="sm" onClick={() => handleRemoveAddGoal(index)}>
                         <X className="h-4 w-4" />
                       </Button>
                     )}
@@ -335,25 +269,23 @@ const ProgramsGoalsConfig = () => {
                 <div className="flex gap-2">
                   <Input
                     placeholder="Add new goal"
-                    value={newGoal}
-                    onChange={(e) => setNewGoal(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && addGoalToNewProgram()}
+                    value={addNewGoal}
+                    onChange={(e) => setAddNewGoal(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleAppendAddGoal()}
                   />
-                  <Button onClick={addGoalToNewProgram} size="sm">
+                  <Button onClick={handleAppendAddGoal} size="sm">
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
             </div>
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setIsAddModalOpen(false)}>
+              <Button variant="outline" onClick={() => setIsAddModalOpen(false)} disabled={saving}>
                 Cancel
               </Button>
-              <Button 
-                onClick={handleAdd}
-                disabled={addProgramMutation.isPending}
-              >
-                {addProgramMutation.isPending ? 'Adding...' : 'Add Program'}
+              <Button onClick={handleAddProgram} disabled={saving || !addName.trim()}>
+                {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                Add Program
               </Button>
             </div>
           </div>
@@ -367,17 +299,17 @@ const ProgramsGoalsConfig = () => {
             <DialogTitle>Delete Program</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <p>Are you sure you want to delete the program "{deletingProgram?.name}"? This action cannot be undone.</p>
+            <p>
+              Are you sure you want to delete the program "{deletingProgramName}"? This action
+              cannot be undone.
+            </p>
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setIsDeleteModalOpen(false)}>
+              <Button variant="outline" onClick={() => setIsDeleteModalOpen(false)} disabled={saving}>
                 Cancel
               </Button>
-              <Button 
-                variant="destructive" 
-                onClick={confirmDelete}
-                disabled={deleteProgramMutation.isPending}
-              >
-                {deleteProgramMutation.isPending ? 'Deleting...' : 'Delete'}
+              <Button variant="destructive" onClick={confirmDelete} disabled={saving}>
+                {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                Delete
               </Button>
             </div>
           </div>

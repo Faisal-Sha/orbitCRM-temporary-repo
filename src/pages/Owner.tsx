@@ -1,8 +1,7 @@
 
-import React from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PageContainer from "@/components/PageContainer";
-import OrganizationsManagement from "./owner/OrganizationsManagement";
+import AgencyManagement from "./owner/AgencyManagement";
 
 const Owner = () => {
   return (
@@ -15,7 +14,7 @@ const Owner = () => {
           <TabsTrigger value="organizations">Agencies</TabsTrigger>
         </TabsList>
         <TabsContent value="organizations" className="mt-6">
-          <OrganizationsManagement />
+          <AgencyManagement />
         </TabsContent>
       </Tabs>
     </PageContainer>

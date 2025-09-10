@@ -8,10 +8,10 @@ export interface Admin {
   email: string;
 }
 
-export interface Organization {
+export interface Agency {
   id: string;
-  organization_name: string;
-  organization_state: string | null;
+  agency_name: string;
+  agency_state: string | null;
   status: "active" | "inactive" | "deleted";
   created_at: string;
   admins: Admin[];
@@ -34,13 +34,13 @@ export interface FormData {
   status: "active" | "inactive";
 }
 
-export const useOrganizations = () => {
-  const [organizations, setOrganizations] = useState<Organization[]>([]);
+export const useAgencies = () => {
+  const [agencies, setAgencies] = useState<Agency[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
+  const [selectedAgency, setSelectedAgency] = useState<Agency | null>(null);
   const [formData, setFormData] = useState<FormData>({
     name: "",
     state: "",
@@ -62,34 +62,34 @@ export const useOrganizations = () => {
     "Wisconsin", "Wyoming"
   ];
 
-  const fetchOrganizations = async () => {
+  const fetchAgencies = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase.rpc('get_organizations_with_admins');
+      const { data, error } = await supabase.rpc('get_agencies_with_admins');
       
       if (error) {
-        console.error('Error fetching organizations:', error);
+        console.error('Error fetching agencies:', error);
         toast({
           title: "Error",
-          description: "Failed to fetch organizations",
+          description: "Failed to fetch agencies",
           variant: "destructive",
         });
         return;
       }
 
-      // Ensure each organization has organization_state field, defaulting to null if missing
-      const normalizedData = (data || []).map((org: any) => {
-        console.log('Raw org from DB:', org);
-        console.log('org.admins type:', typeof org.admins);
-        console.log('org.admins value:', org.admins);
-        console.log('org.admins.length:', org.admins?.length);
-        console.log('Array.isArray(org.admins):', Array.isArray(org.admins));
+      // Ensure each agency has agency_state field, defaulting to null if missing
+      const normalizedData = (data || []).map((agency: any) => {
+        console.log('Raw agency from DB:', agency);
+        console.log('agency.admins type:', typeof agency.admins);
+        console.log('agency.admins value:', agency.admins);
+        console.log('agency.admins.length:', agency.admins?.length);
+        console.log('Array.isArray(org.admins):', Array.isArray(agency.admins));
         
         // Parse admins if it's a JSON string
-        let parsedAdmins = org.admins;
-        if (typeof org.admins === 'string') {
+        let parsedAdmins = agency.admins;
+        if (typeof agency.admins === 'string') {
           try {
-            parsedAdmins = JSON.parse(org.admins);
+            parsedAdmins = JSON.parse(agency.admins);
             console.log('Parsed admins from string:', parsedAdmins);
           } catch (e) {
             console.error('Failed to parse admins JSON:', e);
@@ -97,25 +97,25 @@ export const useOrganizations = () => {
           }
         }
         
-        const normalizedOrg = {
-          ...org,
-          organization_state: org.organization_state || null,
+        const normalizedAgency = {
+          ...agency,
+          agency_state: agency.agency_state || null,
           admins: Array.isArray(parsedAdmins) ? parsedAdmins : []
         };
         
-        console.log('Normalized org.admins:', normalizedOrg.admins);
-        console.log('Normalized org.admins.length:', normalizedOrg.admins.length);
+        console.log('Normalized agency.admins:', normalizedAgency.admins);
+        console.log('Normalized agency.admins.length:', normalizedAgency.admins.length);
         
-        return normalizedOrg;
-      }) as Organization[];
+        return normalizedAgency;
+      }) as Agency[];
 
       console.log('Final normalized data:', normalizedData);
-      setOrganizations(normalizedData);
+      setAgencies(normalizedData);
     } catch (error) {
       console.error('Error:', error);
       toast({
         title: "Error",
-        description: "Failed to fetch organizations",
+        description: "Failed to fetch agencies",
         variant: "destructive",
       });
     } finally {
@@ -124,7 +124,7 @@ export const useOrganizations = () => {
   };
 
   useEffect(() => {
-    fetchOrganizations();
+    fetchAgencies();
   }, []);
 
   const handleAdd = async () => {
@@ -142,17 +142,17 @@ export const useOrganizations = () => {
       if (!user) {
         toast({
           title: "Error",
-          description: "You must be logged in to create organizations",
+          description: "You must be logged in to create agencies",
           variant: "destructive",
         });
         return;
       }
 
-      const { data, error } = await supabase.functions.invoke('create-organization', {
+      const { data, error } = await supabase.functions.invoke('create-agency', {
         body: {
-          organizationName: formData.name,
-          organizationState: formData.state,
-          organizationStatus: formData.status,
+          agencyName: formData.name,
+          agencyState: formData.state,
+          agencyStatus: formData.status,
           adminFirstName: formData.adminFirstName,
           adminLastName: formData.adminLastName,
           adminEmail: formData.adminEmail,
@@ -161,10 +161,10 @@ export const useOrganizations = () => {
       });
 
       if (error) {
-        console.error('Error creating organization:', error);
+        console.error('Error creating agency:', error);
         toast({
           title: "Error",
-          description: "Failed to create organization",
+          description: "Failed to create agency",
           variant: "destructive",
         });
         return;
@@ -172,7 +172,7 @@ export const useOrganizations = () => {
 
       toast({
         title: "Success",
-        description: "Organization created and invitation email sent successfully",
+        description: "Agency created and invitation email sent successfully",
       });
 
       setFormData({ 
@@ -184,19 +184,19 @@ export const useOrganizations = () => {
         status: "active" 
       });
       setIsAddDialogOpen(false);
-      fetchOrganizations();
+      fetchAgencies();
     } catch (error) {
       console.error('Error:', error);
       toast({
         title: "Error",
-        description: "Failed to create organization",
+        description: "Failed to create agency",
         variant: "destructive",
       });
     }
   };
 
   const handleEdit = async () => {
-    if (!selectedOrg || !formData.name || !formData.state || !formData.adminFirstName || !formData.adminLastName || !formData.adminEmail) {
+    if (!selectedAgency || !formData.name || !formData.state || !formData.adminFirstName || !formData.adminLastName || !formData.adminEmail) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
@@ -210,17 +210,17 @@ export const useOrganizations = () => {
       if (!user) {
         toast({
           title: "Error",
-          description: "You must be logged in to update organizations",
+          description: "You must be logged in to update agencies",
           variant: "destructive",
         });
         return;
       }
 
-      const { data, error } = await supabase.rpc('update_organization_with_admin', {
-        org_id: selectedOrg.id,
-        organization_name: formData.name,
-        organization_state: formData.state,
-        organization_status: formData.status as "active" | "inactive" | "deleted",
+      const { data, error } = await supabase.rpc('update_agency_with_admin', {
+        agency_id: selectedAgency.id,
+        agency_name: formData.name,
+        agency_state: formData.state,
+        agency_status: formData.status as "active" | "inactive" | "deleted",
         admin_first_name: formData.adminFirstName,
         admin_last_name: formData.adminLastName,
         admin_email: formData.adminEmail,
@@ -228,10 +228,10 @@ export const useOrganizations = () => {
       });
 
       if (error) {
-        console.error('Error updating organization:', error);
+        console.error('Error updating agency:', error);
         toast({
           title: "Error",
-          description: "Failed to update organization",
+          description: "Failed to update agency",
           variant: "destructive",
         });
         return;
@@ -239,54 +239,54 @@ export const useOrganizations = () => {
 
       toast({
         title: "Success",
-        description: "Organization updated successfully",
+        description: "Agency updated successfully",
       });
 
       setIsEditDialogOpen(false);
-      setSelectedOrg(null);
-      fetchOrganizations();
+      setSelectedAgency(null);
+      fetchAgencies();
     } catch (error) {
       console.error('Error:', error);
       toast({
         title: "Error",
-        description: "Failed to update organization",
+        description: "Failed to update agency",
         variant: "destructive",
       });
     }
   };
 
   const handleDelete = async () => {
-    if (!selectedOrg) return;
+    if (!selectedAgency) return;
 
     try {
-      console.log('Starting delete operation for organization:', selectedOrg.id);
+      console.log('Starting delete operation for agency:', selectedAgency.id);
       
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         console.log('No user found, aborting delete');
         toast({
           title: "Error",
-          description: "You must be logged in to delete organizations",
+          description: "You must be logged in to delete agencies",
           variant: "destructive",
         });
         return;
       }
 
       console.log('User found:', user.id);
-      console.log('Calling soft_delete_organization function...');
+      console.log('Calling soft_delete_agency function...');
 
-      const { data, error } = await supabase.rpc('soft_delete_organization', {
-        org_id: selectedOrg.id,
+      const { data, error } = await supabase.rpc('soft_delete_agency', {
+        agency_id: selectedAgency.id,
         deleting_user_id: user.id
       });
 
       console.log('Function response:', { data, error });
 
       if (error) {
-        console.error('Error deleting organization:', error);
+        console.error('Error deleting agency:', error);
         toast({
           title: "Error", 
-          description: `Failed to delete organization: ${error.message}`,
+          description: `Failed to delete agency: ${error.message}`,
           variant: "destructive",
         });
         return;
@@ -298,29 +298,29 @@ export const useOrganizations = () => {
         console.error('Delete operation failed:', response?.message || 'Unknown error');
         toast({
           title: "Error",
-          description: response?.message || "Failed to delete organization",
+          description: response?.message || "Failed to delete agency",
           variant: "destructive",
         });
         return;
       }
 
-      console.log('Successfully deleted organization:', response);
+      console.log('Successfully deleted agency:', response);
 
       toast({
         title: "Success",
-        description: "Organization deleted successfully",
+        description: "Agency deleted successfully",
       });
 
       setIsDeleteDialogOpen(false);
-      setSelectedOrg(null);
+      setSelectedAgency(null);
       
-      // Force immediate refresh of organizations list
-      await fetchOrganizations();
+      // Force immediate refresh of agencies list
+      await fetchAgencies();
     } catch (error) {
       console.error('Error in handleDelete:', error);
       toast({
         title: "Error",
-        description: "Failed to delete organization",
+        description: "Failed to delete agency",
         variant: "destructive",
       });
     }
@@ -338,33 +338,33 @@ export const useOrganizations = () => {
     setIsAddDialogOpen(true);
   };
 
-  const openEditDialog = (org: Organization) => {
-    setSelectedOrg(org);
-    const firstAdmin = org.admins[0] || { first_name: "", last_name: "", email: "" };
+  const openEditDialog = (agency: Agency) => {
+    setSelectedAgency(agency);
+    const firstAdmin = agency.admins[0] || { first_name: "", last_name: "", email: "" };
     setFormData({
-      name: org.organization_name,
-      state: org.organization_state || "",
+      name: agency.agency_name,
+      state: agency.agency_state || "",
       adminFirstName: firstAdmin.first_name,
       adminLastName: firstAdmin.last_name,
       adminEmail: firstAdmin.email,
-      status: org.status === "deleted" ? "inactive" : org.status as "active" | "inactive"
+      status: agency.status === "deleted" ? "inactive" : agency.status as "active" | "inactive"
     });
     setIsEditDialogOpen(true);
   };
 
-  const openDeleteDialog = (org: Organization) => {
-    setSelectedOrg(org);
+  const openDeleteDialog = (agency: Agency) => {
+    setSelectedAgency(agency);
     setIsDeleteDialogOpen(true);
   };
 
   return {
     // State
-    organizations,
+    agencies,
     loading,
     isAddDialogOpen,
     isEditDialogOpen,
     isDeleteDialogOpen,
-    selectedOrg,
+    selectedAgency,
     formData,
     usStates,
     
