@@ -13,6 +13,7 @@ export interface UserRole {
   label_color?: string;
   text_color?: string;
   font_weight?: string;
+  permission_count?: number;
 }
 
 interface RpcResponse {
@@ -68,7 +69,7 @@ export const useUserRoles = () => {
       if (response?.success) {
         toast.success(response.message || 'Role added successfully');
         await fetchRoles(); // Refresh the list
-        return { success: true };
+        return { success: true, role_id: response.role_id };
       } else {
         throw new Error(response?.message || 'Failed to add role');
       }

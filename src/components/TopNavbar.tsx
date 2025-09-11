@@ -1,55 +1,58 @@
-
 import { Link } from "react-router-dom";
 import { Bell, User, MessageCircle, Bot, Phone, Mail, Calendar, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import BreadcrumbNav from "./BreadcrumbNav";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import { useAuthz } from "@/hooks/useAuthz"; // ← NEW
+
+type Organization = { id: string; organization_name: string };
 
 const TopNavbar = () => {
   const [selectedOrg, setSelectedOrg] = useState("Owner");
+  const { can, isLoading: authzLoading } = useAuthz();                 // ← NEW
+  const canSeeOwnerDropdown = !authzLoading && can("owner.view");      // ← NEW
 
-  const { data: organizations = [] } = useQuery({
-    queryKey: ['organizations'],
+  const { data: organizations = [] } = useQuery<Organization[]>({
+    queryKey: ["organizations"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('app_organizations')
-        .select('id, organization_name')
-        .eq('is_deleted', false);
-      
+        .from("app_organizations")
+        .select("id, organization_name")
+        .eq("is_deleted", false);
       if (error) throw error;
-      return data;
-    }
+      return data as Organization[];
+    },
+    enabled: canSeeOwnerDropdown, // ← only fetch when owner
+    staleTime: 5 * 60 * 1000,
   });
 
   return (
     <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
       <div className="flex h-16 items-center justify-between px-4 md:px-6">
         <div className="flex items-center gap-4">
-          <Select value={selectedOrg} onValueChange={setSelectedOrg}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Owner">Owner</SelectItem>
-              {organizations.map((org) => (
-                <SelectItem key={org.id} value={org.organization_name}>
-                  {org.organization_name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {canSeeOwnerDropdown && (                                   
+            <Select value={selectedOrg} onValueChange={setSelectedOrg}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Owner">Owner</SelectItem>
+                {organizations.map((org) => (
+                  <SelectItem key={org.id} value={org.organization_name}>
+                    {org.organization_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <BreadcrumbNav />
         </div>
-        
+
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" disabled className="relative">
             <Bot className="h-5 w-5" />

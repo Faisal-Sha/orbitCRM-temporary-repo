@@ -1466,51 +1466,69 @@ END;
 $$;
 
 -- Recreate with new return structure
+-- 7) (Optional) augment your roles listing with permission_count
 CREATE OR REPLACE FUNCTION public.get_user_roles_with_counts()
 RETURNS TABLE(
   id uuid, 
   role_name text, 
   user_count bigint, 
-  created_at timestamp with time zone,
-  updated_at timestamp with time zone,
+  created_at timestamptz,
+  updated_at timestamptz,
   role_label_id uuid,
   label_name text,
   label_color text,
   text_color text,
-  font_weight text
+  font_weight text,
+  permission_count bigint
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO 'public'
 AS $function$
 BEGIN
-  -- Check if current user has admin role
+  -- Enforce admin/owner
   IF NOT public.current_user_has_admin_role() THEN
     RAISE EXCEPTION 'Access denied. Admin or owner role required.';
   END IF;
 
   RETURN QUERY
+  WITH role_counts AS (
+    SELECT op.user_role_id, COUNT(*)::bigint AS count
+    FROM public.app_agencies_people op
+    WHERE op.is_deleted = false
+    GROUP BY op.user_role_id
+  ),
+  owner_ct AS (
+    SELECT COUNT(*)::bigint AS count
+    FROM public.app_organizations_owners o
+    WHERE o.is_deleted = false
+  ),
+  perm_counts AS (
+    SELECT upr.user_role_id, COUNT(*)::bigint AS count
+    FROM public.app_user_permissions_role upr
+    WHERE upr.is_deleted = false
+    GROUP BY upr.user_role_id
+  )
   SELECT 
     ur.id,
     ur.role_name::TEXT,
-    COALESCE(role_counts.count, 0) as user_count,
+    CASE 
+      WHEN ur.role_name = 'owner'::user_roles_enum THEN oc.count
+      ELSE COALESCE(rc.count, 0)
+    END AS user_count,
     ur.created_at,
     ur.updated_at,
     ur.role_label_id,
     dl.label_name,
     dl.label_color,
     dl.text_color,
-    dl.font_weight
+    dl.font_weight,
+    COALESCE(pc.count, 0) AS permission_count
   FROM public.app_user_roles ur
-  LEFT JOIN (
-    SELECT 
-      op.user_role_id,
-      COUNT(*) as count
-    FROM public.app_agencies_people op
-    WHERE op.is_deleted = false
-    GROUP BY op.user_role_id
-  ) role_counts ON ur.id = role_counts.user_role_id
+  LEFT JOIN role_counts rc ON ur.id = rc.user_role_id
+  LEFT JOIN perm_counts pc ON ur.id = pc.user_role_id
   LEFT JOIN public.app_data_labels dl ON ur.role_label_id = dl.id
+  CROSS JOIN owner_ct oc
   WHERE ur.is_deleted = false
   ORDER BY ur.created_at DESC;
 END;
@@ -1752,3 +1770,221 @@ BEGIN
 END;
 $$;
 
+-- 1) Get all permissions (not deleted)
+CREATE OR REPLACE FUNCTION public.get_all_permissions()
+RETURNS TABLE(
+  id uuid,
+  permission_name text,
+  created_at timestamptz,
+  updated_at timestamptz
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $fn$
+BEGIN
+  IF NOT public.current_user_has_admin_role() THEN
+    RAISE EXCEPTION 'Access denied. Admin or owner role required.';
+  END IF;
+
+  RETURN QUERY
+  SELECT
+    p.id,
+    p.user_permissions AS permission_name,
+    p.created_at,
+    p.updated_at
+  FROM public.app_user_permissions p
+  WHERE p.is_deleted = false
+  ORDER BY p.user_permissions ASC;
+END;
+$fn$;
+
+
+-- 2) Add permission (unique name, soft constraints handled in code)
+CREATE OR REPLACE FUNCTION public.add_permission(p_permission_name text)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $fn$
+DECLARE
+  new_id uuid;
+  current_user_id uuid := auth.uid();
+BEGIN
+  IF NOT public.current_user_has_admin_role() THEN
+    RETURN json_build_object('success', false, 'message', 'Access denied. Admin or owner role required.');
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM public.app_user_permissions 
+    WHERE user_permissions = p_permission_name AND is_deleted = false
+  ) THEN
+    RETURN json_build_object('success', false, 'message', 'Permission already exists.');
+  END IF;
+
+  INSERT INTO public.app_user_permissions (user_permissions, created_by, updated_by)
+  VALUES (p_permission_name, current_user_id, current_user_id)
+  RETURNING id INTO new_id;
+
+  RETURN json_build_object('success', true, 'message', 'Permission created successfully', 'permission_id', new_id);
+END;
+$fn$;
+
+
+-- 3) Update permission name
+CREATE OR REPLACE FUNCTION public.update_permission(p_permission_id uuid, p_permission_name text)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $fn$
+DECLARE
+  current_user_id uuid := auth.uid();
+BEGIN
+  IF NOT public.current_user_has_admin_role() THEN
+    RETURN json_build_object('success', false, 'message', 'Access denied. Admin or owner role required.');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM public.app_user_permissions 
+    WHERE id = p_permission_id AND is_deleted = false
+  ) THEN
+    RETURN json_build_object('success', false, 'message', 'Permission not found.');
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM public.app_user_permissions 
+    WHERE user_permissions = p_permission_name 
+      AND id <> p_permission_id
+      AND is_deleted = false
+  ) THEN
+    RETURN json_build_object('success', false, 'message', 'Another permission with same name exists.');
+  END IF;
+
+  UPDATE public.app_user_permissions
+  SET user_permissions = p_permission_name,
+      updated_by = current_user_id,
+      updated_at = now()
+  WHERE id = p_permission_id;
+
+  RETURN json_build_object('success', true, 'message', 'Permission updated successfully');
+END;
+$fn$;
+
+
+-- 4) Soft delete permission (ensure no active link if you want to block)
+CREATE OR REPLACE FUNCTION public.delete_permission(p_permission_id uuid)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $fn$
+DECLARE
+  current_user_id uuid := auth.uid();
+BEGIN
+  IF NOT public.current_user_has_admin_role() THEN
+    RETURN json_build_object('success', false, 'message', 'Access denied. Admin or owner role required.');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM public.app_user_permissions 
+    WHERE id = p_permission_id AND is_deleted = false
+  ) THEN
+    RETURN json_build_object('success', false, 'message', 'Permission not found.');
+  END IF;
+
+  -- (Optional) Block delete if linked:
+  -- IF EXISTS (
+  --   SELECT 1 FROM public.app_user_permissions_role 
+  --   WHERE user_permission_id = p_permission_id AND is_deleted = false
+  -- ) THEN
+  --   RETURN json_build_object('success', false, 'message', 'Cannot delete permission in use.');
+  -- END IF;
+
+  UPDATE public.app_user_permissions
+  SET is_deleted = true,
+      deleted_by = current_user_id,
+      deleted_at = now()
+  WHERE id = p_permission_id;
+
+  RETURN json_build_object('success', true, 'message', 'Permission deleted successfully');
+END;
+$fn$;
+
+
+-- 5) List all permissions with "assigned" boolean for a role
+CREATE OR REPLACE FUNCTION public.get_permissions_with_assignments(p_role_id uuid)
+RETURNS TABLE(
+  id uuid,
+  permission_name text,
+  assigned boolean
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $fn$
+BEGIN
+  IF NOT public.current_user_has_admin_role() THEN
+    RAISE EXCEPTION 'Access denied. Admin or owner role required.';
+  END IF;
+
+  RETURN QUERY
+  SELECT
+    p.id,
+    p.user_permissions AS permission_name,
+    EXISTS (
+      SELECT 1 FROM public.app_user_permissions_role upr
+      WHERE upr.user_permission_id = p.id
+        AND upr.user_role_id = p_role_id
+        AND upr.is_deleted = false
+    ) AS assigned
+  FROM public.app_user_permissions p
+  WHERE p.is_deleted = false
+  ORDER BY p.user_permissions ASC;
+END;
+$fn$;
+
+
+-- 6) Set role permissions in one shot (idempotent upsert / prune)
+CREATE OR REPLACE FUNCTION public.set_role_permissions(p_role_id uuid, p_permission_ids uuid[])
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $fn$
+DECLARE
+  current_user_id uuid := auth.uid();
+BEGIN
+  IF NOT public.current_user_has_admin_role() THEN
+    RETURN json_build_object('success', false, 'message', 'Access denied. Admin or owner role required.');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM public.app_user_roles WHERE id = p_role_id AND is_deleted = false
+  ) THEN
+    RETURN json_build_object('success', false, 'message', 'Role not found.');
+  END IF;
+
+  -- Soft delete links not in new list
+  UPDATE public.app_user_permissions_role upr
+  SET is_deleted = true,
+      deleted_by = current_user_id,
+      deleted_at = now()
+  WHERE upr.user_role_id = p_role_id
+    AND upr.is_deleted = false
+    AND NOT (upr.user_permission_id = ANY (p_permission_ids));
+
+  -- Insert missing links
+  INSERT INTO public.app_user_permissions_role (user_role_id, user_permission_id, created_by, updated_by)
+  SELECT p_role_id, pid, current_user_id, current_user_id
+  FROM UNNEST(p_permission_ids) AS pid
+  WHERE NOT EXISTS (
+    SELECT 1 FROM public.app_user_permissions_role upr
+    WHERE upr.user_role_id = p_role_id
+      AND upr.user_permission_id = pid
+      AND upr.is_deleted = false
+  );
+
+  RETURN json_build_object('success', true, 'message', 'Permissions updated for role');
+END;
+$fn$;

@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/pagination";
 import { ArrowLeft, Search, Plus, Edit, Trash2, Loader2 } from "lucide-react";
 import { useUserRoles, UserRole } from "@/hooks/useUserRoles";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useDataLabels } from "@/hooks/useDataLabels";
 
 interface UserRolesProps {
@@ -35,6 +36,7 @@ interface UserRolesProps {
 const UserRoles: React.FC<UserRolesProps> = ({ onBack }) => {
   const { roles, loading, addRole, updateRole, deleteRole } = useUserRoles();
   const { labels = [], loading: labelsLoading } = useDataLabels();
+  const { permissions, loading: permissionsLoading, fetchPermissionsForRole, setRolePermissions, addPermission } = usePermissions();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -46,6 +48,10 @@ const UserRoles: React.FC<UserRolesProps> = ({ onBack }) => {
   const [roleName, setRoleName] = useState('');
   const [selectedLabelId, setSelectedLabelId] = useState<string>('');
   const [saving, setSaving] = useState(false);
+
+  const [selectedPermissionIds, setSelectedPermissionIds] = useState<string[]>([]);
+  const [newPermissionName, setNewPermissionName] = useState("");
+  const [assigning, setAssigning] = useState(false);
 
   const availablePermissions: string[] = [];
 
@@ -63,15 +69,24 @@ const UserRoles: React.FC<UserRolesProps> = ({ onBack }) => {
     setEditingRole(null);
     setRoleName('');
     setSelectedLabelId('no-label');
+    setSelectedPermissionIds([]);
     setIsModalOpen(true);
   };
 
-  const handleEditRole = (role: UserRole) => {
+  const handleEditRole = async (role: UserRole) => {
     setIsAddMode(false);
     setEditingRole(role);
     setRoleName(role.role_name);
     setSelectedLabelId(role.role_label_id || 'no-label');
     setIsModalOpen(true);
+
+    // preload assigned permissions
+    try {
+      const assigned = await fetchPermissionsForRole(role.id);
+      setSelectedPermissionIds(assigned.filter(a => a.assigned).map(a => a.id));
+    } catch {
+      setSelectedPermissionIds([]);
+    }
   };
 
   const handleSaveRole = async () => {
@@ -84,19 +99,31 @@ const UserRoles: React.FC<UserRolesProps> = ({ onBack }) => {
       const labelId = selectedLabelId === 'no-label' ? undefined : selectedLabelId;
       if (isAddMode) {
         const result = await addRole(roleName.trim(), labelId);
-        if (result.success) {
+        if (result.success && result.role_id) {
+          // apply permissions if any selected
+          if (selectedPermissionIds.length > 0) {
+            setAssigning(true);
+            await setRolePermissions(result.role_id, selectedPermissionIds);
+            setAssigning(false);
+          }
           setIsModalOpen(false);
           setRoleName('');
           setSelectedLabelId('no-label');
           setEditingRole(null);
+          setSelectedPermissionIds([]);
         }
       } else if (editingRole) {
         const result = await updateRole(editingRole.id, roleName.trim(), labelId);
         if (result.success) {
+          // update permissions for this role
+          setAssigning(true);
+          await setRolePermissions(editingRole.id, selectedPermissionIds);
+          setAssigning(false);
           setIsModalOpen(false);
           setRoleName('');
           setSelectedLabelId('no-label');
           setEditingRole(null);
+          setSelectedPermissionIds([]);
         }
       }
     } finally {
@@ -119,9 +146,24 @@ const UserRoles: React.FC<UserRolesProps> = ({ onBack }) => {
     }
   };
 
-  const handlePermissionChange = (permission: string, checked: boolean) => {
-    // Permissions functionality will be implemented in future update
+  // Toggle permission assignment
+  const handlePermissionChange = (permissionId: string, checked: boolean) => {
+    setSelectedPermissionIds(prev =>
+      checked ? Array.from(new Set([...prev, permissionId])) : prev.filter(id => id !== permissionId)
+    );
   };
+
+  // Optional quick creation of a permission right from modal
+  const handleQuickAddPermission = async () => {
+    const name = newPermissionName.trim();
+    if (!name) return;
+    const res = await addPermission(name);
+    if (res.success && res.permission_id) {
+      setNewPermissionName("");
+    // auto-select the newly added permission
+    setSelectedPermissionIds(prev => Array.from(new Set([...prev, res.permission_id!])));
+  }
+};
 
   return (
     <div className="space-y-6">
@@ -190,7 +232,9 @@ const UserRoles: React.FC<UserRolesProps> = ({ onBack }) => {
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="text-xs">
-                          Not configured
+                          {typeof (role as any).permission_count === "number"
+                            ? `${(role as any).permission_count} permissions`
+                            : "Not configured"}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -295,11 +339,49 @@ const UserRoles: React.FC<UserRolesProps> = ({ onBack }) => {
             </div>
             <div>
               <Label>Permissions</Label>
-              <div className="grid grid-cols-2 gap-2 mt-2 max-h-60 overflow-y-auto border p-4 rounded bg-muted/50">
-                <p className="text-sm text-muted-foreground col-span-2 text-center py-4">
-                  Permissions configuration will be available in a future update
-                </p>
+
+              {/* Quick add (optional) */}
+              <div className="flex gap-2 mt-2">
+                <Input 
+                  placeholder="Create a new permission (e.g., 'users.read')"
+                  value={newPermissionName}
+                  onChange={(e) => setNewPermissionName(e.target.value)}
+                  className="max-w-md"
+                />
+                <Button type="button" variant="secondary" onClick={handleQuickAddPermission}>
+                  Add
+                </Button>
               </div>
+
+              <div className="grid grid-cols-2 gap-2 mt-3 max-h-60 overflow-y-auto border p-4 rounded bg-muted/50">
+                {permissionsLoading ? (
+                  <div className="col-span-2 flex items-center justify-center py-6 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Loading permissions...
+                  </div>
+                ) : permissions.length === 0 ? (
+                  <p className="text-sm text-muted-foreground col-span-2 text-center py-4">
+                    No permissions defined yet. Add one above to get started.
+                  </p>
+                ) : (
+                  permissions.map((perm) => (
+                    <label key={perm.id} className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={selectedPermissionIds.includes(perm.id)}
+                        onChange={(e) => handlePermissionChange(perm.id, e.target.checked)}
+                      />
+                      <span className="text-sm">{perm.permission_name}</span>
+                    </label>
+                  ))
+                )}
+              </div>
+              {assigning && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Applying permissions...
+                </div>
+              )}
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setIsModalOpen(false)} disabled={saving}>

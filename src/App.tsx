@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import AppLayout from "./layouts/AppLayout";
+import { RequirePermission } from "@/components/auth/RequirePermission";
 
 // App Pages (Authentication & General)
 import LoginPage from "./pages/apppages/LoginPage";
@@ -79,9 +80,9 @@ import Audit from "./pages/Audit";
 
 // Owner Routes
 import Owner from "./pages/Owner";
+import Settings from "./pages/Settings";
 
 // Other Routes
-import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
 import Help from "./pages/Help";
 import Index from "./pages/Index";
@@ -227,10 +228,17 @@ const App = () => (
               <Route path="audit" element={<Audit />} />
               
               {/* Owner Routes */}
-              <Route path="owner" element={<Owner />} />
+              {/* Permission-gated routes */}
+              <Route element={<RequirePermission perm="owner.view" />}>
+                <Route path="owner" element={<Owner />} />
+                <Route path="settings" element={<Settings />} />
+              </Route>
+
+              {/* <Route element={<RequirePermission perm="settings.view" />}>
+                <Route path="settings" element={<Settings />} />
+              </Route> */}
               
               {/* Other Routes */}
-              <Route path="settings" element={<Settings />} />
               <Route path="profile" element={<Profile />} />
               <Route path="help" element={<Help />} />
             </Route>

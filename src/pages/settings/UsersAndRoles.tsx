@@ -81,9 +81,13 @@ const UsersAndRoles = () => {
                         fontWeight={role.font_weight}
                         className="mb-2"
                       />
-                      <p className="text-sm text-muted-foreground">{role.user_count} users • Permissions not configured</p>
+                      <p className="text-sm text-muted-foreground">
+                        {role.user_count} users • {role.permission_count ?? 0} permissions
+                      </p>
                     </div>
-                    <Badge variant="outline">{role.user_count}</Badge>
+                    <Badge variant="outline">
+                      {role.user_count} / {role.permission_count ?? 0}
+                    </Badge>
                   </div>
                 ))
               )}

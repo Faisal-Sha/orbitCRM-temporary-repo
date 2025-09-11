@@ -1397,6 +1397,10 @@ export type Database = {
         }
         Returns: Json
       }
+      add_permission: {
+        Args: { p_permission_name: string }
+        Returns: Json
+      }
       add_program_with_goals: {
         Args: { p_goals: Json; p_program_name: string }
         Returns: Json
@@ -1427,8 +1431,28 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
+      current_user_has_permission: {
+        Args: { p_permission: string }
+        Returns: boolean
+      }
+      current_user_is_owner: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      current_user_permissions: {
+        Args: Record<PropertyKey, never>
+        Returns: string[]
+      }
+      current_user_person_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       delete_data_label: {
         Args: { p_label_id: string }
+        Returns: Json
+      }
+      delete_permission: {
+        Args: { p_permission_id: string }
         Returns: Json
       }
       delete_program_with_goals: {
@@ -1456,6 +1480,15 @@ export type Database = {
           user_count: number
         }[]
       }
+      get_all_permissions: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          created_at: string
+          id: string
+          permission_name: string
+          updated_at: string
+        }[]
+      }
       get_data_labels: {
         Args: Record<PropertyKey, never>
         Returns: Json
@@ -1463,6 +1496,14 @@ export type Database = {
       get_organization_settings: {
         Args: Record<PropertyKey, never>
         Returns: Json
+      }
+      get_permissions_with_assignments: {
+        Args: { p_role_id: string }
+        Returns: {
+          assigned: boolean
+          id: string
+          permission_name: string
+        }[]
       }
       get_personal_profile: {
         Args: Record<PropertyKey, never>
@@ -1496,6 +1537,7 @@ export type Database = {
           id: string
           label_color: string
           label_name: string
+          permission_count: number
           role_label_id: string
           role_name: string
           text_color: string
@@ -1529,6 +1571,10 @@ export type Database = {
         }
         Returns: Json
       }
+      set_role_permissions: {
+        Args: { p_permission_ids: string[]; p_role_id: string }
+        Returns: Json
+      }
       soft_delete_agency: {
         Args: { agency_id: string; deleting_user_id: string }
         Returns: Json
@@ -1555,6 +1601,10 @@ export type Database = {
           p_label_name: string
           p_text_color: string
         }
+        Returns: Json
+      }
+      update_permission: {
+        Args: { p_permission_id: string; p_permission_name: string }
         Returns: Json
       }
       update_personal_email: {

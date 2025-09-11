@@ -10,7 +10,7 @@ import {
   Home,
   User,
   Users,
-  Settings,
+  Settings as SettingsIcon, // ← avoid any future name clash
   HelpCircle,
   FolderOpen,
   Zap,
@@ -21,6 +21,7 @@ import {
   Crown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuthz } from "@/hooks/useAuthz"; // ← NEW
 
 interface SidebarProps {
   collapsed: boolean;
@@ -32,158 +33,89 @@ interface MenuItem {
   path: string;
   icon: React.ReactNode;
   subItems?: { title: string; path: string }[];
+  requiredPerm?: string;
 }
 
 const STORAGE_KEY = 'sidebar-expansion-state';
 
 const Sidebar = ({ collapsed, toggleSidebar }: SidebarProps) => {
   const location = useLocation();
+  const { can, isLoading } = useAuthz();
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
 
   const menuItems: MenuItem[] = [
-    {
-      title: "Personal",
-      path: "/personal",
-      icon: <Home size={20} />,
-      subItems: [
-        { title: "Goals", path: "/personal/goals" },
-        { title: "Tasks", path: "/personal/tasks" },
-        { title: "Notes", path: "/personal/notes" },
-      ],
-    },
-    {
-      title: "Communication",
-      path: "/communication",
-      icon: <MessageSquare size={20} />,
-      subItems: [
-        { title: "Email", path: "/communication/email" },
-        { title: "Chat", path: "/communication/chat" },
-        { title: "Phone", path: "/communication/phone" },
-        { title: "Video", path: "/communication/video" },
-        { title: "Social", path: "/communication/social" },
-        { title: "Feedback", path: "/communication/feedback" },
-      ],
-    },
-    {
-      title: "Schedule",
-      path: "/schedule",
-      icon: <Calendar size={20} />,
-      subItems: [
-        { title: "Appointments", path: "/schedule/appointments" },
-        { title: "Calendar", path: "/schedule/calendar" },
-      ],
-    },
-    {
-      title: "People",
-      path: "/people",
-      icon: <Users size={20} />,
-      subItems: [
-        { title: "Leads", path: "/people/leads" },
-        { title: "Clients", path: "/people/clients" },
-        { title: "Staff", path: "/people/staff" },
-        { title: "Audiences", path: "/people/audiences" },
-      ],
-    },
-    {
-      title: "Development",
-      path: "/development",
-      icon: <TrendingUp size={20} />,
-      subItems: [
-        { title: "Personal", path: "/development/personal-development" },
-        { title: "Clients", path: "/development/client-development" },
-        { title: "Staff", path: "/development/staff-development" },
-      ],
-    },
-    {
-      title: "Records",
-      path: "/records",
-      icon: <FolderOpen size={20} />,
-      subItems: [
-        { title: "Client Records", path: "/records/client-records" },
-        { title: "Staff Records", path: "/records/staff-records" },
-      ],
-    },
-    {
-      title: "Finance",
-      path: "/finance",
-      icon: <DollarSign size={20} />,
-      subItems: [
-        { title: "Billing", path: "/finance/billing" },
-        { title: "Payouts", path: "/finance/payouts" },
-        { title: "Claims", path: "/finance/claims" },
-        { title: "Transactions", path: "/finance/transactions" },
-      ],
-    },
-    {
-      title: "Forms",
-      path: "/forms",
-      icon: <FileText size={20} />,
-      subItems: [
-        { title: "Create", path: "/forms/create" },
-        { title: "Manage", path: "/forms/manage" },
-        { title: "Submissions", path: "/forms/submissions" },
-      ],
-    },
-    {
-      title: "Marketing",
-      path: "/marketing",
-      icon: <MessageSquare size={20} />,
-      subItems: [
-        { title: "Lead Campaigns", path: "/marketing/leads-campaigns" },
-        { title: "Email", path: "/marketing/email-campaigns" },
-        { title: "SMS", path: "/marketing/sms-campaigns" },
-        { title: "Ads", path: "/marketing/ad-campaigns" },
-        { title: "Social Manager", path: "/marketing/social-manager" },
-      ],
-    },
-    {
-      title: "Automation",
-      path: "/automation",
-      icon: <Zap size={20} />,
-      subItems: [
-        { title: "Create", path: "/automation/create" },
-        { title: "Manage", path: "/automation/manage" },
-      ],
-    },
-    {
-      title: "Files",
-      path: "/files",
-      icon: <Files size={20} />,
-    },
-    {
-      title: "Audit",
-      path: "/audit",
-      icon: <Shield size={20} />,
-    },
-    {
-      title: "Owner",
-      path: "/owner",
-      icon: <Crown size={20} />,
-    },
-    {
-      title: "Settings",
-      path: "/settings",
-      icon: <Settings size={20} />,
-    },
-    {
-      title: "Profile",
-      path: "/profile",
-      icon: <User size={20} />,
-    },
-    {
-      title: "Help",
-      path: "/help",
-      icon: <HelpCircle size={20} />,
-    },
+    { title: "Personal", path: "/personal", icon: <Home size={20} />, subItems: [
+      { title: "Goals", path: "/personal/goals" },
+      { title: "Tasks", path: "/personal/tasks" },
+      { title: "Notes", path: "/personal/notes" },
+    ]},
+    { title: "Communication", path: "/communication", icon: <MessageSquare size={20} />, subItems: [
+      { title: "Email", path: "/communication/email" },
+      { title: "Chat", path: "/communication/chat" },
+      { title: "Phone", path: "/communication/phone" },
+      { title: "Video", path: "/communication/video" },
+      { title: "Social", path: "/communication/social" },
+      { title: "Feedback", path: "/communication/feedback" },
+    ]},
+    { title: "Schedule", path: "/schedule", icon: <Calendar size={20} />, subItems: [
+      { title: "Appointments", path: "/schedule/appointments" },
+      { title: "Calendar", path: "/schedule/calendar" },
+    ]},
+    { title: "People", path: "/people", icon: <Users size={20} />, subItems: [
+      { title: "Leads", path: "/people/leads" },
+      { title: "Clients", path: "/people/clients" },
+      { title: "Staff", path: "/people/staff" },
+      { title: "Audiences", path: "/people/audiences" },
+    ]},
+    { title: "Development", path: "/development", icon: <TrendingUp size={20} />, subItems: [
+      { title: "Personal", path: "/development/personal-development" },
+      { title: "Clients", path: "/development/client-development" },
+      { title: "Staff", path: "/development/staff-development" },
+    ]},
+    { title: "Records", path: "/records", icon: <FolderOpen size={20} />, subItems: [
+      { title: "Client Records", path: "/records/client-records" },
+      { title: "Staff Records", path: "/records/staff-records" },
+    ]},
+    { title: "Finance", path: "/finance", icon: <DollarSign size={20} />, subItems: [
+      { title: "Billing", path: "/finance/billing" },
+      { title: "Payouts", path: "/finance/payouts" },
+      { title: "Claims", path: "/finance/claims" },
+      { title: "Transactions", path: "/finance/transactions" },
+    ]},
+    { title: "Forms", path: "/forms", icon: <FileText size={20} />, subItems: [
+      { title: "Create", path: "/forms/create" },
+      { title: "Manage", path: "/forms/manage" },
+      { title: "Submissions", path: "/forms/submissions" },
+    ]},
+    { title: "Marketing", path: "/marketing", icon: <MessageSquare size={20} />, subItems: [
+      { title: "Lead Campaigns", path: "/marketing/leads-campaigns" },
+      { title: "Email", path: "/marketing/email-campaigns" },
+      { title: "SMS", path: "/marketing/sms-campaigns" },
+      { title: "Ads", path: "/marketing/ad-campaigns" },
+      { title: "Social Manager", path: "/marketing/social-manager" },
+    ]},
+    { title: "Automation", path: "/automation", icon: <Zap size={20} />, subItems: [
+      { title: "Create", path: "/automation/create" },
+      { title: "Manage", path: "/automation/manage" },
+    ]},
+    { title: "Files", path: "/files", icon: <Files size={20} /> },
+    { title: "Audit", path: "/audit", icon: <Shield size={20} /> },
+
+    // ↓↓↓ OWNER-ONLY ITEMS
+    { title: "Owner", path: "/owner", icon: <Crown size={20} />, requiredPerm: "owner.view" },
+    { title: "Settings", path: "/settings", icon: <SettingsIcon size={20} />, requiredPerm: "owner.view" },
+    
+    { title: "Profile", path: "/profile", icon: <User size={20} /> },
+    { title: "Help", path: "/help", icon: <HelpCircle size={20} /> },
   ];
+
+  // Hide ownerOnly items while loading; show them only if isOwner === true
+  const visibleMenuItems = menuItems.filter(mi => !mi.requiredPerm || (!isLoading && can(mi.requiredPerm)));
 
   useEffect(() => {
     try {
       const savedState = localStorage.getItem(STORAGE_KEY);
-      if (savedState) {
-        const parsedState = JSON.parse(savedState);
-        setExpandedItems(parsedState);
-      }
+      if (savedState) setExpandedItems(JSON.parse(savedState));
     } catch (error) {
       console.error('Failed to load sidebar expansion state:', error);
     }
@@ -198,27 +130,19 @@ const Sidebar = ({ collapsed, toggleSidebar }: SidebarProps) => {
   }, [expandedItems]);
 
   const toggleExpandedItem = (title: string) => {
-    setExpandedItems((prev) => ({
-      ...prev,
-      [title]: !prev[title],
-    }));
+    setExpandedItems(prev => ({ ...prev, [title]: !prev[title] }));
   };
 
-  const isPathActive = (path: string) => {
-    return location.pathname === path || location.pathname.startsWith(`${path}/`);
-  };
+  const isPathActive = (path: string) =>
+    location.pathname === path || location.pathname.startsWith(`${path}/`);
 
   return (
-    <aside
-      className={cn(
-        "sidebar bg-sidebar text-sidebar-foreground flex flex-col border-r border-sidebar-border transition-all duration-300",
-        collapsed ? "w-16" : "w-64"
-      )}
-    >
+    <aside className={cn(
+      "sidebar bg-sidebar text-sidebar-foreground flex flex-col border-r border-sidebar-border transition-all duration-300",
+      collapsed ? "w-16" : "w-64"
+    )}>
       <div className="flex h-16 items-center justify-between px-4 border-b border-sidebar-border">
-        {!collapsed && (
-          <div className="text-lg font-semibold text-sidebar-foreground">OrbitCRM</div>
-        )}
+        {!collapsed && <div className="text-lg font-semibold text-sidebar-foreground">OrbitCRM</div>}
         <button
           onClick={toggleSidebar}
           className="p-2 rounded-md hover:bg-sidebar-accent"
@@ -230,7 +154,7 @@ const Sidebar = ({ collapsed, toggleSidebar }: SidebarProps) => {
 
       <div className="flex-1 overflow-y-auto py-4">
         <nav className="space-y-1 px-2">
-          {menuItems.map((item) => (
+          {visibleMenuItems.map((item) => (
             <div key={item.path} className="flex flex-col">
               <div className="flex items-center">
                 <Link
@@ -252,11 +176,7 @@ const Sidebar = ({ collapsed, toggleSidebar }: SidebarProps) => {
                     className="p-2 ml-1 hover:bg-sidebar-accent rounded-md flex-shrink-0"
                     aria-label={`${expandedItems[item.title] ? 'Collapse' : 'Expand'} ${item.title} submenu`}
                   >
-                    {expandedItems[item.title] ? (
-                      <ChevronDown size={16} />
-                    ) : (
-                      <ChevronRight size={16} />
-                    )}
+                    {expandedItems[item.title] ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                   </button>
                 )}
               </div>

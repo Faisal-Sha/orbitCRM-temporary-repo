@@ -9,11 +9,11 @@ const Owner = () => {
       title="Owner Dashboard" 
       description="Manage platform agencies and system-wide settings"
     >
-      <Tabs defaultValue="organizations" className="w-full">
+      <Tabs defaultValue="agencies" className="w-full">
         <TabsList className="grid w-full grid-cols-1 max-w-md">
-          <TabsTrigger value="organizations">Agencies</TabsTrigger>
+          <TabsTrigger value="agencies">Agencies</TabsTrigger>
         </TabsList>
-        <TabsContent value="organizations" className="mt-6">
+        <TabsContent value="agencies" className="mt-6">
           <AgencyManagement />
         </TabsContent>
       </Tabs>
