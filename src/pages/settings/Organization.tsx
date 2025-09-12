@@ -6,16 +6,20 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Building2, Globe, Users, Plus, X, Loader2 } from "lucide-react";
 import { useOrganizationSettings } from "@/hooks/useOrganizationSettings";
+import LogoUpload from "@/components/files/LogoUpload";
 
 const Organization = () => {
   const {
     formData,
     loading,
     saving,
+    logoUploading,
     updateFormField,
     addDomain,
     updateDomain,
     removeDomain,
+    uploadLogo,
+    removeLogo,
     saveOrganizationSettings
   } = useOrganizationSettings();
 
@@ -66,6 +70,13 @@ const Organization = () => {
               onChange={(e) => updateFormField('organization_name', e.target.value)}
             />
           </div>
+
+          <LogoUpload
+            value={formData.organization_logo}
+            onUpload={uploadLogo}
+            onRemove={removeLogo}
+            uploading={logoUploading}
+          />
 
           <div className="space-y-4">
             <Label>Organization Address</Label>

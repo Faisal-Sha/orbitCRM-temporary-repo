@@ -57,6 +57,7 @@ export const useOrganizationSettings = () => {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [logoUploading, setLogoUploading] = useState(false);
   const { toast } = useToast();
 
   const loadOrganizationData = async () => {
@@ -165,6 +166,96 @@ export const useOrganizationSettings = () => {
     }));
   };
 
+  const uploadLogo = async (file: File) => {
+    try {
+      setLogoUploading(true);
+
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Create file path: {user_id}/organization/logo.{extension}
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/organization/logo.${fileExt}`;
+
+      // Upload file to storage
+      const { error: uploadError } = await supabase.storage
+        .from('organization-logos')
+        .upload(fileName, file, {
+          upsert: true // Replace existing file
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('organization-logos')
+        .getPublicUrl(fileName);
+
+      // Update form data
+      updateFormField('organization_logo', publicUrl);
+
+      toast({
+        title: 'Success',
+        description: 'Logo uploaded successfully'
+      });
+
+    } catch (error) {
+      console.error('Error uploading logo:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to upload logo',
+        variant: 'destructive'
+      });
+    } finally {
+      setLogoUploading(false);
+    }
+  };
+
+  const removeLogo = async () => {
+    try {
+      if (!formData.organization_logo) return;
+
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Extract file path from URL
+      const url = new URL(formData.organization_logo);
+      const pathParts = url.pathname.split('/');
+      const fileName = pathParts[pathParts.length - 1];
+      const filePath = `${user.id}/organization/${fileName}`;
+
+      // Remove file from storage
+      const { error: deleteError } = await supabase.storage
+        .from('organization-logos')
+        .remove([filePath]);
+
+      // Don't throw error if file doesn't exist, just clear the form field
+      if (deleteError && !deleteError.message.includes('not found')) {
+        console.error('Error deleting logo:', deleteError);
+      }
+
+      // Update form data
+      updateFormField('organization_logo', '');
+
+      toast({
+        title: 'Success',
+        description: 'Logo removed successfully'
+      });
+
+    } catch (error) {
+      console.error('Error removing logo:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to remove logo',
+        variant: 'destructive'
+      });
+    }
+  };
+
   const saveOrganizationSettings = async () => {
     try {
       setSaving(true);
@@ -173,6 +264,7 @@ export const useOrganizationSettings = () => {
       const { data, error } = await supabase.rpc('save_organization_settings', {
         p_organization_name: formData.organization_name,
         p_organization_state: formData.organization_state,
+        p_organization_logo: formData.organization_logo,
         p_address_line_1: formData.address_line_1,
         p_address_line_2: formData.address_line_2,
         p_zip_cone: formData.zip_cone,
@@ -230,10 +322,13 @@ export const useOrganizationSettings = () => {
     formData,
     loading,
     saving,
+    logoUploading,
     updateFormField,
     addDomain,
     updateDomain,
     removeDomain,
+    uploadLogo,
+    removeLogo,
     saveOrganizationSettings
   };
 };
