@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Building2, Globe, Users, Plus, X, Loader2 } from "lucide-react";
+import { Building2, Globe, Users, Plus, X, Loader2, Image } from "lucide-react";
 import { useOrganizationSettings } from "@/hooks/useOrganizationSettings";
+import { FileUpload } from "@/components/FileUpload";
 
 const Organization = () => {
   const {
@@ -16,6 +17,8 @@ const Organization = () => {
     addDomain,
     updateDomain,
     removeDomain,
+    uploadLogo,
+    removeLogo,
     saveOrganizationSettings
   } = useOrganizationSettings();
 
@@ -64,6 +67,18 @@ const Organization = () => {
               id="org-name" 
               value={formData.organization_name}
               onChange={(e) => updateFormField('organization_name', e.target.value)}
+            />
+          </div>
+
+          <div>
+            <FileUpload
+              label="Organization Logo"
+              accept="image/*"
+              maxSize={5}
+              currentFile={formData.organization_logo}
+              onFileSelect={uploadLogo}
+              onFileRemove={removeLogo}
+              disabled={saving}
             />
           </div>
 
