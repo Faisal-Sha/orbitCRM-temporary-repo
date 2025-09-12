@@ -260,8 +260,8 @@ export const useOrganizationSettings = () => {
     try {
       setSaving(true);
 
-      // Use the database function to save organization settings
-      const { data, error } = await supabase.rpc('save_organization_settings', {
+      // Use RPC with proper type casting to avoid TypeScript issues until types are regenerated
+      const { data, error } = await (supabase as any).rpc('save_organization_settings', {
         p_organization_name: formData.organization_name,
         p_organization_state: formData.organization_state,
         p_organization_logo: formData.organization_logo,
@@ -279,7 +279,7 @@ export const useOrganizationSettings = () => {
         p_linkedin_url: formData.linkedin_url,
         p_google_profile_url: formData.google_profile_url,
         p_youtube_url: formData.youtube_url,
-        p_domains: formData.domains.filter(d => d.domain.trim()) as unknown as Json
+        p_domains: formData.domains.filter(d => d.domain.trim())
       });
 
       if (error) throw error;
