@@ -165,74 +165,6 @@ export const useOrganizationSettings = () => {
     }));
   };
 
-  const uploadLogo = async (file: File) => {
-    try {
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError || !session) {
-        throw new Error('User not authenticated');
-      }
-
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${session.user.id}/org-logo-${Date.now()}.${fileExt}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('profile-pictures')
-        .upload(fileName, file);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('profile-pictures')
-        .getPublicUrl(fileName);
-
-      updateFormField('organization_logo', publicUrl);
-
-      toast({
-        title: 'Success',
-        description: 'Logo uploaded successfully'
-      });
-
-      return publicUrl;
-    } catch (error) {
-      console.error('Error uploading logo:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to upload logo',
-        variant: 'destructive'
-      });
-      throw error;
-    }
-  };
-
-  const removeLogo = async () => {
-    try {
-      if (formData.organization_logo) {
-        // Extract filename from URL
-        const url = new URL(formData.organization_logo);
-        const fileName = url.pathname.split('/').slice(-2).join('/');
-        
-        await supabase.storage
-          .from('profile-pictures')
-          .remove([fileName]);
-      }
-
-      updateFormField('organization_logo', '');
-      
-      toast({
-        title: 'Success',
-        description: 'Logo removed successfully'
-      });
-    } catch (error) {
-      console.error('Error removing logo:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to remove logo',
-        variant: 'destructive'
-      });
-    }
-  };
-
   const saveOrganizationSettings = async () => {
     try {
       setSaving(true);
@@ -241,7 +173,6 @@ export const useOrganizationSettings = () => {
       const { data, error } = await supabase.rpc('save_organization_settings', {
         p_organization_name: formData.organization_name,
         p_organization_state: formData.organization_state,
-        p_organization_logo: formData.organization_logo,
         p_address_line_1: formData.address_line_1,
         p_address_line_2: formData.address_line_2,
         p_zip_cone: formData.zip_cone,
@@ -303,8 +234,6 @@ export const useOrganizationSettings = () => {
     addDomain,
     updateDomain,
     removeDomain,
-    uploadLogo,
-    removeLogo,
     saveOrganizationSettings
   };
 };
