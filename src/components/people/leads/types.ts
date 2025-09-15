@@ -2,6 +2,7 @@
 import { TableColumn } from "@/components/UserProfilePage";
 
 export interface LeadData {
+  id: string;
   name: string;
   inquiryDate: string;
   interest: string;

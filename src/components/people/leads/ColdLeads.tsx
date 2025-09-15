@@ -4,7 +4,9 @@ import UserProfilePage, { TableColumn } from "@/components/UserProfilePage";
 import { Mail, Phone } from "lucide-react";
 import MilestonesIcon from "@/components/MilestonesIcon";
 import FilterSearchBar from "./FilterSearchBar";
-import { generateLeadsData, milestoneSets, filterByOptions } from "./data";
+import { milestoneSets, filterByOptions } from "./data";
+import { useLeads } from "@/hooks/useLeads";
+import { transformLeadData } from "./utils";
 
 interface ColdLeadsProps {
   useSimplifiedView: boolean;
@@ -14,14 +16,17 @@ const ColdLeads = ({ useSimplifiedView }: ColdLeadsProps) => {
   const [filterBy, setFilterBy] = useState(filterByOptions[0].value);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Leads data
+  // Leads data from Supabase
+  const { data: leadRecords, isLoading, error } = useLeads();
+  
   const leadsData = useMemo(() => {
-    return generateLeadsData().sort((a, b) => {
+    if (!leadRecords) return [];
+    return transformLeadData(leadRecords).sort((a, b) => {
       const dateA = new Date(a.inquiryDate);
       const dateB = new Date(b.inquiryDate);
       return dateB.getTime() - dateA.getTime(); // newest to oldest
     });
-  }, []);
+  }, [leadRecords]);
 
   // Table columns
   const leadColumns: TableColumn[] = useMemo(() => [
@@ -65,6 +70,22 @@ const ColdLeads = ({ useSimplifiedView }: ColdLeadsProps) => {
       },
     },
   ], []);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-muted-foreground">Loading leads...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-destructive">Error loading leads: {error.message}</div>
+      </div>
+    );
+  }
 
   return (
     <div>
