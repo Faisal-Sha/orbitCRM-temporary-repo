@@ -1211,6 +1211,88 @@ export type Database = {
           },
         ]
       }
+      people_leads: {
+        Row: {
+          agency_id: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          expectation: string | null
+          id: string
+          is_deleted: boolean
+          lead_goals: string | null
+          lead_source_id: string | null
+          note: string | null
+          person_id: string
+          preferences: string | null
+          service_id: string | null
+          updated_at: string
+          updated_by: string | null
+          user_role_id: string
+        }
+        Insert: {
+          agency_id: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          expectation?: string | null
+          id?: string
+          is_deleted?: boolean
+          lead_goals?: string | null
+          lead_source_id?: string | null
+          note?: string | null
+          person_id: string
+          preferences?: string | null
+          service_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          user_role_id: string
+        }
+        Update: {
+          agency_id?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          expectation?: string | null
+          id?: string
+          is_deleted?: boolean
+          lead_goals?: string | null
+          lead_source_id?: string | null
+          note?: string | null
+          person_id?: string
+          preferences?: string | null
+          service_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          user_role_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "people_leads_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "app_agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "people_leads_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "people_leads_user_role_id_fkey"
+            columns: ["user_role_id"]
+            isOneToOne: false
+            referencedRelation: "app_user_roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       settings_organization: {
         Row: {
           address_line_1: string | null
