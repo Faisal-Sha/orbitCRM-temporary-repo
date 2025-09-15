@@ -613,7 +613,7 @@ END;
 $function$;
 
 -- Fix the variable scoping bug in save_organization_settings function
-CREATE OR REPLACE FUNCTION public.save_organization_settings(p_organization_name text, p_organization_state text, p_address_line_1 text, p_address_line_2 text, p_zip_cone text, p_country text, p_default_language text, p_default_currency text, p_default_timezone text, p_facebook_url text, p_instagram_url text, p_x_url text, p_tiktok_url text, p_linkedin_url text, p_google_profile_url text, p_youtube_url text, p_domains jsonb)
+CREATE OR REPLACE FUNCTION public.save_organization_settings(p_organization_name text, p_organization_state text, p_organization_logo text, p_address_line_1 text, p_address_line_2 text, p_zip_cone text, p_country text, p_default_language text, p_default_currency text, p_default_timezone text, p_facebook_url text, p_instagram_url text, p_x_url text, p_tiktok_url text, p_linkedin_url text, p_google_profile_url text, p_youtube_url text, p_domains jsonb)
  RETURNS json
  LANGUAGE plpgsql
  SECURITY DEFINER
@@ -673,6 +673,7 @@ BEGIN
   -- Upsert settings_organization table
   INSERT INTO public.settings_organization (
     organization_id,
+    organization_logo,
     address_line_1,
     address_line_2,
     zip_cone,
@@ -691,6 +692,7 @@ BEGIN
     updated_by
   ) VALUES (
     org_id,
+    p_organization_logo,
     p_address_line_1,
     p_address_line_2,
     p_zip_cone,

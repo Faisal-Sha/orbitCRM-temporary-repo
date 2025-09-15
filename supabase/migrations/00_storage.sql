@@ -21,3 +21,28 @@ CREATE POLICY "Users can delete their own profile pictures"
 ON storage.objects 
 FOR DELETE 
 USING (bucket_id = 'profile-pictures' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+
+-- Create storage bucket for organization logos
+INSERT INTO storage.buckets (id, name, public) VALUES ('organization-logos', 'organization-logos', true);
+
+-- Create policies for organization logo uploads
+CREATE POLICY "Users can view organization logos" 
+ON storage.objects 
+FOR SELECT 
+USING (bucket_id = 'organization-logos');
+
+CREATE POLICY "Users can upload their own organization logos" 
+ON storage.objects 
+FOR INSERT 
+WITH CHECK (bucket_id = 'organization-logos' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+CREATE POLICY "Users can update their own organization logos" 
+ON storage.objects 
+FOR UPDATE 
+USING (bucket_id = 'organization-logos' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+CREATE POLICY "Users can delete their own organization logos" 
+ON storage.objects 
+FOR DELETE 
+USING (bucket_id = 'organization-logos' AND auth.uid()::text = (storage.foldername(name))[1]);
