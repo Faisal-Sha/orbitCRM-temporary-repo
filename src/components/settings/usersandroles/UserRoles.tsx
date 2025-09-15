@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+// import { v4 as uuidv4 } from "uuid";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import DeleteConfirmationDialog from "./DeleteConfirmationDialog";
@@ -26,7 +27,7 @@ import {
 } from "@/components/ui/pagination";
 import { ArrowLeft, Search, Plus, Edit, Trash2, Loader2 } from "lucide-react";
 import { useUserRoles, UserRole } from "@/hooks/useUserRoles";
-import { usePermissions } from "@/hooks/usePermissions";
+import { PermissionWithAssigned, usePermissions } from "@/hooks/usePermissions";
 import { useDataLabels } from "@/hooks/useDataLabels";
 
 interface UserRolesProps {
@@ -34,6 +35,7 @@ interface UserRolesProps {
 }
 
 const UserRoles: React.FC<UserRolesProps> = ({ onBack }) => {
+  const [modalPermissions, setModalPermissions] = useState<PermissionWithAssigned[]>([]);
   const { roles, loading, addRole, updateRole, deleteRole } = useUserRoles();
   const { labels = [], loading: labelsLoading } = useDataLabels();
   const { permissions, loading: permissionsLoading, fetchPermissionsForRole, setRolePermissions, addPermission } = usePermissions();
@@ -64,13 +66,22 @@ const UserRoles: React.FC<UserRolesProps> = ({ onBack }) => {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedRoles = filteredRoles.slice(startIndex, startIndex + itemsPerPage);
 
-  const handleAddRole = () => {
+  const handleAddRole = async () => {
     setIsAddMode(true);
     setEditingRole(null);
     setRoleName('');
     setSelectedLabelId('no-label');
     setSelectedPermissionIds([]);
     setIsModalOpen(true);
+
+    // fetch the filtered/visible permissions for a new role
+    const dummyId = "00000000-0000-0000-0000-000000000000";
+    try {
+      const visible = await fetchPermissionsForRole(dummyId);
+      setModalPermissions(visible);
+    } catch {
+      setModalPermissions([]);
+      }
   };
 
   const handleEditRole = async (role: UserRole) => {
@@ -82,9 +93,11 @@ const UserRoles: React.FC<UserRolesProps> = ({ onBack }) => {
 
     // preload assigned permissions
     try {
-      const assigned = await fetchPermissionsForRole(role.id);
-      setSelectedPermissionIds(assigned.filter(a => a.assigned).map(a => a.id));
+      const visible = await fetchPermissionsForRole(role.id);
+      setModalPermissions(visible);
+      setSelectedPermissionIds(visible.filter(v => v.assigned).map(v => v.id));
     } catch {
+      setModalPermissions([]);
       setSelectedPermissionIds([]);
     }
   };
@@ -341,7 +354,7 @@ const UserRoles: React.FC<UserRolesProps> = ({ onBack }) => {
               <Label>Permissions</Label>
 
               {/* Quick add (optional) */}
-              <div className="flex gap-2 mt-2">
+              {/* <div className="flex gap-2 mt-2">
                 <Input 
                   placeholder="Create a new permission (e.g., 'users.read')"
                   value={newPermissionName}
@@ -351,7 +364,7 @@ const UserRoles: React.FC<UserRolesProps> = ({ onBack }) => {
                 <Button type="button" variant="secondary" onClick={handleQuickAddPermission}>
                   Add
                 </Button>
-              </div>
+              </div> */}
 
               <div className="grid grid-cols-2 gap-2 mt-3 max-h-60 overflow-y-auto border p-4 rounded bg-muted/50">
                 {permissionsLoading ? (
@@ -359,12 +372,12 @@ const UserRoles: React.FC<UserRolesProps> = ({ onBack }) => {
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
                     Loading permissions...
                   </div>
-                ) : permissions.length === 0 ? (
+                ) : modalPermissions.length === 0 ? (
                   <p className="text-sm text-muted-foreground col-span-2 text-center py-4">
                     No permissions defined yet. Add one above to get started.
                   </p>
                 ) : (
-                  permissions.map((perm) => (
+                  modalPermissions.map((perm) => (
                     <label key={perm.id} className="flex items-center gap-2">
                       <input
                         type="checkbox"

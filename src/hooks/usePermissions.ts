@@ -83,6 +83,42 @@ export const usePermissions = () => {
     }
   };
 
+  const fetchPermissionsForStaffType = async (staffTypeId: string) => {
+    try {
+      const { data, error } = await supabase.rpc("get_permissions_with_assignments_for_staff_type", {
+        p_staff_type_id: staffTypeId,
+      });
+      if (error) throw error;
+      return (data || []) as PermissionWithAssigned[];
+    } catch (err: any) {
+      console.error("Error fetching permissions for staff type:", err);
+      toast.error(err.message || "Failed to load staff type permissions");
+      return [] as PermissionWithAssigned[];
+    }
+  };
+
+  const setStaffTypePermissions = async (staffTypeId: string, permissionIds: string[]) => {
+    try {
+      const { data, error } = await supabase.rpc("set_staff_type_permissions", {
+        p_staff_type_id: staffTypeId,
+        p_permission_ids: permissionIds,
+      });
+      if (error) throw error;
+
+      const resp = data as unknown as RpcResponse;
+      if (resp?.success) {
+        toast.success(resp.message || "Staff type permissions updated");
+        return { success: true };
+      }
+      throw new Error(resp?.message || "Failed to update staff type permissions");
+    } catch (err: any) {
+      console.error("Error setting staff type permissions:", err);
+      const msg = err.message || "Failed to update staff type permissions";
+      toast.error(msg);
+      return { success: false, error: msg };
+    }
+  };
+
   const addPermission = async (permissionName: string) => {
     try {
       const { data, error } = await supabase.rpc("add_permission", {
@@ -158,6 +194,8 @@ export const usePermissions = () => {
     fetchPermissions,
     fetchPermissionsForRole,
     setRolePermissions,
+    fetchPermissionsForStaffType,
+    setStaffTypePermissions,
     addPermission,
     updatePermission,
     deletePermission,

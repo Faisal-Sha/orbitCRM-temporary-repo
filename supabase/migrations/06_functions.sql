@@ -1690,7 +1690,7 @@ BEGIN
   VALUES (p_staff_type::public.staff_type_enum, p_staff_type_label_id, auth.uid(), auth.uid())
   RETURNING id INTO new_id;
 
-  RETURN json_build_object('success', true, 'message', 'Staff type created successfully', 'id', new_id);
+  RETURN json_build_object('success', true, 'message', 'Staff type created successfully', 'staff_type_id', new_id);
 END;
 $$;
 
@@ -1913,37 +1913,105 @@ $fn$;
 
 
 -- 5) List all permissions with "assigned" boolean for a role
-CREATE OR REPLACE FUNCTION public.get_permissions_with_assignments(p_role_id uuid)
-RETURNS TABLE(
+create or replace function public.get_permissions_with_assignments(p_role_id uuid)
+returns table(
   id uuid,
   permission_name text,
   assigned boolean
 )
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $fn$
-BEGIN
-  IF NOT public.current_user_has_admin_role() THEN
-    RAISE EXCEPTION 'Access denied. Admin or owner role required.';
-  END IF;
+language plpgsql
+security definer
+set search_path = public
+as $fn$
+begin
+  if not public.current_user_has_admin_role() then
+    raise exception 'Access denied. Admin or owner role required.';
+  end if;
 
-  RETURN QUERY
-  SELECT
+  return query
+  select
     p.id,
-    p.user_permissions AS permission_name,
-    EXISTS (
-      SELECT 1 FROM public.app_user_permissions_role upr
-      WHERE upr.user_permission_id = p.id
-        AND upr.user_role_id = p_role_id
-        AND upr.is_deleted = false
-    ) AS assigned
-  FROM public.app_user_permissions p
-  WHERE p.is_deleted = false
-  ORDER BY p.user_permissions ASC;
-END;
+    p.user_permissions as permission_name,
+    exists (
+      select 1
+      from public.app_user_permissions_role upr
+      where upr.user_permission_id = p.id
+        and upr.user_role_id = p_role_id
+        and upr.is_deleted = false
+    ) as assigned
+  from public.app_user_permissions p
+  where p.is_deleted = false
+    and (
+      -- keep already-assigned-to-this-role visible
+      exists (
+        select 1
+        from public.app_user_permissions_role upr1
+        where upr1.user_permission_id = p.id
+          and upr1.user_role_id = p_role_id
+          and upr1.is_deleted = false
+      )
+      -- otherwise only show if NOT assigned to any staff type
+      or not exists (
+        select 1
+        from public.app_user_permissions_staff_type ups_any
+        where ups_any.user_permission_id = p.id
+          and ups_any.is_deleted = false
+      )
+    )
+  order by p.user_permissions asc;
+end;
 $fn$;
 
+
+-- 5) List all permissions with "assigned" boolean for a staff type
+create or replace function public.get_permissions_with_assignments_for_staff_type(p_staff_type_id uuid)
+returns table(
+  id uuid,
+  permission_name text,
+  assigned boolean
+)
+language plpgsql
+security definer
+set search_path = public
+as $fn$
+begin
+  if not public.current_user_has_admin_role() then
+    raise exception 'Access denied. Admin or owner role required.';
+  end if;
+
+  return query
+  select
+    p.id,
+    p.user_permissions as permission_name,
+    exists (
+      select 1
+      from public.app_user_permissions_staff_type ups
+      where ups.user_permission_id = p.id
+        and ups.staff_type_id = p_staff_type_id
+        and ups.is_deleted = false
+    ) as assigned
+  from public.app_user_permissions p
+  where p.is_deleted = false
+    and (
+      -- keep already-assigned-to-this-staff-type visible
+      exists (
+        select 1
+        from public.app_user_permissions_staff_type ups1
+        where ups1.user_permission_id = p.id
+          and ups1.staff_type_id = p_staff_type_id
+          and ups1.is_deleted = false
+      )
+      -- otherwise only show if NOT assigned to any role
+      or not exists (
+        select 1
+        from public.app_user_permissions_role upr_any
+        where upr_any.user_permission_id = p.id
+          and upr_any.is_deleted = false
+      )
+    )
+  order by p.user_permissions asc;
+end;
+$fn$;
 
 -- 6) Set role permissions in one shot (idempotent upsert / prune)
 CREATE OR REPLACE FUNCTION public.set_role_permissions(p_role_id uuid, p_permission_ids uuid[])
@@ -1988,3 +2056,48 @@ BEGIN
   RETURN json_build_object('success', true, 'message', 'Permissions updated for role');
 END;
 $fn$;
+
+-- 7) Set staff type permissions in one shot (idempotent upsert / prune)
+CREATE OR REPLACE FUNCTION public.set_staff_type_permissions(p_staff_type_id uuid, p_permission_ids uuid[])
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $fn$
+DECLARE
+  current_user_id uuid := auth.uid();
+BEGIN
+  IF NOT public.current_user_has_admin_role() THEN
+    RETURN json_build_object('success', false, 'message', 'Access denied. Admin or owner role required.');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM public.app_user_staff_types WHERE id = p_staff_type_id AND is_deleted = false
+  ) THEN
+    RETURN json_build_object('success', false, 'message', 'Staff type not found.');
+  END IF;
+
+  -- Soft delete links not in new list
+  UPDATE public.app_user_permissions_staff_type ups
+  SET is_deleted = true,
+      deleted_by = current_user_id,
+      deleted_at = now()
+  WHERE ups.staff_type_id = p_staff_type_id
+    AND ups.is_deleted = false
+    AND NOT (ups.user_permission_id = ANY (p_permission_ids));
+
+  -- Insert missing links
+  INSERT INTO public.app_user_permissions_staff_type (staff_type_id, user_permission_id, created_by, updated_by)
+  SELECT p_staff_type_id, pid, current_user_id, current_user_id
+  FROM UNNEST(p_permission_ids) AS pid
+  WHERE NOT EXISTS (
+    SELECT 1 FROM public.app_user_permissions_staff_type ups
+    WHERE ups.staff_type_id = p_staff_type_id
+      AND ups.user_permission_id = pid
+      AND ups.is_deleted = false
+  );
+
+  RETURN json_build_object('success', true, 'message', 'Permissions updated for staff type');
+END;
+$fn$;
+

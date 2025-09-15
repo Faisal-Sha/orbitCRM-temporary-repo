@@ -21,6 +21,7 @@ interface RpcResponse {
   success: boolean;
   message?: string;
   role_id?: string;
+  staff_type_id?: string;
 }
 
 export interface StaffTypeWithCount extends StaffType {
@@ -74,7 +75,7 @@ export const useStaffTypes = () => {
       if (response?.success) {
         toast.success(response.message || 'Staff type added successfully');
         await fetchStaffTypes(); // Refresh the list
-        return { success: true };
+        return { success: true, staff_type_id: response.staff_type_id };
       } else {
         throw new Error(response?.message || 'Failed to add staff type');
       }

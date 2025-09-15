@@ -27,6 +27,7 @@ import { ArrowLeft, Search, Plus, Edit, Trash2, Loader2 } from "lucide-react";
 import { useStaffTypes, StaffTypeEnum } from "@/hooks/useStaffTypes";
 import { useDataLabels } from "@/hooks/useDataLabels";
 import { RoleLabel } from "@/components/ui/role-label";
+import { PermissionWithAssigned, usePermissions } from "@/hooks/usePermissions";
 
 // Staff type enum values from database
 const STAFF_TYPE_OPTIONS = [
@@ -68,8 +69,17 @@ interface StaffTypesProps {
 }
 
 const StaffTypes: React.FC<StaffTypesProps> = ({ onBack }) => {
+  const [modalPermissions, setModalPermissions] = useState<PermissionWithAssigned[]>([]);
   const { staffTypes, loading, addStaffType, updateStaffType, deleteStaffType } = useStaffTypes();
   const { labels = [], loading: labelsLoading } = useDataLabels();
+
+  const {
+    permissions,
+    loading: permissionsLoading,
+    fetchPermissionsForStaffType,
+    setStaffTypePermissions,
+    addPermission,
+  } = usePermissions();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -77,7 +87,6 @@ const StaffTypes: React.FC<StaffTypesProps> = ({ onBack }) => {
   const [isAddMode, setIsAddMode] = useState(false);
   const [saving, setSaving] = useState(false);
   const [staffTypeError, setStaffTypeError] = useState<string | null>(null);
-
 
   const [editing, setEditing] = useState<{
     id?: string;
@@ -91,6 +100,11 @@ const StaffTypes: React.FC<StaffTypesProps> = ({ onBack }) => {
 
   const [selectedLabelId, setSelectedLabelId] = useState<string>('no-label');
 
+  // NEW: permissions state (same as Roles page)
+  const [selectedPermissionIds, setSelectedPermissionIds] = useState<string[]>([]);
+  const [newPermissionName, setNewPermissionName] = useState("");
+  const [assigning, setAssigning] = useState(false);
+
   const itemsPerPage = 25;
   const filteredStaffTypes = staffTypes.filter(st => {
     const label = STAFF_TYPE_OPTIONS.find(o => o.value === st.staff_type)?.label || st.staff_type;
@@ -101,7 +115,7 @@ const StaffTypes: React.FC<StaffTypesProps> = ({ onBack }) => {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginated = filteredStaffTypes.slice(startIndex, startIndex + itemsPerPage);
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     setIsAddMode(true);
     setEditing({
       staff_type: '' as StaffTypeEnum,
@@ -109,10 +123,20 @@ const StaffTypes: React.FC<StaffTypesProps> = ({ onBack }) => {
       count: 0
     });
     setSelectedLabelId('no-label');
+    setSelectedPermissionIds([]); // reset permissions
     setIsModalOpen(true);
+
+    // fetch the filtered/visible permissions for a new role
+    const dummyId = "00000000-0000-0000-0000-000000000000";
+    try {
+      const visible = await fetchPermissionsForStaffType(dummyId);
+      setModalPermissions(visible);
+    } catch {
+      setModalPermissions([]);
+    }
   };
 
-  const handleEdit = (st: any) => {
+  const handleEdit = async (st: any) => {
     setIsAddMode(false);
     setEditing({
       id: st.id,
@@ -122,24 +146,52 @@ const StaffTypes: React.FC<StaffTypesProps> = ({ onBack }) => {
     });
     setSelectedLabelId(st.staff_type_label_id || 'no-label');
     setIsModalOpen(true);
+
+    // preload assigned permissions for this staff type
+    try {
+      const visible = await fetchPermissionsForStaffType(st.id);
+      setModalPermissions(visible);
+      setSelectedPermissionIds(visible.filter(v => v.assigned).map(v => v.id)); 
+    } catch {
+      setModalPermissions([]);
+      setSelectedPermissionIds([]);
+    }
   };
 
   const handleSave = async () => {
     if (!editing?.staff_type) return;
+    if (!isValidStaffType(editing.staff_type)) {
+      setStaffTypeError(
+        "Invalid value. Must match one of: " + STAFF_TYPE_ENUM_VALUES.join(", ")
+      );
+      return;
+    }
+    setStaffTypeError(null);
     setSaving(true);
     try {
       const labelId = selectedLabelId === 'no-label' ? undefined : selectedLabelId;
       if (isAddMode) {
         const res = await addStaffType(editing.staff_type as StaffTypeEnum, labelId);
-        if (res.success) {
+        if (res.success && res.staff_type_id) {
+          // apply permissions if some are selected
+          if (selectedPermissionIds.length > 0) {
+            setAssigning(true);
+            await setStaffTypePermissions(res.staff_type_id, selectedPermissionIds);
+            setAssigning(false);
+          }
           setIsModalOpen(false);
           setEditing(null);
+          setSelectedPermissionIds([]);
         }
       } else if (editing?.id) {
         const res = await updateStaffType(editing.id, editing.staff_type as StaffTypeEnum, labelId);
         if (res.success) {
+          setAssigning(true);
+          await setStaffTypePermissions(editing.id, selectedPermissionIds);
+          setAssigning(false);
           setIsModalOpen(false);
           setEditing(null);
+          setSelectedPermissionIds([]);
         }
       }
     } finally {
@@ -159,6 +211,24 @@ const StaffTypes: React.FC<StaffTypesProps> = ({ onBack }) => {
         setDeleteDialogOpen(false);
         setStaffTypeToDelete(null);
       }
+    }
+  };
+
+  // Toggle permission assignment (same as Roles page)
+  const handlePermissionChange = (permissionId: string, checked: boolean) => {
+    setSelectedPermissionIds(prev =>
+      checked ? Array.from(new Set([...prev, permissionId])) : prev.filter(id => id !== permissionId)
+    );
+  };
+
+  // Optional quick permission creator (same as Roles page; keep commented if you don’t want it live)
+  const handleQuickAddPermission = async () => {
+    const name = newPermissionName.trim();
+    if (!name) return;
+    const res = await addPermission(name);
+    if (res.success && res.permission_id) {
+      setNewPermissionName("");
+      setSelectedPermissionIds(prev => Array.from(new Set([...prev, res.permission_id!])));
     }
   };
 
@@ -285,7 +355,7 @@ const StaffTypes: React.FC<StaffTypesProps> = ({ onBack }) => {
         </CardContent>
       </Card>
 
-      {/* Modal — mirrors Roles modal layout */}
+      {/* Modal layout */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
@@ -297,7 +367,7 @@ const StaffTypes: React.FC<StaffTypesProps> = ({ onBack }) => {
               <div className="grid grid-cols-2 gap-4">
                 {/* Staff Type */}
                 <div>
-                  <Label htmlFor="staff-type">Staff Type (enum key)</Label>
+                  <Label htmlFor="staff-type">Staff Type</Label>
                   <Input
                     id="staff-type"
                     placeholder="e.g., specialist_it"
@@ -305,26 +375,14 @@ const StaffTypes: React.FC<StaffTypesProps> = ({ onBack }) => {
                     onChange={(e) => {
                       const v = e.target.value.trim();
                       setEditing((prev) => (prev ? { ...prev, staff_type: v as StaffTypeEnum } : prev));
-                      if (!v) {
-                        setStaffTypeError('Staff type is required');
-                      } else if (!isValidStaffType(v)) {
-                        setStaffTypeError(
-                          'Invalid value. Must match one of: ' + STAFF_TYPE_ENUM_VALUES.join(', ')
-                        );
-                      } else {
-                        setStaffTypeError(null);
-                      }
                     }}
                   />
                   {staffTypeError && (
                     <p className="text-sm text-destructive mt-1">{staffTypeError}</p>
                   )}
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Allowed: {STAFF_TYPE_ENUM_VALUES.join(', ')}
-                  </p>
                 </div>
 
-                {/* Optional Label (exactly like Roles) */}
+                {/* Optional Label */}
                 <div>
                   <Label htmlFor="staff-type-label">Label (Optional)</Label>
                   <Select
@@ -367,21 +425,62 @@ const StaffTypes: React.FC<StaffTypesProps> = ({ onBack }) => {
                 )}
               </div>
 
-              {/* Permissions placeholder to keep parity with Roles (optional; remove if not needed) */}
+              {/* Permissions (now functional, mirrors Roles) */}
               <div>
                 <Label>Permissions</Label>
-                <div className="grid grid-cols-2 gap-2 mt-2 max-h-60 overflow-y-auto border p-4 rounded bg-muted/50">
-                  <p className="text-sm text-muted-foreground col-span-2 text-center py-4">
-                    Permissions configuration will be available in a future update
-                  </p>
+
+                {/* Quick add (optional) — keep commented to match Roles page */}
+                {/* <div className="flex gap-2 mt-2">
+                  <Input
+                    placeholder="Create a new permission (e.g., 'patients.read')"
+                    value={newPermissionName}
+                    onChange={(e) => setNewPermissionName(e.target.value)}
+                    className="max-w-md"
+                  />
                 </div>
+                <div className="mt-2">
+                  <Button type="button" variant="secondary" onClick={handleQuickAddPermission}>
+                    Add Permission
+                  </Button>
+                </div> */}
+
+                <div className="grid grid-cols-2 gap-2 mt-3 max-h-60 overflow-y-auto border p-4 rounded bg-muted/50">
+                  {permissionsLoading ? (
+                    <div className="col-span-2 flex items-center justify-center py-6 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Loading permissions...
+                    </div>
+                  ) : modalPermissions.length === 0 ? (
+                    <p className="text-sm text-muted-foreground col-span-2 text-center py-4">
+                      No permissions defined yet. Add one above to get started.
+                    </p>
+                  ) : (
+                    modalPermissions.map((perm) => (
+                      <label key={perm.id} className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={selectedPermissionIds.includes(perm.id)}
+                          onChange={(e) => handlePermissionChange(perm.id, e.target.checked)}
+                        />
+                        <span className="text-sm">{perm.permission_name}</span>
+                      </label>
+                    ))
+                  )}
+                </div>
+
+                {assigning && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Applying permissions...
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setIsModalOpen(false)} disabled={saving}>
                   Cancel
                 </Button>
-                <Button onClick={handleSave} disabled={saving || !editing.staff_type || !!staffTypeError}>
+                <Button onClick={handleSave} disabled={saving || !editing.staff_type}>
                   {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                   {isAddMode ? 'Add Staff Type' : 'Save Changes'}
                 </Button>
