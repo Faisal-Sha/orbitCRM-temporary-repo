@@ -1,11 +1,13 @@
 
 import { LeadData, NoShowData, ReferralData } from "./types";
 import { Milestone } from "@/components/MilestonesIcon";
+import { nanoid } from "nanoid";
 
 // Leads data and milestones
 export const generateLeadsData = (): LeadData[] => {
   return [
     {
+      id: nanoid(),
       name: "John Smith",
       inquiryDate: "May 10, 2025",
       interest: "75%",
@@ -13,6 +15,7 @@ export const generateLeadsData = (): LeadData[] => {
       phone: "111-111-1111",
     },
     {
+      id: nanoid(),
       name: "Alice Johnson",
       inquiryDate: "May 08, 2025",
       interest: "90%",
@@ -20,6 +23,7 @@ export const generateLeadsData = (): LeadData[] => {
       phone: "222-222-2222",
     },
     {
+      id: nanoid(),
       name: "David Wilson",
       inquiryDate: "May 05, 2025",
       interest: "45%",
@@ -27,6 +31,7 @@ export const generateLeadsData = (): LeadData[] => {
       phone: "333-333-3333",
     },
     {
+      id: nanoid(),
       name: "Emily Davis",
       inquiryDate: "May 03, 2025",
       interest: "85%",
@@ -34,6 +39,7 @@ export const generateLeadsData = (): LeadData[] => {
       phone: "444-444-4444",
     },
     {
+      id: nanoid(),
       name: "Michael Brown",
       inquiryDate: "Apr 29, 2025",
       interest: "60%",
@@ -41,6 +47,7 @@ export const generateLeadsData = (): LeadData[] => {
       phone: "555-555-5555",
     },
     {
+      id: nanoid(),
       name: "Sarah Miller",
       inquiryDate: "Apr 27, 2025",
       interest: "95%",
@@ -48,6 +55,7 @@ export const generateLeadsData = (): LeadData[] => {
       phone: "666-666-6666",
     },
     {
+      id: nanoid(),
       name: "Robert Taylor",
       inquiryDate: "Apr 25, 2025",
       interest: "40%",
@@ -55,6 +63,7 @@ export const generateLeadsData = (): LeadData[] => {
       phone: "777-777-7777",
     },
     {
+      id: nanoid(),
       name: "Jennifer White",
       inquiryDate: "Apr 22, 2025",
       interest: "80%",

@@ -21,10 +21,11 @@ export const useLeads = () => {
       const { data, error } = await supabase.rpc("get_leads_data");
       
       if (error) {
+        console.error("Failed to fetch leads:", error);
         throw new Error(`Failed to fetch leads: ${error.message}`);
       }
       
-      return data || [];
+      return (data as LeadRecord[]) || [];
     },
   });
 };
