@@ -744,7 +744,7 @@ export type Database = {
           is_deleted: boolean
           last_name: string
           middle_name: string | null
-          status: Database["public"]["Enums"]["people_status_enum"]
+          status: string
           updated_at: string
           updated_by: string | null
           user_account_id: string | null
@@ -762,7 +762,7 @@ export type Database = {
           is_deleted?: boolean
           last_name: string
           middle_name?: string | null
-          status?: Database["public"]["Enums"]["people_status_enum"]
+          status?: string
           updated_at?: string
           updated_by?: string | null
           user_account_id?: string | null
@@ -780,7 +780,7 @@ export type Database = {
           is_deleted?: boolean
           last_name?: string
           middle_name?: string | null
-          status?: Database["public"]["Enums"]["people_status_enum"]
+          status?: string
           updated_at?: string
           updated_by?: string | null
           user_account_id?: string | null
@@ -855,6 +855,47 @@ export type Database = {
             columns: ["staff_type_id"]
             isOneToOne: false
             referencedRelation: "app_user_staff_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      people_assign_status: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          new_status: string | null
+          old_status: string | null
+          person_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          new_status?: string | null
+          old_status?: string | null
+          person_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          new_status?: string | null
+          old_status?: string | null
+          person_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "people_assign_status_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
             referencedColumns: ["id"]
           },
         ]
@@ -1755,7 +1796,6 @@ export type Database = {
         | "organization"
         | "other"
       organization_status_enum: "active" | "inactive" | "deleted"
-      people_status_enum: "active" | "inactive" | "deleted"
       referral_relationship_enum:
         | "family member"
         | "colleague"
@@ -1920,7 +1960,6 @@ export const Constants = {
         "other",
       ],
       organization_status_enum: ["active", "inactive", "deleted"],
-      people_status_enum: ["active", "inactive", "deleted"],
       referral_relationship_enum: [
         "family member",
         "colleague",
