@@ -1194,6 +1194,7 @@ export type Database = {
           note: string | null
           person_id: string
           preferences: string | null
+          preferred_language: string | null
           service_id: string | null
           updated_at: string
           updated_by: string | null
@@ -1212,6 +1213,7 @@ export type Database = {
           note?: string | null
           person_id: string
           preferences?: string | null
+          preferred_language?: string | null
           service_id?: string | null
           updated_at?: string
           updated_by?: string | null
@@ -1230,6 +1232,7 @@ export type Database = {
           note?: string | null
           person_id?: string
           preferences?: string | null
+          preferred_language?: string | null
           service_id?: string | null
           updated_at?: string
           updated_by?: string | null
