@@ -187,32 +187,52 @@ export const milestoneSetsNoShows: Record<string, Milestone[]> = {
 export const generateReferralsData = (): ReferralData[] => {
   return [
     {
-      name: "Nancy Pierce",
+      id: nanoid(),
+      person_id: nanoid(),
       entryDate: "May 14, 2025",
       interest: "88%",
-      email: "n.pierce@email.com",
-      phone: "201-555-7171",
+      person: {
+        first_name: "Nancy",
+        last_name: "Pierce",
+        email: "n.pierce@email.com",
+        phone: "201-555-7171",
+      },
     },
     {
-      name: "Victor Chan",
+      id: nanoid(),
+      person_id: nanoid(),
       entryDate: "May 11, 2025",
       interest: "77%",
-      email: "v.chan@email.com",
-      phone: "202-555-4623",
+      person: {
+        first_name: "Victor",
+        last_name: "Chan",
+        email: "v.chan@email.com",
+        phone: "202-555-4623",
+      },
     },
     {
-      name: "Isabel Jeffries",
+      id: nanoid(),
+      person_id: nanoid(),
       entryDate: "May 08, 2025",
       interest: "69%",
-      email: "i.jeffries@email.com",
-      phone: "203-555-1247",
+      person: {
+        first_name: "Isabel",
+        last_name: "Jeffries",
+        email: "i.jeffries@email.com",
+        phone: "203-555-1247",
+      },
     },
     {
-      name: "Carlos Ruiz",
+      id: nanoid(),
+      person_id: nanoid(),
       entryDate: "May 03, 2025",
       interest: "82%",
-      email: "c.ruiz@email.com",
-      phone: "204-555-3344",
+      person: {
+        first_name: "Carlos",
+        last_name: "Ruiz",
+        email: "c.ruiz@email.com",
+        phone: "204-555-3344",
+      },
     },
   ];
 };

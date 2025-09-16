@@ -1257,12 +1257,9 @@ export type Database = {
           created_by: string | null
           deleted_at: string | null
           deleted_by: string | null
-          email: string | null
-          first_name: string
           id: string
           is_deleted: boolean
-          last_name: string | null
-          phone_number: string | null
+          person_id: string
           referral_note: string | null
           referral_relationship:
             | Database["public"]["Enums"]["referral_relationship_enum"]
@@ -1280,12 +1277,9 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
-          email?: string | null
-          first_name: string
           id?: string
           is_deleted?: boolean
-          last_name?: string | null
-          phone_number?: string | null
+          person_id: string
           referral_note?: string | null
           referral_relationship?:
             | Database["public"]["Enums"]["referral_relationship_enum"]
@@ -1303,12 +1297,9 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
-          email?: string | null
-          first_name?: string
           id?: string
           is_deleted?: boolean
-          last_name?: string | null
-          phone_number?: string | null
+          person_id?: string
           referral_note?: string | null
           referral_relationship?:
             | Database["public"]["Enums"]["referral_relationship_enum"]
@@ -1325,6 +1316,13 @@ export type Database = {
           {
             foreignKeyName: "fk_people_contacts_referrals_referred_by"
             columns: ["referred_by_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_people_referrals_person_id"
+            columns: ["person_id"]
             isOneToOne: false
             referencedRelation: "people"
             referencedColumns: ["id"]

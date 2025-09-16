@@ -19,11 +19,17 @@ export interface NoShowData {
 }
 
 export interface ReferralData {
-  name: string;
+  id: string;
+  person_id: string;
   entryDate: string;
   interest: string;
-  email: string;
-  phone: string;
+  // Name, email, and phone will come from joining with people/people_contacts tables
+  person?: {
+    first_name: string;
+    last_name: string;
+    email?: string;
+    phone?: string;
+  };
 }
 
 export interface FilterSearchBarProps {

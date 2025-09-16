@@ -33,9 +33,13 @@ const Referrals = ({ useSimplifiedView }: ReferralsProps) => {
     },
     {
       key: "name",
-      header: "Name",
+      header: "Name", 
       align: "left",
       width: "w-28 md:w-32",
+      render: (value, item) => {
+        const person = item.person;
+        return person ? `${person.first_name} ${person.last_name}` : 'Unknown';
+      }
     },
     {
       key: "interest",
@@ -101,7 +105,7 @@ const Referrals = ({ useSimplifiedView }: ReferralsProps) => {
                       <>
                         <Mail className="h-4 w-4 text-blue-500" />
                         <span className="text-sm">
-                          {item.email || "email@example.com"}
+                          {item.person?.email || "email@example.com"}
                         </span>
                       </>
                     ),
@@ -113,7 +117,7 @@ const Referrals = ({ useSimplifiedView }: ReferralsProps) => {
                       <>
                         <Phone className="h-4 w-4 text-green-500" />
                         <span className="text-sm">
-                          {item.phone || "000-000-0000"}
+                          {item.person?.phone || "000-000-0000"}
                         </span>
                       </>
                     ),
