@@ -703,7 +703,6 @@ export type Database = {
           deleted_by: string | null
           id: string
           is_deleted: boolean
-          status: Database["public"]["Enums"]["user_status_enum"]
           updated_at: string
           updated_by: string | null
           user_id: string
@@ -716,7 +715,6 @@ export type Database = {
           deleted_by?: string | null
           id?: string
           is_deleted?: boolean
-          status?: Database["public"]["Enums"]["user_status_enum"]
           updated_at?: string
           updated_by?: string | null
           user_id: string
@@ -729,7 +727,6 @@ export type Database = {
           deleted_by?: string | null
           id?: string
           is_deleted?: boolean
-          status?: Database["public"]["Enums"]["user_status_enum"]
           updated_at?: string
           updated_by?: string | null
           user_id?: string
@@ -992,7 +989,7 @@ export type Database = {
           },
         ]
       }
-      people_contacts_emergency: {
+      people_emergency: {
         Row: {
           created_at: string
           created_by: string | null
@@ -1051,86 +1048,6 @@ export type Database = {
           {
             foreignKeyName: "fk_people_contacts_emergency_person"
             columns: ["person_id"]
-            isOneToOne: false
-            referencedRelation: "people"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      people_contacts_referrals: {
-        Row: {
-          created_at: string
-          created_by: string | null
-          deleted_at: string | null
-          deleted_by: string | null
-          email: string | null
-          first_name: string
-          id: string
-          is_deleted: boolean
-          last_name: string | null
-          phone_number: string | null
-          referral_note: string | null
-          referral_relationship:
-            | Database["public"]["Enums"]["referral_relationship_enum"]
-            | null
-          referral_type:
-            | Database["public"]["Enums"]["referral_type_enum"]
-            | null
-          referred_by_id: string | null
-          referred_by_name: string | null
-          updated_at: string
-          updated_by: string | null
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string | null
-          deleted_at?: string | null
-          deleted_by?: string | null
-          email?: string | null
-          first_name: string
-          id?: string
-          is_deleted?: boolean
-          last_name?: string | null
-          phone_number?: string | null
-          referral_note?: string | null
-          referral_relationship?:
-            | Database["public"]["Enums"]["referral_relationship_enum"]
-            | null
-          referral_type?:
-            | Database["public"]["Enums"]["referral_type_enum"]
-            | null
-          referred_by_id?: string | null
-          referred_by_name?: string | null
-          updated_at?: string
-          updated_by?: string | null
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          deleted_at?: string | null
-          deleted_by?: string | null
-          email?: string | null
-          first_name?: string
-          id?: string
-          is_deleted?: boolean
-          last_name?: string | null
-          phone_number?: string | null
-          referral_note?: string | null
-          referral_relationship?:
-            | Database["public"]["Enums"]["referral_relationship_enum"]
-            | null
-          referral_type?:
-            | Database["public"]["Enums"]["referral_type_enum"]
-            | null
-          referred_by_id?: string | null
-          referred_by_name?: string | null
-          updated_at?: string
-          updated_by?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "fk_people_contacts_referrals_referred_by"
-            columns: ["referred_by_id"]
             isOneToOne: false
             referencedRelation: "people"
             referencedColumns: ["id"]
@@ -1222,7 +1139,7 @@ export type Database = {
           id: string
           is_deleted: boolean
           lead_goals: string | null
-          lead_source_id: string | null
+          lead_source: string | null
           note: string | null
           person_id: string
           preferences: string | null
@@ -1241,7 +1158,7 @@ export type Database = {
           id?: string
           is_deleted?: boolean
           lead_goals?: string | null
-          lead_source_id?: string | null
+          lead_source?: string | null
           note?: string | null
           person_id: string
           preferences?: string | null
@@ -1260,7 +1177,7 @@ export type Database = {
           id?: string
           is_deleted?: boolean
           lead_goals?: string | null
-          lead_source_id?: string | null
+          lead_source?: string | null
           note?: string | null
           person_id?: string
           preferences?: string | null
@@ -1289,6 +1206,86 @@ export type Database = {
             columns: ["user_role_id"]
             isOneToOne: false
             referencedRelation: "app_user_roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      people_referrals: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          email: string | null
+          first_name: string
+          id: string
+          is_deleted: boolean
+          last_name: string | null
+          phone_number: string | null
+          referral_note: string | null
+          referral_relationship:
+            | Database["public"]["Enums"]["referral_relationship_enum"]
+            | null
+          referral_type:
+            | Database["public"]["Enums"]["referral_type_enum"]
+            | null
+          referred_by_id: string | null
+          referred_by_name: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          email?: string | null
+          first_name: string
+          id?: string
+          is_deleted?: boolean
+          last_name?: string | null
+          phone_number?: string | null
+          referral_note?: string | null
+          referral_relationship?:
+            | Database["public"]["Enums"]["referral_relationship_enum"]
+            | null
+          referral_type?:
+            | Database["public"]["Enums"]["referral_type_enum"]
+            | null
+          referred_by_id?: string | null
+          referred_by_name?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          email?: string | null
+          first_name?: string
+          id?: string
+          is_deleted?: boolean
+          last_name?: string | null
+          phone_number?: string | null
+          referral_note?: string | null
+          referral_relationship?:
+            | Database["public"]["Enums"]["referral_relationship_enum"]
+            | null
+          referral_type?:
+            | Database["public"]["Enums"]["referral_type_enum"]
+            | null
+          referred_by_id?: string | null
+          referred_by_name?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_people_contacts_referrals_referred_by"
+            columns: ["referred_by_id"]
+            isOneToOne: false
+            referencedRelation: "people"
             referencedColumns: ["id"]
           },
         ]
