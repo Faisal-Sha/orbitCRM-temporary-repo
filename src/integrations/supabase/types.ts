@@ -750,6 +750,7 @@ export type Database = {
           user_account_id: string | null
           user_profile_bio: string | null
           user_profile_pic: string | null
+          user_role_id: string
         }
         Insert: {
           created_at?: string
@@ -767,6 +768,7 @@ export type Database = {
           user_account_id?: string | null
           user_profile_bio?: string | null
           user_profile_pic?: string | null
+          user_role_id: string
         }
         Update: {
           created_at?: string
@@ -784,6 +786,7 @@ export type Database = {
           user_account_id?: string | null
           user_profile_bio?: string | null
           user_profile_pic?: string | null
+          user_role_id?: string
         }
         Relationships: [
           {
@@ -791,6 +794,13 @@ export type Database = {
             columns: ["user_account_id"]
             isOneToOne: false
             referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "people_user_role_id_fkey"
+            columns: ["user_role_id"]
+            isOneToOne: false
+            referencedRelation: "app_user_roles"
             referencedColumns: ["id"]
           },
         ]
@@ -1146,7 +1156,6 @@ export type Database = {
           service_id: string | null
           updated_at: string
           updated_by: string | null
-          user_role_id: string
         }
         Insert: {
           agency_id: string
@@ -1165,7 +1174,6 @@ export type Database = {
           service_id?: string | null
           updated_at?: string
           updated_by?: string | null
-          user_role_id: string
         }
         Update: {
           agency_id?: string
@@ -1184,7 +1192,6 @@ export type Database = {
           service_id?: string | null
           updated_at?: string
           updated_by?: string | null
-          user_role_id?: string
         }
         Relationships: [
           {
@@ -1199,13 +1206,6 @@ export type Database = {
             columns: ["person_id"]
             isOneToOne: false
             referencedRelation: "people"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "people_leads_user_role_id_fkey"
-            columns: ["user_role_id"]
-            isOneToOne: false
-            referencedRelation: "app_user_roles"
             referencedColumns: ["id"]
           },
         ]
