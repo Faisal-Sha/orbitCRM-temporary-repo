@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -26,6 +26,13 @@ interface ContactInfo {
   url_instagram?: string | null;
   url_tiktok?: string | null;
   url_linkedin?: string | null;
+}
+
+interface ContactField {
+  key: string;
+  label: string;
+  value: string;
+  type: 'text' | 'url';
 }
 
 interface Identifiers {
@@ -260,6 +267,161 @@ export const useUserProfile = (personId?: string) => {
     }
   };
 
+  // Contact management functions
+  const updateContactField = useCallback(async (fieldName: string, value: string) => {
+    if (!personId) return false;
+    
+    try {
+      const { data: result, error } = await supabase
+        .rpc('update_people_contact_field', {
+          p_person_id: personId,
+          p_field_name: fieldName,
+          p_field_value: value
+        });
+
+      if (error) throw error;
+      
+      if (result && typeof result === 'object' && 'success' in result && result.success) {
+        toast.success('Contact field updated successfully');
+        // Refetch data to get updated values
+        await fetchProfile(personId);
+        return true;
+      } else {
+        throw new Error((result as any)?.message || 'Update failed');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update contact field');
+      return false;
+    }
+  }, [personId]);
+
+  const updateContactAddress = useCallback(async (address: {
+    address_line_1?: string;
+    address_line_2?: string;
+    city?: string;
+    state?: string;
+    zip_code?: string;
+  }) => {
+    if (!personId) return false;
+    
+    try {
+      const { data: result, error } = await supabase
+        .rpc('update_people_contact_address', {
+          p_person_id: personId,
+          p_address_line_1: address.address_line_1 || null,
+          p_address_line_2: address.address_line_2 || null,
+          p_city: address.city || null,
+          p_state: address.state || null,
+          p_zip_code: address.zip_code || null
+        });
+
+      if (error) throw error;
+      
+      if (result && typeof result === 'object' && 'success' in result && result.success) {
+        toast.success('Address updated successfully');
+        await fetchProfile(personId);
+        return true;
+      } else {
+        throw new Error((result as any)?.message || 'Update failed');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update address');
+      return false;
+    }
+  }, [personId]);
+
+  const deleteContactField = useCallback(async (fieldName: string) => {
+    if (!personId) return false;
+    
+    try {
+      const { data: result, error } = await supabase
+        .rpc('delete_people_contact_field', {
+          p_person_id: personId,
+          p_field_name: fieldName
+        });
+
+      if (error) throw error;
+      
+      if (result && typeof result === 'object' && 'success' in result && result.success) {
+        toast.success('Contact field cleared successfully');
+        await fetchProfile(personId);
+        return true;
+      } else {
+        throw new Error((result as any)?.message || 'Delete failed');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete contact field');
+      return false;
+    }
+  }, [personId]);
+
+  // Helper to get available contact fields for dropdown
+  const getAvailableContactFields = useCallback(() => {
+    const allFields = [
+      { key: 'email', label: 'Email' },
+      { key: 'work_email', label: 'Work Email' },
+      { key: 'phone', label: 'Phone' },
+      { key: 'phone_home', label: 'Home Phone' },
+      { key: 'address', label: 'Address' },
+      { key: 'url_facebook', label: 'Facebook' },
+      { key: 'url_instagram', label: 'Instagram' },
+      { key: 'url_tiktok', label: 'TikTok' },
+      { key: 'url_linkedin', label: 'LinkedIn' }
+    ];
+
+    if (!data?.contactInfo) return allFields;
+
+    const existingFields = new Set();
+    if (data.contactInfo.email) existingFields.add('email');
+    if (data.contactInfo.work_email) existingFields.add('work_email');
+    if (data.contactInfo.phone) existingFields.add('phone');
+    if (data.contactInfo.phone_home) existingFields.add('phone_home');
+    if (data.contactInfo.address && data.contactInfo.address !== 'Not provided') existingFields.add('address');
+    if (data.contactInfo.url_facebook) existingFields.add('url_facebook');
+    if (data.contactInfo.url_instagram) existingFields.add('url_instagram');
+    if (data.contactInfo.url_tiktok) existingFields.add('url_tiktok');
+    if (data.contactInfo.url_linkedin) existingFields.add('url_linkedin');
+
+    return allFields.filter(field => !existingFields.has(field.key));
+  }, [data?.contactInfo]);
+
+  // Helper to get current contact fields for display
+  const getCurrentContactFields = useCallback((): ContactField[] => {
+    if (!data?.contactInfo) return [];
+
+    const fields: ContactField[] = [];
+    
+    if (data.contactInfo.email) {
+      fields.push({ key: 'email', label: 'Email', value: data.contactInfo.email, type: 'text' });
+    }
+    if (data.contactInfo.work_email) {
+      fields.push({ key: 'work_email', label: 'Work Email', value: data.contactInfo.work_email, type: 'text' });
+    }
+    if (data.contactInfo.phone) {
+      fields.push({ key: 'phone', label: 'Phone', value: data.contactInfo.phone, type: 'text' });
+    }
+    if (data.contactInfo.phone_home) {
+      fields.push({ key: 'phone_home', label: 'Home Phone', value: data.contactInfo.phone_home, type: 'text' });
+    }
+    if (data.contactInfo.address && data.contactInfo.address !== 'Not provided') {
+      fields.push({ key: 'address', label: 'Address', value: data.contactInfo.address, type: 'text' });
+    }
+    if (data.contactInfo.url_facebook) {
+      fields.push({ key: 'url_facebook', label: 'Facebook', value: data.contactInfo.url_facebook, type: 'url' });
+    }
+    if (data.contactInfo.url_instagram) {
+      fields.push({ key: 'url_instagram', label: 'Instagram', value: data.contactInfo.url_instagram, type: 'url' });
+    }
+    if (data.contactInfo.url_tiktok) {
+      fields.push({ key: 'url_tiktok', label: 'TikTok', value: data.contactInfo.url_tiktok, type: 'url' });
+    }
+    if (data.contactInfo.url_linkedin) {
+      fields.push({ key: 'url_linkedin', label: 'LinkedIn', value: data.contactInfo.url_linkedin, type: 'url' });
+    }
+
+    return fields;
+  }, [data?.contactInfo]);
+
   const refetch = async () => {
     if (!personId) return;
     await fetchProfile(personId);
@@ -283,5 +445,11 @@ export const useUserProfile = (personId?: string) => {
     loading,
     error,
     refetch,
+    // Contact management functions
+    updateContactField,
+    updateContactAddress,
+    deleteContactField,
+    getAvailableContactFields,
+    getCurrentContactFields,
   };
 };

@@ -5,10 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import {
   Mail, Phone, MapPin, Facebook, Instagram, Pencil, X, User, Calendar, Briefcase, ShieldCheck,
-  Home, Users, Heart, Languages
+  Home, Users, Heart, Languages, Plus, ExternalLink, Linkedin
 } from 'lucide-react';
+import { FaTiktok } from 'react-icons/fa';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useUserRoles } from '@/hooks/useUserRoles';
 import { useStaffTypes } from '@/hooks/useStaffTypes';
@@ -107,6 +109,299 @@ const EditableDetailItem: React.FC<EditableDetailItemProps> = ({
   </div>
 );
 
+// Debounce hook for autosave
+function useDebounce(value: string, delay: number) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+    
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+  
+  return debouncedValue;
+}
+
+// Enhanced Contact Information Section Component
+const ContactInformationSection: React.FC<{ personId?: string }> = ({ personId }) => {
+  const { 
+    data,
+    loading,
+    updateContactField,
+    updateContactAddress,
+    deleteContactField,
+    getAvailableContactFields,
+    getCurrentContactFields 
+  } = useUserProfile(personId);
+
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [showAddField, setShowAddField] = useState(false);
+
+  const handleEditField = (fieldKey: string) => {
+    setEditingField(fieldKey);
+  };
+
+  const handleSaveField = async (fieldKey: string, value: string) => {
+    if (fieldKey === 'address') {
+      // Handle address as special case - need to parse components
+      const addressParts = value.split(',').map(part => part.trim());
+      const result = await updateContactAddress({
+        address_line_1: addressParts[0] || '',
+        address_line_2: addressParts[1] || '',
+        city: addressParts[2] || '',
+        state: addressParts[3] || '',
+        zip_code: addressParts[4] || ''
+      });
+      if (result) setEditingField(null);
+      return result;
+    } else {
+      const result = await updateContactField(fieldKey, value);
+      if (result) setEditingField(null);
+      return result;
+    }
+  };
+
+  const handleDeleteField = async (fieldKey: string) => {
+    const result = await deleteContactField(fieldKey);
+    if (result) setEditingField(null);
+    return result;
+  };
+
+  const handleAddField = (fieldKey: string) => {
+    setShowAddField(false);
+    setEditingField(fieldKey);
+  };
+
+  if (loading) {
+    return <div className="text-sm text-muted-foreground">Loading contact information...</div>;
+  }
+
+  const currentFields = getCurrentContactFields();
+  const availableFields = getAvailableContactFields();
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <span className="text-sm font-medium">Contact Details</span>
+        {availableFields.length > 0 && (
+          <div className="relative">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setShowAddField(!showAddField)}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Field
+            </Button>
+            {showAddField && (
+              <div className="absolute right-0 top-full mt-1 w-48 bg-popover border rounded-md shadow-md z-50">
+                {availableFields.map((field) => (
+                  <button
+                    key={field.key}
+                    className="w-full px-3 py-2 text-left hover:bg-muted text-sm"
+                    onClick={() => handleAddField(field.key)}
+                  >
+                    {field.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+      
+      <div className="space-y-3">
+        {currentFields.map((field) => (
+          <EditableContactField
+            key={field.key}
+            field={field}
+            isEditing={editingField === field.key}
+            onEdit={() => handleEditField(field.key)}
+            onSave={(value) => handleSaveField(field.key, value)}
+            onDelete={() => handleDeleteField(field.key)}
+          />
+        ))}
+        
+        {/* Show empty field for new additions */}
+        {editingField && !currentFields.find(f => f.key === editingField) && (
+          <EditableContactField
+            key={`new-${editingField}`}
+            field={{
+              key: editingField,
+              label: availableFields.find(f => f.key === editingField)?.label || 'New Field',
+              value: '',
+              type: editingField.startsWith('url_') ? 'url' : 'text'
+            }}
+            isEditing={true}
+            onEdit={() => {}}
+            onSave={(value) => handleSaveField(editingField, value)}
+            onDelete={() => handleDeleteField(editingField)}
+          />
+        )}
+        
+        {currentFields.length === 0 && !editingField && (
+          <p className="text-sm text-muted-foreground py-4">No contact information available. Click "Add Field" to get started.</p>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Editable Contact Field Component
+interface ContactFieldType {
+  key: string;
+  label: string;
+  value: string;
+  type: 'text' | 'url';
+}
+
+interface EditableContactFieldProps {
+  field: ContactFieldType;
+  isEditing: boolean;
+  onEdit: () => void;
+  onSave: (value: string) => Promise<boolean>;
+  onDelete: () => Promise<boolean>;
+}
+
+const EditableContactField: React.FC<EditableContactFieldProps> = ({ 
+  field, 
+  isEditing, 
+  onEdit, 
+  onSave, 
+  onDelete 
+}) => {
+  const [localValue, setLocalValue] = useState(field.value);
+  const [isSaving, setIsSaving] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const debouncedValue = useDebounce(localValue, 1000);
+  
+  useEffect(() => {
+    setLocalValue(field.value);
+  }, [field.value]);
+  
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isEditing]);
+
+  // Auto-save when debounced value changes and we're editing
+  useEffect(() => {
+    if (isEditing && debouncedValue !== field.value && debouncedValue.trim() !== '') {
+      handleSave(debouncedValue);
+    }
+  }, [debouncedValue, isEditing, field.value]);
+
+  const handleSave = async (valueToSave: string) => {
+    if (isSaving) return;
+    
+    setIsSaving(true);
+    if (valueToSave.trim() === '') {
+      await onDelete();
+    } else {
+      await onSave(valueToSave.trim());
+    }
+    setIsSaving(false);
+  };
+
+  const handleBlur = () => {
+    if (localValue.trim() === '') {
+      handleSave('');
+    } else if (localValue !== field.value) {
+      handleSave(localValue);
+    }
+  };
+
+  const getSocialIcon = (key: string) => {
+    switch (key) {
+      case 'url_facebook': return <Facebook className="h-4 w-4" />;
+      case 'url_instagram': return <Instagram className="h-4 w-4" />;
+      case 'url_linkedin': return <Linkedin className="h-4 w-4" />;
+      case 'url_tiktok': return <FaTiktok className="h-4 w-4" />;
+      default: return null;
+    }
+  };
+
+  const truncateUrl = (url: string, maxLength = 30) => {
+    if (url.length <= maxLength) return url;
+    return url.substring(0, maxLength) + '...';
+  };
+
+  const openUrl = (url: string) => {
+    window.open(url, '_blank');
+  };
+
+  return (
+    <div className="flex items-center gap-3 group py-2 px-3 rounded-lg hover:bg-muted/50">
+      <div className="flex-1">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium text-muted-foreground">{field.label}</span>
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            {field.type === 'url' && field.value && (
+              <>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-6 w-6 p-0"
+                  onClick={() => openUrl(field.value)}
+                >
+                  <ExternalLink className="h-3 w-3" />
+                </Button>
+                {getSocialIcon(field.key) && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-6 w-6 p-0"
+                    onClick={() => openUrl(field.value)}
+                  >
+                    {getSocialIcon(field.key)}
+                  </Button>
+                )}
+              </>
+            )}
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-6 w-6 p-0"
+              onClick={onEdit}
+            >
+              <Pencil className="h-3 w-3" />
+            </Button>
+          </div>
+        </div>
+        {isEditing ? (
+          <Input
+            ref={inputRef}
+            value={localValue}
+            onChange={(e) => setLocalValue(e.target.value)}
+            onBlur={handleBlur}
+            className="mt-1"
+            disabled={isSaving}
+            placeholder={`Enter ${field.label.toLowerCase()}`}
+          />
+        ) : (
+          <div className="mt-1 text-sm">
+            {field.type === 'url' && field.value ? (
+              <span 
+                className="text-primary cursor-pointer hover:underline"
+                onClick={() => openUrl(field.value)}
+              >
+                {truncateUrl(field.value)}
+              </span>
+            ) : (
+              field.value
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 interface GeneralTabProps {
   personId?: string;
   hideUpcomingAppointments?: boolean;
@@ -163,8 +458,6 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ personId, hideUpcomingAppointme
   ];
 
   const NA = (v?: string | null) => (v && String(v).trim()) || 'Not provided';
-  const socialBadge = (url?: string | null) =>
-    url ? <Badge variant="secondary">Connected</Badge> : <Badge variant="outline">Not connected</Badge>;
 
   return (
     <ScrollArea className="h-full">
@@ -212,15 +505,9 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ personId, hideUpcomingAppointme
           </SectionCard>
         )}
 
-        {/* Contact Information */}
+        {/* Contact Information - Enhanced Dynamic Section */}
         <SectionCard title="Contact Information">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-            <DetailItem icon={Mail} label="Email" value={NA(data?.contactInfo?.email)} iconColor="text-blue-500" />
-            <DetailItem icon={Phone} label="Phone" value={NA(data?.contactInfo?.phone)} iconColor="text-green-500" />
-            <DetailItem icon={MapPin} label="Address" value={NA(data?.contactInfo?.address)} iconColor="text-red-500" />
-            <DetailItem icon={Facebook} label="Facebook" value={socialBadge(data?.contactInfo?.url_facebook)} iconColor="text-blue-600" />
-            <DetailItem icon={Instagram} label="Instagram" value={socialBadge(data?.contactInfo?.url_instagram)} iconColor="text-pink-500" />
-          </div>
+          <ContactInformationSection personId={personId} />
         </SectionCard>
 
         {/* Additional Information */}
