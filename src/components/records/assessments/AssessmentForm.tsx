@@ -251,7 +251,7 @@ const AssessmentForm = () => {
   };
 
   const GeneralTabWrapper = () => (
-    <GeneralTab user={{}} hideUpcomingAppointments={true} />
+    <GeneralTab personId="demo-person-id" hideUpcomingAppointments={true} />
   );
 
   const tabs = [

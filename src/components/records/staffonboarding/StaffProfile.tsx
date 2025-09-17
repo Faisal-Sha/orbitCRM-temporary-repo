@@ -163,7 +163,7 @@ const StaffProfile = () => {
         
         <TabsContent value="general" className="mt-0">
           <div className="h-[600px] overflow-y-auto">
-            <GeneralTab user={staffUser} hideUpcomingAppointments={true} />
+            <GeneralTab personId="demo-person-id" hideUpcomingAppointments={true} />
           </div>
         </TabsContent>
         

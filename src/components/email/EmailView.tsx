@@ -845,6 +845,7 @@ export default function EmailView({
         open={openProfilePanel}
         onClose={() => setOpenProfilePanel(false)}
         user={{
+          person_id: "demo-person-id",
           name: mail.from,
           interest: mail.label || "General",
           inquiryDate: mail.date,

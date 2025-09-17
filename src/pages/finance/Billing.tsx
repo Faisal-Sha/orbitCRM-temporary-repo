@@ -351,7 +351,7 @@ const Billing = ({ dateRange = "all-time", providerFilter = "all" }: BillingProp
       <UserProfilePanel 
         open={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
-        user={selectedUser}
+        user={selectedUser ? { ...selectedUser, person_id: "demo-person-id" } : null}
       />
     </div>
   );

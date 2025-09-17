@@ -72,7 +72,7 @@ const ProgressNotesForm = () => {
             </TabsTrigger>
           </TabsList>
           <TabsContent value="general" className="mt-0">
-            <GeneralTab user={{}} hideUpcomingAppointments={true} showApplicationInfo={false} />
+            <GeneralTab personId="demo-person-id" hideUpcomingAppointments={true} showApplicationInfo={false} />
           </TabsContent>
           <TabsContent value="performance" className="mt-0">
             <PerformanceTab user={{}} />
