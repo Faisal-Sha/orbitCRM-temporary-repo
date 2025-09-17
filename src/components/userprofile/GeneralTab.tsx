@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import {
   Mail, Phone, MapPin, Facebook, Instagram, Pencil, X, User, Calendar, Briefcase, ShieldCheck,
   Home, Users, Heart, Languages, Plus, ExternalLink, Linkedin, Shield, FileText, CreditCard,
-  Globe, UserPlus, Edit2, Loader2
+  Globe, UserPlus, Edit2, Loader2, Smartphone
 } from 'lucide-react';
 import { FaTiktok } from 'react-icons/fa';
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -314,77 +314,90 @@ const ContactInformationSection: React.FC<{ personId?: string }> = ({ personId }
   };
 
   if (loading) {
-    return <div className="text-sm text-muted-foreground">Loading contact information...</div>;
+    return (
+      <SectionCard title="Contact Information">
+        <div className="animate-pulse">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-12 bg-muted rounded"></div>
+            ))}
+          </div>
+        </div>
+      </SectionCard>
+    );
   }
 
   const currentFields = getCurrentContactFields();
   const availableFields = getAvailableContactFields();
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <span className="text-sm font-medium">Contact Details</span>
-        {availableFields.length > 0 && (
+    <SectionCard title="Contact Information">
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {currentFields.map((field) => (
+            <EditableContactField
+              key={field.key}
+              field={field}
+              isEditing={editingField === field.key}
+              onEdit={() => handleEditField(field.key)}
+              onSave={(value) => handleSaveField(field.key, value)}
+              onDelete={() => handleDeleteField(field.key)}
+            />
+          ))}
+          
+          {/* Show empty field for new additions */}
+          {editingField && !currentFields.find(f => f.key === editingField) && (
+            <EditableContactField
+              key={`new-${editingField}`}
+              field={{
+                key: editingField,
+                label: availableFields.find(f => f.key === editingField)?.label || 'New Field',
+                value: '',
+                type: editingField.startsWith('url_') ? 'url' : 'text'
+              }}
+              isEditing={true}
+              onEdit={() => {}}
+              onSave={(value) => handleSaveField(editingField, value)}
+              onDelete={() => handleDeleteField(editingField)}
+            />
+          )}
+        </div>
+
+        {/* Add Field Button and Dropdown */}
+        {availableFields.length > 0 && !editingField && (
           <div className="relative">
-            <Button 
-              variant="outline" 
-              size="sm"
+            <Button
+              variant="ghost"
               onClick={() => setShowAddField(!showAddField)}
+              className="text-muted-foreground hover:text-foreground"
             >
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="w-4 h-4 mr-2" />
               Add Field
             </Button>
+            
             {showAddField && (
-              <div className="absolute right-0 top-full mt-1 w-48 bg-popover border rounded-md shadow-md z-50">
-                {availableFields.map((field) => (
-                  <button
-                    key={field.key}
-                    className="w-full px-3 py-2 text-left hover:bg-muted text-sm"
-                    onClick={() => handleAddField(field.key)}
-                  >
-                    {field.label}
-                  </button>
-                ))}
+              <div className="absolute top-full left-0 mt-2 w-64 bg-background border border-border rounded-md shadow-lg z-50">
+                <div className="p-2">
+                  {availableFields.map((field) => (
+                    <button
+                      key={field.key}
+                      onClick={() => handleAddField(field.key)}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded-sm"
+                    >
+                      {field.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
         )}
-      </div>
-      
-      <div className="space-y-3">
-        {currentFields.map((field) => (
-          <EditableContactField
-            key={field.key}
-            field={field}
-            isEditing={editingField === field.key}
-            onEdit={() => handleEditField(field.key)}
-            onSave={(value) => handleSaveField(field.key, value)}
-            onDelete={() => handleDeleteField(field.key)}
-          />
-        ))}
-        
-        {/* Show empty field for new additions */}
-        {editingField && !currentFields.find(f => f.key === editingField) && (
-          <EditableContactField
-            key={`new-${editingField}`}
-            field={{
-              key: editingField,
-              label: availableFields.find(f => f.key === editingField)?.label || 'New Field',
-              value: '',
-              type: editingField.startsWith('url_') ? 'url' : 'text'
-            }}
-            isEditing={true}
-            onEdit={() => {}}
-            onSave={(value) => handleSaveField(editingField, value)}
-            onDelete={() => handleDeleteField(editingField)}
-          />
-        )}
-        
+
         {currentFields.length === 0 && !editingField && (
           <p className="text-sm text-muted-foreground py-4">No contact information available. Click "Add Field" to get started.</p>
         )}
       </div>
-    </div>
+    </SectionCard>
   );
 };
 
@@ -570,6 +583,7 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const debouncedValue = useDebounce(localValue, 1000);
+  const [hasChanged, setHasChanged] = useState(false);
   
   useEffect(() => {
     setLocalValue(field.value);
@@ -581,17 +595,17 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
     }
   }, [isEditing]);
 
-  // Auto-save when debounced value changes and we're editing
   useEffect(() => {
-    if (isEditing && debouncedValue !== field.value && debouncedValue.trim() !== '') {
+    if (hasChanged && debouncedValue !== field.value && isEditing) {
       handleSave(debouncedValue);
     }
-  }, [debouncedValue, isEditing, field.value]);
+  }, [debouncedValue]);
 
   const handleSave = async (valueToSave: string) => {
     if (isSaving) return;
     
     setIsSaving(true);
+    setHasChanged(false);
     if (valueToSave.trim() === '') {
       await onDelete();
     } else {
@@ -601,21 +615,36 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
   };
 
   const handleBlur = () => {
-    if (localValue.trim() === '') {
-      handleSave('');
-    } else if (localValue !== field.value) {
+    if (localValue !== field.value) {
       handleSave(localValue);
     }
   };
 
   const getSocialIcon = (key: string) => {
     switch (key) {
-      case 'url_facebook': return <Facebook className="h-4 w-4" />;
-      case 'url_instagram': return <Instagram className="h-4 w-4" />;
-      case 'url_linkedin': return <Linkedin className="h-4 w-4" />;
-      case 'url_tiktok': return <FaTiktok className="h-4 w-4" />;
+      case 'url_facebook': return Facebook;
+      case 'url_instagram': return Instagram;
+      case 'url_linkedin': return Linkedin;
+      case 'url_tiktok': return FaTiktok;
       default: return null;
     }
+  };
+
+  const getContactIcon = (key: string) => {
+    const iconMap: { [key: string]: React.ComponentType<any> } = {
+      email: Mail,
+      phone_number: Phone,
+      phone_mobile: Smartphone,
+      phone_work: Phone,
+      address: MapPin,
+      url_facebook: Facebook,
+      url_instagram: Instagram,
+      url_linkedin: Linkedin,
+      url_tiktok: FaTiktok,
+      url_website: Globe,
+      url_other: ExternalLink,
+    };
+    return iconMap[key] || Mail;
   };
 
   const truncateUrl = (url: string, maxLength = 30) => {
@@ -627,69 +656,77 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
     window.open(url, '_blank');
   };
 
-  return (
-    <div className="flex items-center gap-3 group py-2 px-3 rounded-lg hover:bg-muted/50">
-      <div className="flex-1">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-muted-foreground">{field.label}</span>
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+  const IconComponent = getContactIcon(field.key);
+  const SocialIconComponent = getSocialIcon(field.key);
+  const iconColor = 'text-primary';
+
+  if (!isEditing) {
+    return (
+      <div className="group flex items-center space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer" onClick={onEdit}>
+        <div className={`p-2 rounded-full bg-muted`}>
+          <IconComponent className={`w-4 h-4 ${iconColor}`} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-foreground">{field.label}</p>
+          <div className="flex items-center gap-2">
+            <p className="text-sm text-muted-foreground truncate">
+              {field.type === 'url' && field.value ? truncateUrl(field.value) : field.value}
+            </p>
             {field.type === 'url' && field.value && (
-              <>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-6 w-6 p-0"
-                  onClick={() => openUrl(field.value)}
-                >
-                  <ExternalLink className="h-3 w-3" />
-                </Button>
-                {getSocialIcon(field.key) && (
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="h-6 w-6 p-0"
-                    onClick={() => openUrl(field.value)}
-                  >
-                    {getSocialIcon(field.key)}
-                  </Button>
-                )}
-              </>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openUrl(field.value);
+                }}
+              >
+                <ExternalLink className="h-3 w-3" />
+              </Button>
             )}
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="h-6 w-6 p-0"
-              onClick={onEdit}
-            >
-              <Pencil className="h-3 w-3" />
-            </Button>
+            {SocialIconComponent && field.value && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openUrl(field.value);
+                }}
+              >
+                <SocialIconComponent className="h-3 w-3" />
+              </Button>
+            )}
           </div>
         </div>
-        {isEditing ? (
-          <Input
-            ref={inputRef}
-            value={localValue}
-            onChange={(e) => setLocalValue(e.target.value)}
-            onBlur={handleBlur}
-            className="mt-1"
-            disabled={isSaving}
-            placeholder={`Enter ${field.label.toLowerCase()}`}
-          />
-        ) : (
-          <div className="mt-1 text-sm">
-            {field.type === 'url' && field.value ? (
-              <span 
-                className="text-primary cursor-pointer hover:underline"
-                onClick={() => openUrl(field.value)}
-              >
-                {truncateUrl(field.value)}
-              </span>
-            ) : (
-              field.value
-            )}
-          </div>
-        )}
+        <Edit2 className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
       </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center space-x-3 p-3 rounded-lg bg-muted/50">
+      <div className={`p-2 rounded-full bg-muted`}>
+        <IconComponent className={`w-4 h-4 ${iconColor}`} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-foreground mb-1">{field.label}</p>
+        <input
+          ref={inputRef}
+          type="text"
+          value={localValue}
+          onChange={(e) => {
+            setLocalValue(e.target.value);
+            setHasChanged(true);
+          }}
+          onBlur={handleBlur}
+          className="w-full px-2 py-1 text-sm bg-background border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary/20"
+          placeholder={`Enter ${field.label.toLowerCase()}`}
+          disabled={isSaving}
+        />
+      </div>
+      {isSaving && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
     </div>
   );
 };
@@ -798,9 +835,7 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ personId, hideUpcomingAppointme
         )}
 
         {/* Contact Information - Enhanced Dynamic Section */}
-        <SectionCard title="Contact Information">
-          <ContactInformationSection personId={personId} />
-        </SectionCard>
+        <ContactInformationSection personId={personId} />
 
         {/* Additional Information */}
         <AdditionalInformationSection personId={personId} />
