@@ -422,6 +422,144 @@ export const useUserProfile = (personId?: string) => {
     return fields;
   }, [data?.contactInfo]);
 
+  // Additional information management functions
+  const updateAdditionalField = useCallback(async (field: string, value: string): Promise<boolean> => {
+    if (!personId) return false;
+    
+    try {
+      let result: any;
+      let error: any;
+      
+      // Determine which function to call based on field
+      if (['date_of_birth', 'ssn_number', 'npi_number', 'insurance_provider', 'insurance_number', 'insurance_expiration_date', 'gender_identity', 'ethnicity_identity', 'marital_status', 'living_situation'].includes(field)) {
+        const response = await supabase.rpc('update_people_identifiers_field' as any, {
+          p_person_id: personId,
+          p_field_name: field,
+          p_field_value: value
+        });
+        result = response.data;
+        error = response.error;
+      } else if (field === 'preferred_language') {
+        const response = await supabase.rpc('update_people_leads_field' as any, {
+          p_person_id: personId,
+          p_field_name: field,
+          p_field_value: value
+        });
+        result = response.data;
+        error = response.error;
+      } else if (field === 'referred_by_name') {
+        const response = await supabase.rpc('update_people_referrals_field' as any, {
+          p_person_id: personId,
+          p_field_name: field,
+          p_field_value: value
+        });
+        result = response.data;
+        error = response.error;
+      } else {
+        throw new Error('Invalid field name');
+      }
+
+      if (error) throw error;
+      
+      if (result && typeof result === 'object' && 'success' in result && result.success) {
+        toast.success('Additional field updated successfully');
+        await fetchProfile(personId);
+        return true;
+      } else {
+        throw new Error((result as any)?.message || 'Update failed');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update additional field');
+      return false;
+    }
+  }, [personId]);
+
+  const deleteAdditionalField = useCallback(async (field: string): Promise<boolean> => {
+    if (!personId) return false;
+    
+    try {
+      const { data: result, error } = await supabase.rpc('delete_people_additional_field' as any, {
+        p_person_id: personId,
+        p_field_name: field
+      });
+
+      if (error) throw error;
+      
+      if (result && typeof result === 'object' && 'success' in result && result.success) {
+        toast.success('Additional field cleared successfully');
+        await fetchProfile(personId);
+        return true;
+      } else {
+        throw new Error((result as any)?.message || 'Delete failed');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete additional field');
+      return false;
+    }
+  }, [personId]);
+
+  // Additional information field management
+  const getAvailableAdditionalFields = useCallback(() => {
+    if (!data) return [];
+    
+    const allAdditionalFields = [
+      { key: 'date_of_birth', label: 'Date of Birth', type: 'date' as const },
+      { key: 'ssn_number', label: 'SSN', type: 'text' as const },
+      { key: 'npi_number', label: 'NPI Number', type: 'text' as const },
+      { key: 'insurance_provider', label: 'Insurance Provider', type: 'text' as const },
+      { key: 'insurance_number', label: 'Insurance Number', type: 'text' as const },
+      { key: 'insurance_expiration_date', label: 'Insurance Expiry Date', type: 'date' as const },
+      { key: 'gender_identity', label: 'Gender Identity', type: 'select' as const },
+      { key: 'ethnicity_identity', label: 'Ethnicity', type: 'select' as const },
+      { key: 'marital_status', label: 'Marital Status', type: 'select' as const },
+      { key: 'living_situation', label: 'Living Situation', type: 'select' as const },
+      { key: 'preferred_language', label: 'Preferred Language', type: 'select' as const },
+      { key: 'referred_by_name', label: 'Referred By', type: 'text' as const },
+    ];
+
+    return allAdditionalFields.filter(field => {
+      const value = (data as any)[field.key] || (data.additionalInfo as any)?.[field.key] || (data.leadInfo as any)?.[field.key] || (data.referralInfo as any)?.[field.key];
+      return !value || value === 'Not provided' || value === 'N/A';
+    });
+  }, [data]);
+
+  const getCurrentAdditionalFields = useCallback(() => {
+    if (!data) return [];
+    
+    const allAdditionalFields = [
+      { key: 'date_of_birth', label: 'Date of Birth', type: 'date' as const },
+      { key: 'ssn_number', label: 'SSN', type: 'text' as const },
+      { key: 'npi_number', label: 'NPI Number', type: 'text' as const },
+      { key: 'insurance_provider', label: 'Insurance Provider', type: 'text' as const },
+      { key: 'insurance_number', label: 'Insurance Number', type: 'text' as const },
+      { key: 'insurance_expiration_date', label: 'Insurance Expiry Date', type: 'date' as const },
+      { key: 'gender_identity', label: 'Gender Identity', type: 'select' as const },
+      { key: 'ethnicity_identity', label: 'Ethnicity', type: 'select' as const },
+      { key: 'marital_status', label: 'Marital Status', type: 'select' as const },
+      { key: 'living_situation', label: 'Living Situation', type: 'select' as const },
+      { key: 'preferred_language', label: 'Preferred Language', type: 'select' as const },
+      { key: 'referred_by_name', label: 'Referred By', type: 'text' as const },
+    ];
+
+    return allAdditionalFields
+      .map(field => {
+        let value = '';
+        if (['date_of_birth', 'ssn_number', 'npi_number', 'insurance_provider', 'insurance_number', 'insurance_expiration_date', 'gender_identity', 'ethnicity_identity', 'marital_status', 'living_situation'].includes(field.key)) {
+          value = (data.additionalInfo as any)?.[field.key] || '';
+        } else if (field.key === 'preferred_language') {
+          value = data.leadInfo?.preferred_language || '';
+        } else if (field.key === 'referred_by_name') {
+          value = data.referralInfo?.referred_by_name || '';
+        }
+        
+        return {
+          ...field,
+          value: value || ''
+        };
+      })
+      .filter(field => field.value && field.value !== 'Not provided' && field.value !== 'N/A');
+  }, [data]);
+
   const refetch = async () => {
     if (!personId) return;
     await fetchProfile(personId);
@@ -451,5 +589,10 @@ export const useUserProfile = (personId?: string) => {
     deleteContactField,
     getAvailableContactFields,
     getCurrentContactFields,
+    // Additional field management functions
+    updateAdditionalField,
+    deleteAdditionalField,
+    getAvailableAdditionalFields,
+    getCurrentAdditionalFields,
   };
 };

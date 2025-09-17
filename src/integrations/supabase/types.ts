@@ -1540,6 +1540,10 @@ export type Database = {
         Args: { p_label_id: string }
         Returns: Json
       }
+      delete_people_additional_field: {
+        Args: { p_field_name: string; p_person_id: string }
+        Returns: Json
+      }
       delete_people_contact_field: {
         Args: { p_field_name: string; p_person_id: string }
         Returns: Json
@@ -1761,6 +1765,30 @@ export type Database = {
         Returns: Json
       }
       update_people_contact_field: {
+        Args: {
+          p_field_name: string
+          p_field_value: string
+          p_person_id: string
+        }
+        Returns: Json
+      }
+      update_people_identifiers_field: {
+        Args: {
+          p_field_name: string
+          p_field_value: string
+          p_person_id: string
+        }
+        Returns: Json
+      }
+      update_people_leads_field: {
+        Args: {
+          p_field_name: string
+          p_field_value: string
+          p_person_id: string
+        }
+        Returns: Json
+      }
+      update_people_referrals_field: {
         Args: {
           p_field_name: string
           p_field_value: string

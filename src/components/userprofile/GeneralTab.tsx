@@ -8,12 +8,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import {
   Mail, Phone, MapPin, Facebook, Instagram, Pencil, X, User, Calendar, Briefcase, ShieldCheck,
-  Home, Users, Heart, Languages, Plus, ExternalLink, Linkedin
+  Home, Users, Heart, Languages, Plus, ExternalLink, Linkedin, Shield, FileText, CreditCard,
+  Globe, UserPlus, Edit2, Loader2
 } from 'lucide-react';
 import { FaTiktok } from 'react-icons/fa';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useUserRoles } from '@/hooks/useUserRoles';
 import { useStaffTypes } from '@/hooks/useStaffTypes';
+
+// Format date nicely
+const formatDateNice = (iso?: string | null) => {
+  if (!iso) return 'Not provided';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return 'Not provided';
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+};
 
 interface DetailItemProps {
   icon: React.ElementType;
@@ -127,6 +136,134 @@ function useDebounce(value: string, delay: number) {
 }
 
 // Enhanced Contact Information Section Component
+// Additional Information Section Component
+const AdditionalInformationSection: React.FC<{ personId?: string }> = ({ personId }) => {
+  const { 
+    getCurrentAdditionalFields, 
+    getAvailableAdditionalFields, 
+    updateAdditionalField, 
+    deleteAdditionalField,
+    loading,
+    data 
+  } = useUserProfile(personId);
+  
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [showAddField, setShowAddField] = useState(false);
+
+  const currentFields = getCurrentAdditionalFields();
+  const availableFields = getAvailableAdditionalFields();
+
+  const handleAddField = (fieldKey: string) => {
+    setEditingField(fieldKey);
+    setShowAddField(false);
+  };
+
+  if (loading) {
+    return (
+      <SectionCard title="Additional Information">
+        <div className="animate-pulse">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-12 bg-muted rounded"></div>
+            ))}
+          </div>
+        </div>
+      </SectionCard>
+    );
+  }
+
+  return (
+    <SectionCard title="Additional Information">
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {currentFields.map((field) => (
+            <EditableAdditionalField
+              key={field.key}
+              field={field}
+              isEditing={editingField === field.key}
+              onEdit={() => setEditingField(field.key)}
+              onSave={async (value: string) => {
+                if (!value.trim()) {
+                  const success = await deleteAdditionalField(field.key);
+                  if (success) setEditingField(null);
+                  return success;
+                } else {
+                  const success = await updateAdditionalField(field.key, value);
+                  if (success) setEditingField(null);
+                  return success;
+                }
+              }}
+              onDelete={async () => {
+                const success = await deleteAdditionalField(field.key);
+                if (success) setEditingField(null);
+                return success;
+              }}
+            />
+          ))}
+          
+          {/* Add Field for new additional field */}
+          {editingField && !currentFields.find(f => f.key === editingField) && (
+            <EditableAdditionalField
+              key={editingField}
+              field={{
+                key: editingField,
+                label: availableFields.find(f => f.key === editingField)?.label || editingField,
+                value: '',
+                type: availableFields.find(f => f.key === editingField)?.type || 'text'
+              }}
+              isEditing={true}
+              onEdit={() => {}}
+              onSave={async (value: string) => {
+                if (!value.trim()) {
+                  setEditingField(null);
+                  return true;
+                }
+                const success = await updateAdditionalField(editingField, value);
+                if (success) setEditingField(null);
+                return success;
+              }}
+              onDelete={async () => {
+                setEditingField(null);
+                return true;
+              }}
+            />
+          )}
+        </div>
+
+        {/* Add Field Button and Dropdown */}
+        {availableFields.length > 0 && !editingField && (
+          <div className="relative">
+            <Button
+              variant="ghost"
+              onClick={() => setShowAddField(!showAddField)}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Field
+            </Button>
+            
+            {showAddField && (
+              <div className="absolute top-full left-0 mt-2 w-64 bg-background border border-border rounded-md shadow-lg z-50">
+                <div className="p-2">
+                  {availableFields.map((field) => (
+                    <button
+                      key={field.key}
+                      onClick={() => handleAddField(field.key)}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded-sm"
+                    >
+                      {field.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </SectionCard>
+  );
+};
+
 const ContactInformationSection: React.FC<{ personId?: string }> = ({ personId }) => {
   const { 
     data,
@@ -267,7 +404,162 @@ interface EditableContactFieldProps {
   onDelete: () => Promise<boolean>;
 }
 
-const EditableContactField: React.FC<EditableContactFieldProps> = ({ 
+// Additional Information Field Component
+const EditableAdditionalField: React.FC<{
+  field: { key: string; label: string; value: string; type: 'text' | 'date' | 'select' };
+  isEditing: boolean;
+  onEdit: () => void;
+  onSave: (value: string) => Promise<boolean>;
+  onDelete: () => Promise<boolean>;
+}> = ({ field, isEditing, onEdit, onSave, onDelete }) => {
+  const [value, setValue] = useState(field.value);
+  const [loading, setLoading] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const selectRef = useRef<HTMLSelectElement>(null);
+  const debouncedValue = useDebounce(value, 1000);
+  const [hasChanged, setHasChanged] = useState(false);
+
+  useEffect(() => {
+    setValue(field.value);
+  }, [field.value]);
+
+  useEffect(() => {
+    if (isEditing && (inputRef.current || selectRef.current)) {
+      if (inputRef.current) inputRef.current.focus();
+      if (selectRef.current) selectRef.current.focus();
+    }
+  }, [isEditing]);
+
+  useEffect(() => {
+    if (hasChanged && debouncedValue !== field.value && isEditing) {
+      handleSave(debouncedValue);
+    }
+  }, [debouncedValue]);
+
+  const handleSave = async (saveValue: string) => {
+    setLoading(true);
+    setHasChanged(false);
+    await onSave(saveValue);
+    setLoading(false);
+  };
+
+  const handleBlur = () => {
+    if (value !== field.value) {
+      handleSave(value);
+    }
+  };
+
+  const formatDisplayValue = (val: string, type: string) => {
+    if (!val || val === 'N/A') return val;
+    
+    // SSN Masking
+    if (field.key === 'ssn_number' && val.length >= 4) {
+      return `***-**-${val.slice(-4)}`;
+    }
+    
+    // Date formatting
+    if (type === 'date') {
+      return formatDateNice(val);
+    }
+    
+    return val;
+  };
+
+  const getFieldIcon = (key: string) => {
+    const iconMap: { [key: string]: React.ComponentType<any> } = {
+      date_of_birth: Calendar,
+      ssn_number: Shield,
+      npi_number: FileText,
+      insurance_provider: CreditCard,
+      insurance_number: CreditCard,
+      insurance_expiration_date: CreditCard,
+      gender_identity: User,
+      ethnicity_identity: Users,
+      marital_status: Heart,
+      living_situation: Home,
+      preferred_language: Globe,
+      referred_by_name: UserPlus,
+    };
+    return iconMap[key] || FileText;
+  };
+
+  const getSelectOptions = (key: string): string[] => {
+    const optionsMap: { [key: string]: string[] } = {
+      gender_identity: ['Male', 'Female', 'Non-binary', 'Other', 'Prefer not to say'],
+      ethnicity_identity: ['White', 'Black or African American', 'Hispanic or Latino', 'Asian', 'Native American', 'Pacific Islander', 'Other', 'Prefer not to say'],
+      marital_status: ['Single', 'Married', 'Divorced', 'Widowed', 'Separated', 'Domestic Partnership'],
+      living_situation: ['Independent', 'With Family', 'Assisted Living', 'Nursing Home', 'Group Home', 'Other'],
+      preferred_language: ['English', 'Spanish', 'French', 'German', 'Italian', 'Portuguese', 'Chinese', 'Japanese', 'Korean', 'Arabic', 'Russian', 'Other'],
+    };
+    return optionsMap[key] || [];
+  };
+
+  const IconComponent = getFieldIcon(field.key);
+  const iconColor = 'text-primary';
+
+  if (!isEditing) {
+    return (
+      <div className="group flex items-center space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer" onClick={onEdit}>
+        <div className={`p-2 rounded-full bg-muted`}>
+          <IconComponent className={`w-4 h-4 ${iconColor}`} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-foreground">{field.label}</p>
+          <p className="text-sm text-muted-foreground truncate">
+            {formatDisplayValue(field.value, field.type)}
+          </p>
+        </div>
+        <Edit2 className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center space-x-3 p-3 rounded-lg bg-muted/50">
+      <div className={`p-2 rounded-full bg-muted`}>
+        <IconComponent className={`w-4 h-4 ${iconColor}`} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-foreground mb-1">{field.label}</p>
+        {field.type === 'select' ? (
+          <select
+            ref={selectRef}
+            value={value}
+            onChange={(e) => {
+              setValue(e.target.value);
+              setHasChanged(true);
+            }}
+            onBlur={handleBlur}
+            className="w-full px-2 py-1 text-sm bg-background border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary/20"
+            disabled={loading}
+          >
+            <option value="">Select {field.label}</option>
+            {getSelectOptions(field.key).map((option) => (
+              <option key={option} value={option}>{option}</option>
+            ))}
+          </select>
+        ) : (
+          <input
+            ref={inputRef}
+            type={field.type === 'date' ? 'date' : 'text'}
+            value={value}
+            onChange={(e) => {
+              setValue(e.target.value);
+              setHasChanged(true);
+            }}
+            onBlur={handleBlur}
+            className="w-full px-2 py-1 text-sm bg-background border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary/20"
+            placeholder={`Enter ${field.label.toLowerCase()}`}
+            disabled={loading}
+          />
+        )}
+      </div>
+      {loading && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+    </div>
+  );
+};
+
+const EditableContactField: React.FC<EditableContactFieldProps> = ({
   field, 
   isEditing, 
   onEdit, 
