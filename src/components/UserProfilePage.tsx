@@ -1,11 +1,5 @@
 import React, { useState } from "react";
 import { User, X, Mail, Phone } from "lucide-react";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { 
   Table,
@@ -17,7 +11,6 @@ import {
 } from "@/components/ui/table";
 import UserProfilePanel from "./userprofile/UserProfilePanel";
 import { UserRound } from "lucide-react";
-import MilestonesIcon from "./MilestonesIcon";
 
 // Types for the component props
 export interface TableColumn {
@@ -125,18 +118,18 @@ const DefaultProfileView = ({
 };
 
 const UserProfilePage = (props: UserProfilePageProps) => {
-  const {
-    data = [],
-    columns = [],
-    tableTitle = "Items",
-    detailsTitle = "Overview",
-    emptyStateTitle = "Select an Item",
-    emptyStateDescription = "Click on the details button next to any item in the table to view detailed information.",
-    renderDetailsPanel,
-    renderEmptyState,
-    detailsConfig = {},
-    showGrowthStatus = true,
-  } = props;
+  // const {
+  //   data = [],
+  //   columns = [],
+  //   tableTitle = "Items",
+  //   detailsTitle = "Overview",
+  //   emptyStateTitle = "Select an Item",
+  //   emptyStateDescription = "Click on the details button next to any item in the table to view detailed information.",
+  //   renderDetailsPanel,
+  //   renderEmptyState,
+  //   detailsConfig = {},
+  //   showGrowthStatus = true,
+  // } = props;
   
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
 
@@ -154,6 +147,7 @@ const UserProfilePage = (props: UserProfilePageProps) => {
 
   // Handler for user profile icon click (panel trigger)
   const openUserProfilePanel = (user: any) => {
+    console.log("@@@@@@@@@@@@@@@@@@@@@@@@", user);
     setPanelUser(user);
     setPanelOpen(true);
   };

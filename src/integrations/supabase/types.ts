@@ -1641,6 +1641,10 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_user_profile_data: {
+        Args: { p_person_id: string }
+        Returns: Json
+      }
       get_user_roles_with_counts: {
         Args: Record<PropertyKey, never>
         Returns: {

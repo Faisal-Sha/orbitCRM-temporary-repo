@@ -21,6 +21,7 @@ interface UserProfilePanelProps {
   open: boolean;
   onClose: () => void;
   user: {
+    person_id: string;
     name: string;
     interest?: string;
     inquiryDate?: string;
@@ -106,6 +107,19 @@ const UserProfilePanel: React.FC<UserProfilePanelProps> = ({ open, onClose, user
 
           {tabsConfig.map((tab) => {
             const TabComponent = tab.component;
+
+            if (tab.key === "general") {
+              return (
+                <TabsContent
+                  key={tab.key}
+                  value={tab.key}
+                  className="flex-1 overflow-hidden data-[state=inactive]:hidden px-5 md:px-10 pt-4"
+                >
+                  <GeneralTab personId={user.person_id} />
+                </TabsContent>
+              );
+            }
+
             return (
               <TabsContent
                 key={tab.key}

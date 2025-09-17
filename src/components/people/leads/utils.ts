@@ -14,6 +14,7 @@ const generateDummyInquiryDate = (index: number): string => {
 
 export const transformLeadData = (leadRecords: LeadRecord[]): LeadData[] => {
   return leadRecords.map((record, index) => ({
+    person_id: record.person_id,    
     id: record.lead_id,
     name: `${record.first_name} ${record.last_name}`.trim() || "Unknown Lead",
     inquiryDate: generateDummyInquiryDate(index),

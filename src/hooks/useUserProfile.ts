@@ -1,187 +1,287 @@
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
-export interface UserProfileData {
-  personalInfo: {
-    firstName: string;
-    middleName: string;
-    lastName: string;
-    bio: string;
-    profilePic: string;
-    status: string;
-  };
-  contactInfo: {
-    email: string;
-    workEmail: string;
-    phone: string;
-    phoneHome: string;
-    addressLine1: string;
-    addressLine2: string;
-    city: string;
-    state: string;
-    zipCode: string;
-    facebook: string;
-    instagram: string;
-    tiktok: string;
-    linkedin: string;
-  };
-  identifiers: {
-    dateOfBirth: string;
-    ssnNumber: string;
-    npiNumber: string;
-    insuranceProvider: string;
-    insuranceNumber: string;
-    insuranceExpirationDate: string;
-    genderIdentity: string;
-    ethnicityIdentity: string;
-    maritalStatus: string;
-    livingSituation: string;
-  };
-  emergencyContact: {
-    firstName: string;
-    lastName: string;
-    email: string;
-    phoneNumber: string;
-    relationship: string;
-  };
-  referralInfo: {
-    referralType: string;
-    referralRelationship: string;
-    referredByName: string;
-    referralNote: string;
-  };
-  leadInfo: {
-    preferredLanguage: string;
-    leadGoals: string;
-    preferences: string;
-    expectation: string;
-    note: string;
-  };
-  userRoles: Array<{
-    roleId: string;
-    roleName: string;
-  }>;
-  staffTypes: Array<{
-    staffTypeId: string;
-    staffType: string;
-  }>;
+/** ---- Types that match the DB function shape (raw) ---- **/
+interface PersonalInfo {
+  first_name?: string | null;
+  middle_name?: string | null;
+  last_name?: string | null;
+  user_profile_bio?: string | null;
+  user_profile_pic?: string | null;
+  status?: string | null;
 }
 
-interface UseUserProfileReturn {
-  data: UserProfileData | null;
-  loading: boolean;
-  error: string | null;
-  refetch: () => Promise<void>;
+interface ContactInfo {
+  email?: string | null;
+  work_email?: string | null;
+  phone?: string | null;
+  phone_home?: string | null;
+  address_line_1?: string | null;
+  address_line_2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zip_code?: string | null;
+  url_facebook?: string | null;
+  url_instagram?: string | null;
+  url_tiktok?: string | null;
+  url_linkedin?: string | null;
 }
 
-export const useUserProfile = (personId: string): UseUserProfileReturn => {
-  const [data, setData] = useState<UserProfileData | null>(null);
-  const [loading, setLoading] = useState(true);
+interface Identifiers {
+  date_of_birth?: string | null; // ISO date
+  ssn_number?: string | null;
+  npi_number?: string | null;
+  insurance_provider?: string | null;
+  insurance_number?: string | null;
+  insurance_expiration_date?: string | null; // ISO date
+  gender_identity?: string | null;
+  ethnicity_identity?: string | null;
+  marital_status?: string | null;
+  living_situation?: string | null;
+}
+
+interface EmergencyContact {
+  first_name?: string | null;
+  last_name?: string | null;
+  email?: string | null;
+  phone_number?: string | null;
+  relationship?: string | null;
+}
+
+interface ReferralInfo {
+  referral_type?: string | null;
+  referral_relationship?: string | null;
+  referred_by_name?: string | null;
+  referral_note?: string | null;
+}
+
+interface LeadInfo {
+  preferred_language?: string | null;
+  lead_goals?: string | null;
+  preferences?: string | null;
+  expectation?: string | null;
+  note?: string | null;
+}
+
+interface RoleItem {
+  role_id: string;
+  role_name: string;
+}
+
+interface StaffTypeItem {
+  staff_type_id: string;
+  staff_type: string;
+}
+
+export interface UserProfileRaw {
+  personal_info?: PersonalInfo | null;
+  contact_info?: ContactInfo | null;
+  identifiers?: Identifiers | null;
+  emergency_contact?: EmergencyContact | null;
+  referral_info?: ReferralInfo | null;
+  lead_info?: LeadInfo | null;
+  user_roles?: RoleItem[] | null;
+  staff_types?: StaffTypeItem[] | null;
+}
+
+/** ---- Display helpers / normalized result ---- **/
+export interface UserProfileDisplay {
+  personalInfo: PersonalInfo;
+  contactInfo: ContactInfo & {
+    address: string; // combined address ready for UI
+  };
+  additionalInfo: Identifiers & {
+    ssn_masked: string;          // ***-**-1234
+    insurance_expiry_display: string; // e.g., Dec 2025
+    dob_display: string;         // e.g., Jan 1, 1990
+  };
+  emergencyContact: EmergencyContact & {
+    full_name: string;
+  };
+  referralInfo: ReferralInfo;
+  leadInfo: LeadInfo;
+  userRoles: RoleItem[];     // array (possibly empty)
+  staffTypes: StaffTypeItem[]; // array (possibly empty)
+}
+
+interface RpcArgs {
+  p_person_id: string;
+}
+
+/** ---- Internal small utils ---- **/
+const orNA = (v?: string | null, fallback = 'Not provided') =>
+  (v && String(v).trim().length > 0) ? String(v).trim() : fallback;
+
+const maskSSN = (ssn?: string | null) => {
+  if (!ssn) return 'Not provided';
+  // Normalize to digits only; then take last 4
+  const digits = ssn.replace(/\D/g, '');
+  const tail = digits.slice(-4);
+  return tail ? `***-**-${tail}` : 'Not provided';
+};
+
+const formatMonthYear = (iso?: string | null) => {
+  if (!iso) return 'Not provided';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return 'Not provided';
+  return d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+};
+
+const formatDateNice = (iso?: string | null) => {
+  if (!iso) return 'Not provided';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return 'Not provided';
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+};
+
+const combineAddress = (c?: ContactInfo | null) => {
+  if (!c) return 'Not provided';
+  const parts = [
+    orNA(c.address_line_1, ''), 
+    orNA(c.address_line_2, ''), 
+    orNA(c.city, ''), 
+    orNA(c.state, ''), 
+    orNA(c.zip_code, '')
+  ].filter(Boolean);
+  const s = parts.join(', ').replace(/(^,\s*|,\s*,)/g, '').trim();
+  return s.length > 0 ? s : 'Not provided';
+};
+
+/** ---- Hook ---- **/
+export const useUserProfile = (personId?: string) => {
+  const [data, setData] = useState<UserProfileDisplay | null>(null);
+  const [raw, setRaw] = useState<UserProfileRaw | null>(null); // keep raw if needed later
+  const [loading, setLoading] = useState<boolean>(!!personId);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchProfileData = async () => {
-    if (!personId) {
-      setError("Person ID is required");
-      setLoading(false);
-      return;
-    }
-
+  const fetchProfile = async (pid: string) => {
     try {
       setLoading(true);
       setError(null);
 
-      const { data: result, error: rpcError } = await supabase.rpc('get_user_profile_data', {
-        p_person_id: personId
-      });
+      const { data, error } = await supabase.rpc('get_user_profile_data', {
+        p_person_id: pid,
+      } as RpcArgs);
 
-      if (rpcError) {
-        console.error('Error fetching profile data:', rpcError);
-        setError('Failed to load profile data');
-        return;
-      }
+      if (error) throw error;
 
-      if (result) {
-        // Transform the database result to match our interface
-        const profileData: UserProfileData = {
-          personalInfo: {
-            firstName: result.personal_info?.first_name || "",
-            middleName: result.personal_info?.middle_name || "",
-            lastName: result.personal_info?.last_name || "",
-            bio: result.personal_info?.user_profile_bio || "",
-            profilePic: result.personal_info?.user_profile_pic || "",
-            status: result.personal_info?.status || ""
-          },
-          contactInfo: {
-            email: result.contact_info?.email || "",
-            workEmail: result.contact_info?.work_email || "",
-            phone: result.contact_info?.phone || "",
-            phoneHome: result.contact_info?.phone_home || "",
-            addressLine1: result.contact_info?.address_line_1 || "",
-            addressLine2: result.contact_info?.address_line_2 || "",
-            city: result.contact_info?.city || "",
-            state: result.contact_info?.state || "",
-            zipCode: result.contact_info?.zip_code || "",
-            facebook: result.contact_info?.url_facebook || "",
-            instagram: result.contact_info?.url_instagram || "",
-            tiktok: result.contact_info?.url_tiktok || "",
-            linkedin: result.contact_info?.url_linkedin || ""
-          },
-          identifiers: {
-            dateOfBirth: result.identifiers?.date_of_birth || "",
-            ssnNumber: result.identifiers?.ssn_number || "",
-            npiNumber: result.identifiers?.npi_number || "",
-            insuranceProvider: result.identifiers?.insurance_provider || "",
-            insuranceNumber: result.identifiers?.insurance_number || "",
-            insuranceExpirationDate: result.identifiers?.insurance_expiration_date || "",
-            genderIdentity: result.identifiers?.gender_identity || "",
-            ethnicityIdentity: result.identifiers?.ethnicity_identity || "",
-            maritalStatus: result.identifiers?.marital_status || "",
-            livingSituation: result.identifiers?.living_situation || ""
-          },
-          emergencyContact: {
-            firstName: result.emergency_contact?.first_name || "",
-            lastName: result.emergency_contact?.last_name || "",
-            email: result.emergency_contact?.email || "",
-            phoneNumber: result.emergency_contact?.phone_number || "",
-            relationship: result.emergency_contact?.relationship || ""
-          },
-          referralInfo: {
-            referralType: result.referral_info?.referral_type || "",
-            referralRelationship: result.referral_info?.referral_relationship || "",
-            referredByName: result.referral_info?.referred_by_name || "",
-            referralNote: result.referral_info?.referral_note || ""
-          },
-          leadInfo: {
-            preferredLanguage: result.lead_info?.preferred_language || "",
-            leadGoals: result.lead_info?.lead_goals || "",
-            preferences: result.lead_info?.preferences || "",
-            expectation: result.lead_info?.expectation || "",
-            note: result.lead_info?.note || ""
-          },
-          userRoles: result.user_roles || [],
-          staffTypes: result.staff_types || []
-        };
+      const payload = (data || {}) as UserProfileRaw;
+      setRaw(payload);
 
-        setData(profileData);
-      }
-    } catch (error) {
-      console.error('Error fetching profile data:', error);
-      setError('Failed to load profile data');
-      toast.error('Failed to load profile data');
+      // Normalize to display-friendly structure
+      const personal = payload.personal_info || {};
+      const contact = payload.contact_info || {};
+      const identifiers = payload.identifiers || {};
+      const emergency = payload.emergency_contact || {};
+      const referral = payload.referral_info || {};
+      const lead = payload.lead_info || {};
+      const roles = (payload.user_roles || []) as RoleItem[];
+      const staff = (payload.staff_types || []) as StaffTypeItem[];
+
+      const normalized: UserProfileDisplay = {
+        personalInfo: {
+          first_name: personal.first_name ?? null,
+          middle_name: personal.middle_name ?? null,
+          last_name: personal.last_name ?? null,
+          user_profile_bio: personal.user_profile_bio ?? null,
+          user_profile_pic: personal.user_profile_pic ?? null,
+          status: personal.status ?? null,
+        },
+        contactInfo: {
+          email: contact.email ?? null,
+          work_email: contact.work_email ?? null,
+          phone: contact.phone ?? null,
+          phone_home: contact.phone_home ?? null,
+          address_line_1: contact.address_line_1 ?? null,
+          address_line_2: contact.address_line_2 ?? null,
+          city: contact.city ?? null,
+          state: contact.state ?? null,
+          zip_code: contact.zip_code ?? null,
+          url_facebook: contact.url_facebook ?? null,
+          url_instagram: contact.url_instagram ?? null,
+          url_tiktok: contact.url_tiktok ?? null,
+          url_linkedin: contact.url_linkedin ?? null,
+          address: combineAddress(contact), // ready-to-render single string
+        },
+        additionalInfo: {
+          date_of_birth: identifiers.date_of_birth ?? null,
+          ssn_number: identifiers.ssn_number ?? null,
+          npi_number: identifiers.npi_number ?? null,
+          insurance_provider: identifiers.insurance_provider ?? null,
+          insurance_number: identifiers.insurance_number ?? null,
+          insurance_expiration_date: identifiers.insurance_expiration_date ?? null,
+          gender_identity: identifiers.gender_identity ?? null,
+          ethnicity_identity: identifiers.ethnicity_identity ?? null,
+          marital_status: identifiers.marital_status ?? null,
+          living_situation: identifiers.living_situation ?? null,
+          ssn_masked: maskSSN(identifiers.ssn_number),
+          insurance_expiry_display: formatMonthYear(identifiers.insurance_expiration_date),
+          dob_display: formatDateNice(identifiers.date_of_birth),
+        },
+        emergencyContact: {
+          first_name: emergency.first_name ?? null,
+          last_name: emergency.last_name ?? null,
+          email: emergency.email ?? null,
+          phone_number: emergency.phone_number ?? null,
+          relationship: emergency.relationship ?? null,
+          full_name: [orNA(emergency.first_name, ''), orNA(emergency.last_name, '')]
+            .filter(Boolean)
+            .join(' ')
+            .trim() || 'Not provided',
+        },
+        referralInfo: {
+          referral_type: referral.referral_type ?? null,
+          referral_relationship: referral.referral_relationship ?? null,
+          referred_by_name: referral.referred_by_name ?? null,
+          referral_note: referral.referral_note ?? null,
+        },
+        leadInfo: {
+          preferred_language: lead.preferred_language ?? null,
+          lead_goals: lead.lead_goals ?? null,
+          preferences: lead.preferences ?? null,
+          expectation: lead.expectation ?? null,
+          note: lead.note ?? null,
+        },
+        userRoles: roles || [],
+        staffTypes: staff || [],
+      };
+
+      setData(normalized);
+    } catch (err: any) {
+      console.error('Error fetching user profile:', err);
+      const msg = err?.message || 'Failed to fetch user profile';
+      setError(msg);
+      toast.error(msg.includes('Access denied')
+        ? 'Access denied. You do not have permission to view this profile.'
+        : 'Failed to load user profile');
     } finally {
       setLoading(false);
     }
   };
 
+  const refetch = async () => {
+    if (!personId) return;
+    await fetchProfile(personId);
+  };
+
   useEffect(() => {
-    fetchProfileData();
+    if (personId) {
+      fetchProfile(personId);
+    } else {
+      setLoading(false);
+      setData(null);
+      setRaw(null);
+      setError(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [personId]);
 
   return {
-    data,
+    data,          // normalized display-ready data
+    raw,           // original payload if needed elsewhere
     loading,
     error,
-    refetch: fetchProfileData
+    refetch,
   };
 };
