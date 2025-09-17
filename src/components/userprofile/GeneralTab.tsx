@@ -803,30 +803,7 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ personId, hideUpcomingAppointme
         </SectionCard>
 
         {/* Additional Information */}
-        <SectionCard title="Additional Information">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-            <DetailItem icon={Calendar} label="Date of Birth" value={NA(data?.additionalInfo?.dob_display)} />
-            <DetailItem icon={Briefcase} label="Service" value="Therapy" />
-            <DetailItem icon={User} label="SSN" value={NA(data?.additionalInfo?.ssn_masked)} />
-            <DetailItem icon={Home} label="Living Situation" value={NA(data?.additionalInfo?.living_situation)} />
-            <DetailItem icon={Users} label="Referred By" value={NA(data?.referralInfo?.referred_by_name)} />
-            <DetailItem icon={User} label="Gender Identity" value={NA(data?.additionalInfo?.gender_identity)} />
-            <DetailItem
-              icon={ShieldCheck}
-              label="Insurance ID"
-              value={
-                <>
-                  {NA(data?.additionalInfo?.insurance_number)}
-                  <span className="text-xs text-gray-400 ml-2">
-                    (Exp: {NA(data?.additionalInfo?.insurance_expiry_display)})
-                  </span>
-                </>
-              }
-            />
-            <DetailItem icon={Heart} label="Marital Status" value={NA(data?.additionalInfo?.marital_status)} />
-            <DetailItem icon={Languages} label="Preferred Language" value={NA(data?.leadInfo?.preferred_language)} />
-          </div>
-        </SectionCard>
+        <AdditionalInformationSection personId={personId} />
 
         {/* Emergency Contact */}
         <SectionCard title="Emergency Contact">
