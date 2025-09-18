@@ -1163,11 +1163,51 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ personId, hideUpcomingAppointme
         {/* Additional Information */}
         <AdditionalInformationSection personId={personId} />
 
-        {/* Emergency Contact - Enhanced Dynamic Section */}
-        <EmergencyContactSection personId={personId} />
+        {/* Emergency Contact */}
+        <SectionCard title="Emergency Contact">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+            <DetailItem icon={User} label="Name" value={NA(data?.emergencyContact?.full_name)} />
+            <DetailItem icon={Mail} label="Email" value={NA(data?.emergencyContact?.email)} />
+            <DetailItem icon={Phone} label="Phone" value={NA(data?.emergencyContact?.phone_number)} />
+            <DetailItem icon={Users} label="Relationship" value={NA(data?.emergencyContact?.relationship)} />
+          </div>
+        </SectionCard>
 
-        {/* User Data - Real Data with Database Updates */}
-        <UserDataSection personId={personId} />
+        {/* User Data — options from full catalogs; selected from assigned values */}
+        <SectionCard title="User Data">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4" ref={containerRef}>
+            <EditableDetailItem
+              icon={ShieldCheck}
+              label="User Role"
+              value={userRole}
+              options={roleOptions}
+              isEditing={editingField === 'userRole'}
+              onEdit={() => setEditingField('userRole')}
+              onChange={(value) => {
+                setUserRole(value);
+                setEditingField(null);
+                // TODO (later step): persist to people_assign_user_role via RPC
+              }}
+              iconColor="text-blue-500"
+              loading={rolesLoading}
+            />
+            <EditableDetailItem
+              icon={Briefcase}
+              label="Staff Type"
+              value={staffType}
+              options={staffTypeOptions}
+              isEditing={editingField === 'staffType'}
+              onEdit={() => setEditingField('staffType')}
+              onChange={(value) => {
+                setStaffType(value);
+                setEditingField(null);
+                // TODO (later step): persist to people_assign_staff_type via RPC
+              }}
+              iconColor="text-green-500"
+              loading={staffTypesLoading}
+            />
+          </div>
+        </SectionCard>
       </div>
     </ScrollArea>
   );
