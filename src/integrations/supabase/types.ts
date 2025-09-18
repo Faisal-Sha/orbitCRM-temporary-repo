@@ -805,6 +805,60 @@ export type Database = {
           },
         ]
       }
+      people_assign_service: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          id: string
+          is_deleted: boolean
+          person_id: string
+          service_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          id?: string
+          is_deleted?: boolean
+          person_id: string
+          service_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          id?: string
+          is_deleted?: boolean
+          person_id?: string
+          service_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "people_assign_service_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "people_assign_service_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "settings_services_and_fees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       people_assign_staff_type: {
         Row: {
           created_at: string
@@ -1467,6 +1521,118 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "app_organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      settings_services_and_fees: {
+        Row: {
+          agency_id: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          id: string
+          is_deleted: boolean
+          service: string | null
+          service_category: Database["public"]["Enums"]["service_category_enum"]
+          service_fee: string | null
+          service_fee_type: Database["public"]["Enums"]["service_fee_type_enum"]
+          service_status: Database["public"]["Enums"]["service_status_enum"]
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          agency_id: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          id?: string
+          is_deleted?: boolean
+          service?: string | null
+          service_category?: Database["public"]["Enums"]["service_category_enum"]
+          service_fee?: string | null
+          service_fee_type?: Database["public"]["Enums"]["service_fee_type_enum"]
+          service_status?: Database["public"]["Enums"]["service_status_enum"]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          agency_id?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          id?: string
+          is_deleted?: boolean
+          service?: string | null
+          service_category?: Database["public"]["Enums"]["service_category_enum"]
+          service_fee?: string | null
+          service_fee_type?: Database["public"]["Enums"]["service_fee_type_enum"]
+          service_status?: Database["public"]["Enums"]["service_status_enum"]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "settings_services_and_fees_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "app_agencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      settings_services_insurances: {
+        Row: {
+          agency_id: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          id: string
+          insurance_category: Database["public"]["Enums"]["insurance_category_enum"]
+          insurance_provider: string | null
+          insurance_status: Database["public"]["Enums"]["service_status_enum"]
+          is_deleted: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          agency_id: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          id?: string
+          insurance_category?: Database["public"]["Enums"]["insurance_category_enum"]
+          insurance_provider?: string | null
+          insurance_status?: Database["public"]["Enums"]["service_status_enum"]
+          is_deleted?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          agency_id?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          id?: string
+          insurance_category?: Database["public"]["Enums"]["insurance_category_enum"]
+          insurance_provider?: string | null
+          insurance_status?: Database["public"]["Enums"]["service_status_enum"]
+          is_deleted?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "settings_services_insurances_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "app_agencies"
             referencedColumns: ["id"]
           },
         ]
