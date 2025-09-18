@@ -521,9 +521,10 @@ const EditableAdditionalField: React.FC<{
       handleSave(value);
     } else {
       // If no changes were made, just exit editing mode without saving
-      onCancel?.();
+      onEdit(); // This will close the editing mode
     }
   };
+
   const formatDisplayValue = (val: string, type: string) => {
     if (!val || val === 'N/A') return val;
     
