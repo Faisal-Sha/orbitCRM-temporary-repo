@@ -155,7 +155,7 @@ const AdditionalInformationSection: React.FC<{ personId?: string }> = ({ personI
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const currentFields = getCurrentAdditionalFields();
-  const availableFields = getAvailableAdditionalFields();
+  const availableFields = getAvailableAdditionalFields().filter(field => field.key !== 'referred_by_name');
 
   // Add click-outside behavior for dropdown
   useEffect(() => {
@@ -376,7 +376,7 @@ const ContactInformationSection: React.FC<{ personId?: string }> = ({ personId }
   }
 
   const currentFields = getCurrentContactFields();
-  const availableFields = getAvailableContactFields();
+  const availableFields = getAvailableContactFields().filter(field => field.key !== 'referred_by_name');
 
   return (
     <SectionCard title="Contact Information">
@@ -501,6 +501,7 @@ const EditableAdditionalField: React.FC<{
     if (value !== originalValue) {
       handleSave(value);
     }
+    // If no changes were made, just exit editing mode without saving
   };
 
   const formatDisplayValue = (val: string, type: string) => {
@@ -655,24 +656,10 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
     }
   }, [isEditing]);
 
-  // Real-time validation
-  useEffect(() => {
-    if (!localValue) {
-      setValidationError(null);
-      return;
-    }
-
-    let error = null;
-    if (field.key === 'email' || field.key === 'work_email') {
-      error = getEmailValidationError(localValue);
-    } else if (field.key === 'phone' || field.key === 'phone_home') {
-      error = getPhoneValidationError(localValue, country);
-    }
-    setValidationError(error);
-  }, [localValue, field.key, country]);
+  // Validation on blur only - don't validate while typing
 
   const handleSave = async (valueToSave: string) => {
-    if (isSaving || validationError) return;
+    if (isSaving) return;
     
     setIsSaving(true);
     
@@ -703,9 +690,24 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
   };
 
   const handleBlur = () => {
+    // Validate on blur
+    let error = null;
+    if (localValue && localValue.trim()) {
+      if (field.key === 'email' || field.key === 'work_email') {
+        error = getEmailValidationError(localValue);
+      } else if (field.key === 'phone' || field.key === 'phone_home') {
+        error = getPhoneValidationError(localValue, country);
+      }
+    }
+    
+    setValidationError(error);
+    
     // Only save if value has actually changed and there are no validation errors
-    if (localValue !== originalValue && !validationError) {
+    if (localValue !== originalValue && !error) {
       handleSave(localValue);
+    } else if (localValue === originalValue) {
+      // If no changes were made, just exit editing mode without saving
+      setValidationError(null);
     }
   };
 
@@ -769,7 +771,7 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-foreground">{field.label}</p>
           <div className="flex items-center gap-2">
-            <p className="text-sm text-muted-foreground truncate">
+            <p className="text-sm text-muted-foreground truncate flex-1">
               {field.type === 'url' && field.value ? truncateUrl(field.value) : 
                field.key === 'phone' || field.key === 'phone_home' ? getFormattedPhoneDisplay(field.value, country) : 
                field.value}
@@ -777,8 +779,8 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
             {field.type === 'url' && field.value && (
               <Button 
                 variant="ghost" 
-                size="sm" 
-                className="h-6 w-6 p-0 hover:bg-muted"
+                size="icon" 
+                className="h-6 w-6 p-0 hover:bg-muted flex-shrink-0"
                 onClick={(e) => {
                   e.stopPropagation();
                   openUrl(field.value);
@@ -792,7 +794,7 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
         <Button
           variant="ghost"
           size="icon"
-          className="h-6 w-6 p-0 hover:bg-muted"
+          className="h-6 w-6 p-0 hover:bg-muted flex-shrink-0"
           onClick={onEdit}
         >
           <Pencil className="h-3 w-3" />
@@ -883,7 +885,7 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
             validationError ? 'border-red-500' : 'border-border'
           }`}
           placeholder={`Enter ${field.label.toLowerCase()}`}
-          disabled={isSaving || !!validationError}
+          disabled={isSaving}
         />
         {validationError && (
           <p className="text-xs text-red-500 mt-1">{validationError}</p>
