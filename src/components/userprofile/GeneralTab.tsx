@@ -15,6 +15,9 @@ import { FaTiktok } from 'react-icons/fa';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useUserRoles } from '@/hooks/useUserRoles';
 import { useStaffTypes } from '@/hooks/useStaffTypes';
+import { useOrganizationCountry } from '@/hooks/useOrganizationCountry';
+import { validateEmail, validatePhoneNumber, getEmailValidationError, getPhoneValidationError } from '@/utils/validation';
+import { formatPhoneNumber, getFormattedPhoneDisplay } from '@/utils/phoneFormatting';
 
 // Format date nicely
 const formatDateNice = (iso?: string | null) => {
@@ -149,9 +152,25 @@ const AdditionalInformationSection: React.FC<{ personId?: string }> = ({ personI
   
   const [editingField, setEditingField] = useState<string | null>(null);
   const [showAddField, setShowAddField] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const currentFields = getCurrentAdditionalFields();
   const availableFields = getAvailableAdditionalFields();
+
+  // Add click-outside behavior for dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowAddField(false);
+      }
+    };
+    
+    if (showAddField) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showAddField]);
 
   const handleAddField = (fieldKey: string) => {
     setEditingField(fieldKey);
@@ -232,7 +251,7 @@ const AdditionalInformationSection: React.FC<{ personId?: string }> = ({ personI
 
         {/* Add Field Button and Dropdown */}
         {availableFields.length > 0 && !editingField && (
-          <div className="relative">
+          <div className="relative" ref={dropdownRef}>
             <Button
               variant="ghost"
               onClick={() => setShowAddField(!showAddField)}
@@ -259,6 +278,19 @@ const AdditionalInformationSection: React.FC<{ personId?: string }> = ({ personI
             )}
           </div>
         )}
+
+        {/* Show Referred By field as read-only if data exists */}
+        {data?.referralInfo?.referred_by_name && (
+          <div className="flex items-center space-x-3 p-3 rounded-lg bg-muted/20">
+            <div className="p-2 rounded-full bg-muted">
+              <UserPlus className="w-4 h-4 text-primary" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-foreground">Referred By</p>
+              <p className="text-sm text-muted-foreground">{data.referralInfo.referred_by_name}</p>
+            </div>
+          </div>
+        )}
       </div>
     </SectionCard>
   );
@@ -277,6 +309,22 @@ const ContactInformationSection: React.FC<{ personId?: string }> = ({ personId }
 
   const [editingField, setEditingField] = useState<string | null>(null);
   const [showAddField, setShowAddField] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Add click-outside behavior for dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowAddField(false);
+      }
+    };
+    
+    if (showAddField) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showAddField]);
 
   const handleEditField = (fieldKey: string) => {
     setEditingField(fieldKey);
@@ -365,7 +413,7 @@ const ContactInformationSection: React.FC<{ personId?: string }> = ({ personId }
 
         {/* Add Field Button and Dropdown */}
         {availableFields.length > 0 && !editingField && (
-          <div className="relative">
+          <div className="relative" ref={dropdownRef}>
             <Button
               variant="ghost"
               onClick={() => setShowAddField(!showAddField)}
@@ -427,10 +475,9 @@ const EditableAdditionalField: React.FC<{
 }> = ({ field, isEditing, onEdit, onSave, onDelete }) => {
   const [value, setValue] = useState(field.value);
   const [loading, setLoading] = useState(false);
+  const [originalValue] = useState(field.value);
   const inputRef = useRef<HTMLInputElement>(null);
   const selectRef = useRef<HTMLSelectElement>(null);
-  const debouncedValue = useDebounce(value, 1000);
-  const [hasChanged, setHasChanged] = useState(false);
 
   useEffect(() => {
     setValue(field.value);
@@ -443,21 +490,15 @@ const EditableAdditionalField: React.FC<{
     }
   }, [isEditing]);
 
-  useEffect(() => {
-    if (hasChanged && debouncedValue !== field.value && isEditing) {
-      handleSave(debouncedValue);
-    }
-  }, [debouncedValue]);
-
   const handleSave = async (saveValue: string) => {
     setLoading(true);
-    setHasChanged(false);
     await onSave(saveValue);
     setLoading(false);
   };
 
   const handleBlur = () => {
-    if (value !== field.value) {
+    // Only save if value has actually changed
+    if (value !== originalValue) {
       handleSave(value);
     }
   };
@@ -512,7 +553,7 @@ const EditableAdditionalField: React.FC<{
 
   if (!isEditing) {
     return (
-      <div className="group flex items-center space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer" onClick={onEdit}>
+      <div className="group flex items-center space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
         <div className={`p-2 rounded-full bg-muted`}>
           <IconComponent className={`w-4 h-4 ${iconColor}`} />
         </div>
@@ -522,7 +563,14 @@ const EditableAdditionalField: React.FC<{
             {formatDisplayValue(field.value, field.type)}
           </p>
         </div>
-        <Edit2 className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6 p-0 hover:bg-muted"
+          onClick={onEdit}
+        >
+          <Pencil className="h-3 w-3" />
+        </Button>
       </div>
     );
   }
@@ -538,10 +586,7 @@ const EditableAdditionalField: React.FC<{
           <select
             ref={selectRef}
             value={value}
-            onChange={(e) => {
-              setValue(e.target.value);
-              setHasChanged(true);
-            }}
+            onChange={(e) => setValue(e.target.value)}
             onBlur={handleBlur}
             className="w-full px-2 py-1 text-sm bg-background border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary/20"
             disabled={loading}
@@ -556,10 +601,7 @@ const EditableAdditionalField: React.FC<{
             ref={inputRef}
             type={field.type === 'date' ? 'date' : 'text'}
             value={value}
-            onChange={(e) => {
-              setValue(e.target.value);
-              setHasChanged(true);
-            }}
+            onChange={(e) => setValue(e.target.value)}
             onBlur={handleBlur}
             className="w-full px-2 py-1 text-sm bg-background border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary/20"
             placeholder={`Enter ${field.label.toLowerCase()}`}
@@ -581,13 +623,31 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
 }) => {
   const [localValue, setLocalValue] = useState(field.value);
   const [isSaving, setIsSaving] = useState(false);
+  const [originalValue] = useState(field.value);
+  const [validationError, setValidationError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const debouncedValue = useDebounce(localValue, 1000);
-  const [hasChanged, setHasChanged] = useState(false);
+  const { country } = useOrganizationCountry();
+  
+  // Address component states for multi-field editing
+  const [addressLine1, setAddressLine1] = useState('');
+  const [addressLine2, setAddressLine2] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [zipCode, setZipCode] = useState('');
   
   useEffect(() => {
     setLocalValue(field.value);
-  }, [field.value]);
+    
+    // Parse address fields if this is an address field
+    if (field.key === 'address' && field.value && field.value !== 'Not provided') {
+      const parts = field.value.split(', ').map(part => part.trim());
+      setAddressLine1(parts[0] || '');
+      setAddressLine2(parts[1] || '');
+      setCity(parts[2] || '');
+      setState(parts[3] || '');
+      setZipCode(parts[4] || '');
+    }
+  }, [field.value, field.key]);
   
   useEffect(() => {
     if (isEditing && inputRef.current) {
@@ -595,17 +655,27 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
     }
   }, [isEditing]);
 
+  // Real-time validation
   useEffect(() => {
-    if (hasChanged && debouncedValue !== field.value && isEditing) {
-      handleSave(debouncedValue);
+    if (!localValue) {
+      setValidationError(null);
+      return;
     }
-  }, [debouncedValue]);
+
+    let error = null;
+    if (field.key === 'email' || field.key === 'work_email') {
+      error = getEmailValidationError(localValue);
+    } else if (field.key === 'phone' || field.key === 'phone_home') {
+      error = getPhoneValidationError(localValue, country);
+    }
+    setValidationError(error);
+  }, [localValue, field.key, country]);
 
   const handleSave = async (valueToSave: string) => {
-    if (isSaving) return;
+    if (isSaving || validationError) return;
     
     setIsSaving(true);
-    setHasChanged(false);
+    
     if (valueToSave.trim() === '') {
       await onDelete();
     } else {
@@ -614,35 +684,66 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
     setIsSaving(false);
   };
 
+  const handleAddressSave = async () => {
+    if (isSaving) return;
+    
+    setIsSaving(true);
+    
+    // Combine address parts
+    const addressParts = [addressLine1, addressLine2, city, state, zipCode]
+      .map(part => part.trim())
+      .filter(Boolean);
+    
+    if (addressParts.length === 0) {
+      await onDelete();
+    } else {
+      await onSave(addressParts.join(', '));
+    }
+    setIsSaving(false);
+  };
+
   const handleBlur = () => {
-    if (localValue !== field.value) {
+    // Only save if value has actually changed and there are no validation errors
+    if (localValue !== originalValue && !validationError) {
       handleSave(localValue);
     }
   };
 
-  const getSocialIcon = (key: string) => {
-    switch (key) {
-      case 'url_facebook': return Facebook;
-      case 'url_instagram': return Instagram;
-      case 'url_linkedin': return Linkedin;
-      case 'url_tiktok': return FaTiktok;
-      default: return null;
+  const handleAddressBlur = () => {
+    // Save address when any address field loses focus
+    const newAddress = [addressLine1, addressLine2, city, state, zipCode]
+      .map(part => part.trim())
+      .filter(Boolean)
+      .join(', ');
+    
+    const originalAddress = field.value === 'Not provided' ? '' : field.value;
+    
+    if (newAddress !== originalAddress) {
+      handleAddressSave();
+    }
+  };
+
+  const handlePhoneChange = (value: string) => {
+    // Auto-format phone number as user types
+    if (field.key === 'phone' || field.key === 'phone_home') {
+      const formatted = formatPhoneNumber(value, country);
+      setLocalValue(formatted);
+    } else {
+      setLocalValue(value);
     }
   };
 
   const getContactIcon = (key: string) => {
     const iconMap: { [key: string]: React.ComponentType<any> } = {
       email: Mail,
-      phone_number: Phone,
-      phone_mobile: Smartphone,
-      phone_work: Phone,
+      work_email: Mail,
+      phone: Phone,
+      phone_home: Smartphone,
       address: MapPin,
       url_facebook: Facebook,
       url_instagram: Instagram,
       url_linkedin: Linkedin,
       url_tiktok: FaTiktok,
-      url_website: Globe,
-      url_other: ExternalLink,
     };
     return iconMap[key] || Mail;
   };
@@ -657,12 +758,11 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
   };
 
   const IconComponent = getContactIcon(field.key);
-  const SocialIconComponent = getSocialIcon(field.key);
   const iconColor = 'text-primary';
 
   if (!isEditing) {
     return (
-      <div className="group flex items-center space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer" onClick={onEdit}>
+      <div className="group flex items-center space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
         <div className={`p-2 rounded-full bg-muted`}>
           <IconComponent className={`w-4 h-4 ${iconColor}`} />
         </div>
@@ -670,13 +770,15 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
           <p className="text-sm font-medium text-foreground">{field.label}</p>
           <div className="flex items-center gap-2">
             <p className="text-sm text-muted-foreground truncate">
-              {field.type === 'url' && field.value ? truncateUrl(field.value) : field.value}
+              {field.type === 'url' && field.value ? truncateUrl(field.value) : 
+               field.key === 'phone' || field.key === 'phone_home' ? getFormattedPhoneDisplay(field.value, country) : 
+               field.value}
             </p>
             {field.type === 'url' && field.value && (
               <Button 
                 variant="ghost" 
                 size="sm" 
-                className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="h-6 w-6 p-0 hover:bg-muted"
                 onClick={(e) => {
                   e.stopPropagation();
                   openUrl(field.value);
@@ -685,22 +787,75 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
                 <ExternalLink className="h-3 w-3" />
               </Button>
             )}
-            {SocialIconComponent && field.value && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openUrl(field.value);
-                }}
-              >
-                <SocialIconComponent className="h-3 w-3" />
-              </Button>
-            )}
           </div>
         </div>
-        <Edit2 className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6 p-0 hover:bg-muted"
+          onClick={onEdit}
+        >
+          <Pencil className="h-3 w-3" />
+        </Button>
+      </div>
+    );
+  }
+
+  // Address field editing mode with multiple inputs
+  if (field.key === 'address') {
+    return (
+      <div className="flex items-start space-x-3 p-3 rounded-lg bg-muted/50">
+        <div className={`p-2 rounded-full bg-muted`}>
+          <IconComponent className={`w-4 h-4 ${iconColor}`} />
+        </div>
+        <div className="flex-1 min-w-0 space-y-2">
+          <p className="text-sm font-medium text-foreground mb-1">{field.label}</p>
+          <div className="space-y-2">
+            <Input
+              value={addressLine1}
+              onChange={(e) => setAddressLine1(e.target.value)}
+              onBlur={handleAddressBlur}
+              placeholder="Address Line 1"
+              className="text-sm"
+              disabled={isSaving}
+            />
+            <Input
+              value={addressLine2}
+              onChange={(e) => setAddressLine2(e.target.value)}
+              onBlur={handleAddressBlur}
+              placeholder="Address Line 2 (optional)"
+              className="text-sm"
+              disabled={isSaving}
+            />
+            <div className="grid grid-cols-3 gap-2">
+              <Input
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                onBlur={handleAddressBlur}
+                placeholder="City"
+                className="text-sm"
+                disabled={isSaving}
+              />
+              <Input
+                value={state}
+                onChange={(e) => setState(e.target.value)}
+                onBlur={handleAddressBlur}
+                placeholder="State"
+                className="text-sm"
+                disabled={isSaving}
+              />
+              <Input
+                value={zipCode}
+                onChange={(e) => setZipCode(e.target.value)}
+                onBlur={handleAddressBlur}
+                placeholder="Zip Code"
+                className="text-sm"
+                disabled={isSaving}
+              />
+            </div>
+          </div>
+        </div>
+        {isSaving && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
       </div>
     );
   }
@@ -717,14 +872,22 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
           type="text"
           value={localValue}
           onChange={(e) => {
-            setLocalValue(e.target.value);
-            setHasChanged(true);
+            if (field.key === 'phone' || field.key === 'phone_home') {
+              handlePhoneChange(e.target.value);
+            } else {
+              setLocalValue(e.target.value);
+            }
           }}
           onBlur={handleBlur}
-          className="w-full px-2 py-1 text-sm bg-background border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary/20"
+          className={`w-full px-2 py-1 text-sm bg-background border rounded focus:outline-none focus:ring-2 focus:ring-primary/20 ${
+            validationError ? 'border-red-500' : 'border-border'
+          }`}
           placeholder={`Enter ${field.label.toLowerCase()}`}
-          disabled={isSaving}
+          disabled={isSaving || !!validationError}
         />
+        {validationError && (
+          <p className="text-xs text-red-500 mt-1">{validationError}</p>
+        )}
       </div>
       {isSaving && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
     </div>
