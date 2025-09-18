@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Plus, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { EditableContactField } from './GeneralTab';
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -22,28 +21,32 @@ export const EmergencyContactSection: React.FC<EmergencyContactSectionProps> = (
   } = useUserProfile(personId);
   
   const { country } = useOrganizationCountry();
-  const [editingField, setEditingField] = useState<string | null>(null);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+const [editingField, setEditingField] = useState<string | null>(null);
+const [showAddField, setShowAddField] = useState(false);
+const containerRef = useRef<HTMLDivElement>(null);
+const dropdownRef = useRef<HTMLDivElement>(null);
 
   const currentFields = getCurrentEmergencyFields();
   const availableFields = getAvailableEmergencyFields();
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setEditingField(null);
-        setDropdownOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const handleAddField = (fieldKey: string) => {
-    setEditingField(fieldKey);
-    setDropdownOpen(false);
+useEffect(() => {
+  const handleClickOutside = (event: MouseEvent) => {
+    const target = event.target as Node;
+    const clickedOutsideContainer = containerRef.current && !containerRef.current.contains(target);
+    const clickedOutsideDropdown = dropdownRef.current && !dropdownRef.current.contains(target);
+    if (clickedOutsideContainer && clickedOutsideDropdown) {
+      setEditingField(null);
+      setShowAddField(false);
+    }
   };
+  document.addEventListener('mousedown', handleClickOutside);
+  return () => document.removeEventListener('mousedown', handleClickOutside);
+}, []);
+
+const handleAddField = (fieldKey: string) => {
+  setEditingField(fieldKey);
+  setShowAddField(false);
+};
 
   const handleSave = async (fieldKey: string, value: string): Promise<boolean> => {
     if (!value.trim()) {
@@ -89,6 +92,7 @@ export const EmergencyContactSection: React.FC<EmergencyContactSectionProps> = (
                 if (success) setEditingField(null);
                 return success;
               }}
+              onCancel={() => setEditingField(null)}
               country={country || 'United States'}
             />
           ))}
@@ -113,6 +117,7 @@ export const EmergencyContactSection: React.FC<EmergencyContactSectionProps> = (
                 setEditingField(null);
                 return true;
               }}
+              onCancel={() => setEditingField(null)}
               country={country || 'United States'}
             />
           )}
