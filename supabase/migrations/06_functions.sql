@@ -2304,3 +2304,471 @@ BEGIN
   ORDER BY pl.created_at DESC;
 END;
 $$;
+
+CREATE OR REPLACE FUNCTION public.get_leads_data()
+RETURNS TABLE(
+  lead_id uuid,
+  first_name text,
+  last_name text,
+  email text,
+  phone text,
+  created_at timestamp with time zone,
+  lead_goals text,
+  preferences text,
+  expectation text,
+  note text
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    pl.id as lead_id,
+    p.first_name,
+    p.last_name, 
+    pc.email,
+    pc.phone,
+    pl.created_at,
+    pl.lead_goals,
+    pl.preferences,
+    pl.expectation,
+    pl.note
+  FROM people_leads pl
+  JOIN people p ON pl.person_id = p.id
+  JOIN people_assign_user_role paur ON p.id = paur.person_id
+  JOIN app_user_roles aur ON paur.user_role_id = aur.id
+  LEFT JOIN people_contacts pc ON p.id = pc.person_id AND pc.is_deleted = false
+  WHERE pl.is_deleted = false 
+    AND p.is_deleted = false 
+    AND p.status = 'active'
+    AND paur.is_deleted = false
+    AND aur.role_name = 'lead'::user_roles_enum
+  ORDER BY pl.created_at DESC;
+END;
+$$;
+
+
+
+CREATE OR REPLACE FUNCTION public.update_people_contact_address(
+  p_person_id UUID,
+  p_address_line_1 TEXT,
+  p_address_line_2 TEXT,
+  p_city TEXT,
+  p_state TEXT,
+  p_zip_code TEXT
+)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+DECLARE
+  current_user_id UUID := auth.uid();
+  contact_record_id UUID;
+  result JSON;
+BEGIN
+  -- Find existing contact record
+  SELECT id INTO contact_record_id
+  FROM public.people_contacts
+  WHERE person_id = p_person_id AND is_deleted = false
+  LIMIT 1;
+
+  -- If no contact record exists, create one
+  IF contact_record_id IS NULL THEN
+    INSERT INTO public.people_contacts (
+      person_id,
+      email,
+      address_line_1,
+      address_line_2,
+      city,
+      state,
+      zip_code,
+      created_by,
+      updated_by
+    ) VALUES (
+      p_person_id,
+      'temp@example.com',
+      p_address_line_1,
+      p_address_line_2,
+      p_city,
+      p_state,
+      p_zip_code,
+      current_user_id,
+      current_user_id
+    );
+  ELSE
+    -- Update address fields
+    UPDATE public.people_contacts 
+    SET 
+      address_line_1 = p_address_line_1,
+      address_line_2 = p_address_line_2,
+      city = p_city,
+      state = p_state,
+      zip_code = p_zip_code,
+      updated_by = current_user_id,
+      updated_at = now()
+    WHERE id = contact_record_id;
+  END IF;
+
+  SELECT json_build_object(
+    'success', true,
+    'message', 'Address updated successfully'
+  ) INTO result;
+
+  RETURN result;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.delete_people_contact_field(
+  p_person_id UUID,
+  p_field_name TEXT
+)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+DECLARE
+  current_user_id UUID := auth.uid();
+  contact_record_id UUID;
+  result JSON;
+BEGIN
+  -- Find existing contact record
+  SELECT id INTO contact_record_id
+  FROM public.people_contacts
+  WHERE person_id = p_person_id AND is_deleted = false
+  LIMIT 1;
+
+  IF contact_record_id IS NULL THEN
+    RETURN json_build_object('success', false, 'message', 'Contact record not found');
+  END IF;
+
+  -- Clear the specific field
+  CASE p_field_name
+    WHEN 'work_email' THEN
+      UPDATE public.people_contacts SET work_email = NULL, updated_by = current_user_id, updated_at = now() WHERE id = contact_record_id;
+    WHEN 'phone_home' THEN
+      UPDATE public.people_contacts SET phone_home = NULL, updated_by = current_user_id, updated_at = now() WHERE id = contact_record_id;
+    WHEN 'url_facebook' THEN
+      UPDATE public.people_contacts SET url_facebook = NULL, updated_by = current_user_id, updated_at = now() WHERE id = contact_record_id;
+    WHEN 'url_instagram' THEN
+      UPDATE public.people_contacts SET url_instagram = NULL, updated_by = current_user_id, updated_at = now() WHERE id = contact_record_id;
+    WHEN 'url_tiktok' THEN
+      UPDATE public.people_contacts SET url_tiktok = NULL, updated_by = current_user_id, updated_at = now() WHERE id = contact_record_id;
+    WHEN 'url_linkedin' THEN
+      UPDATE public.people_contacts SET url_linkedin = NULL, updated_by = current_user_id, updated_at = now() WHERE id = contact_record_id;
+    WHEN 'address' THEN
+      UPDATE public.people_contacts 
+      SET address_line_1 = NULL, address_line_2 = NULL, city = NULL, state = NULL, zip_code = NULL, 
+          updated_by = current_user_id, updated_at = now() 
+      WHERE id = contact_record_id;
+    ELSE
+      RETURN json_build_object('success', false, 'message', 'Cannot delete required field or invalid field name');
+  END CASE;
+
+  SELECT json_build_object(
+    'success', true,
+    'message', 'Contact field cleared successfully'
+  ) INTO result;
+
+  RETURN result;
+END;
+$$;
+
+
+-- Functions for updating additional information fields
+CREATE OR REPLACE FUNCTION public.update_people_identifiers_field(
+  p_person_id uuid,
+  p_field_name text,
+  p_field_value text
+)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+DECLARE
+  current_user_id UUID := auth.uid();
+  identifier_record_id UUID;
+  result JSON;
+BEGIN
+  -- Find existing identifiers record
+  SELECT id INTO identifier_record_id
+  FROM public.people_identifiers
+  WHERE person_id = p_person_id AND is_deleted = false
+  LIMIT 1;
+
+  -- If no identifiers record exists, create one
+  IF identifier_record_id IS NULL THEN
+    INSERT INTO public.people_identifiers (
+      person_id,
+      created_by,
+      updated_by
+    ) VALUES (
+      p_person_id,
+      current_user_id,
+      current_user_id
+    ) RETURNING id INTO identifier_record_id;
+  END IF;
+
+  -- Update the specific field
+  CASE p_field_name
+    WHEN 'date_of_birth' THEN
+      UPDATE public.people_identifiers SET date_of_birth = p_field_value::date, updated_by = current_user_id, updated_at = now() WHERE id = identifier_record_id;
+    WHEN 'ssn_number' THEN
+      UPDATE public.people_identifiers SET ssn_number = p_field_value, updated_by = current_user_id, updated_at = now() WHERE id = identifier_record_id;
+    WHEN 'npi_number' THEN
+      UPDATE public.people_identifiers SET npi_number = p_field_value, updated_by = current_user_id, updated_at = now() WHERE id = identifier_record_id;
+    WHEN 'insurance_provider' THEN
+      UPDATE public.people_identifiers SET insurance_provider = p_field_value, updated_by = current_user_id, updated_at = now() WHERE id = identifier_record_id;
+    WHEN 'insurance_number' THEN
+      UPDATE public.people_identifiers SET insurance_number = p_field_value, updated_by = current_user_id, updated_at = now() WHERE id = identifier_record_id;
+    WHEN 'insurance_expiration_date' THEN
+      UPDATE public.people_identifiers SET insurance_expiration_date = p_field_value::date, updated_by = current_user_id, updated_at = now() WHERE id = identifier_record_id;
+    WHEN 'gender_identity' THEN
+      UPDATE public.people_identifiers SET gender_identity = p_field_value, updated_by = current_user_id, updated_at = now() WHERE id = identifier_record_id;
+    WHEN 'ethnicity_identity' THEN
+      UPDATE public.people_identifiers SET ethnicity_identity = p_field_value, updated_by = current_user_id, updated_at = now() WHERE id = identifier_record_id;
+    WHEN 'marital_status' THEN
+      UPDATE public.people_identifiers SET marital_status = p_field_value, updated_by = current_user_id, updated_at = now() WHERE id = identifier_record_id;
+    WHEN 'living_situation' THEN
+      UPDATE public.people_identifiers SET living_situation = p_field_value, updated_by = current_user_id, updated_at = now() WHERE id = identifier_record_id;
+    ELSE
+      RETURN json_build_object('success', false, 'message', 'Invalid field name');
+  END CASE;
+
+  SELECT json_build_object(
+    'success', true,
+    'message', 'Identifier field updated successfully'
+  ) INTO result;
+
+  RETURN result;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.update_people_leads_field(
+  p_person_id uuid,
+  p_field_name text,
+  p_field_value text
+)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+DECLARE
+  current_user_id UUID := auth.uid();
+  lead_record_id UUID;
+  result JSON;
+BEGIN
+  -- Find existing leads record
+  SELECT id INTO lead_record_id
+  FROM public.people_leads
+  WHERE person_id = p_person_id AND is_deleted = false
+  LIMIT 1;
+
+  -- If no leads record exists, create one
+  IF lead_record_id IS NULL THEN
+    INSERT INTO public.people_leads (
+      person_id,
+      agency_id,
+      created_by,
+      updated_by
+    ) VALUES (
+      p_person_id,
+      (SELECT op.agency_id FROM public.app_agencies_people op WHERE op.person_id = p_person_id AND op.is_deleted = false LIMIT 1),
+      current_user_id,
+      current_user_id
+    ) RETURNING id INTO lead_record_id;
+  END IF;
+
+  -- Update the specific field
+  CASE p_field_name
+    WHEN 'preferred_language' THEN
+      UPDATE public.people_leads SET preferred_language = p_field_value, updated_by = current_user_id, updated_at = now() WHERE id = lead_record_id;
+    ELSE
+      RETURN json_build_object('success', false, 'message', 'Invalid field name');
+  END CASE;
+
+  SELECT json_build_object(
+    'success', true,
+    'message', 'Lead field updated successfully'
+  ) INTO result;
+
+  RETURN result;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.update_people_referrals_field(
+  p_person_id uuid,
+  p_field_name text,
+  p_field_value text
+)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+DECLARE
+  current_user_id UUID := auth.uid();
+  referral_record_id UUID;
+  result JSON;
+BEGIN
+  -- Find existing referrals record
+  SELECT id INTO referral_record_id
+  FROM public.people_referrals
+  WHERE person_id = p_person_id AND is_deleted = false
+  LIMIT 1;
+
+  -- If no referrals record exists, create one
+  IF referral_record_id IS NULL THEN
+    INSERT INTO public.people_referrals (
+      person_id,
+      created_by,
+      updated_by
+    ) VALUES (
+      p_person_id,
+      current_user_id,
+      current_user_id
+    ) RETURNING id INTO referral_record_id;
+  END IF;
+
+  -- Update the specific field
+  CASE p_field_name
+    WHEN 'referred_by_name' THEN
+      UPDATE public.people_referrals SET referred_by_name = p_field_value, updated_by = current_user_id, updated_at = now() WHERE id = referral_record_id;
+    ELSE
+      RETURN json_build_object('success', false, 'message', 'Invalid field name');
+  END CASE;
+
+  SELECT json_build_object(
+    'success', true,
+    'message', 'Referral field updated successfully'
+  ) INTO result;
+
+  RETURN result;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.delete_people_additional_field(
+  p_person_id uuid,
+  p_field_name text
+)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+DECLARE
+  current_user_id UUID := auth.uid();
+  result JSON;
+BEGIN
+  -- Clear the specific field based on table
+  IF p_field_name IN ('date_of_birth', 'ssn_number', 'npi_number', 'insurance_provider', 'insurance_number', 'insurance_expiration_date', 'gender_identity', 'ethnicity_identity', 'marital_status', 'living_situation') THEN
+    CASE p_field_name
+      WHEN 'date_of_birth' THEN
+        UPDATE public.people_identifiers SET date_of_birth = NULL, updated_by = current_user_id, updated_at = now() WHERE person_id = p_person_id AND is_deleted = false;
+      WHEN 'ssn_number' THEN
+        UPDATE public.people_identifiers SET ssn_number = NULL, updated_by = current_user_id, updated_at = now() WHERE person_id = p_person_id AND is_deleted = false;
+      WHEN 'npi_number' THEN
+        UPDATE public.people_identifiers SET npi_number = NULL, updated_by = current_user_id, updated_at = now() WHERE person_id = p_person_id AND is_deleted = false;
+      WHEN 'insurance_provider' THEN
+        UPDATE public.people_identifiers SET insurance_provider = NULL, updated_by = current_user_id, updated_at = now() WHERE person_id = p_person_id AND is_deleted = false;
+      WHEN 'insurance_number' THEN
+        UPDATE public.people_identifiers SET insurance_number = NULL, updated_by = current_user_id, updated_at = now() WHERE person_id = p_person_id AND is_deleted = false;
+      WHEN 'insurance_expiration_date' THEN
+        UPDATE public.people_identifiers SET insurance_expiration_date = NULL, updated_by = current_user_id, updated_at = now() WHERE person_id = p_person_id AND is_deleted = false;
+      WHEN 'gender_identity' THEN
+        UPDATE public.people_identifiers SET gender_identity = NULL, updated_by = current_user_id, updated_at = now() WHERE person_id = p_person_id AND is_deleted = false;
+      WHEN 'ethnicity_identity' THEN
+        UPDATE public.people_identifiers SET ethnicity_identity = NULL, updated_by = current_user_id, updated_at = now() WHERE person_id = p_person_id AND is_deleted = false;
+      WHEN 'marital_status' THEN
+        UPDATE public.people_identifiers SET marital_status = NULL, updated_by = current_user_id, updated_at = now() WHERE person_id = p_person_id AND is_deleted = false;
+      WHEN 'living_situation' THEN
+        UPDATE public.people_identifiers SET living_situation = NULL, updated_by = current_user_id, updated_at = now() WHERE person_id = p_person_id AND is_deleted = false;
+    END CASE;
+  ELSIF p_field_name = 'preferred_language' THEN
+    UPDATE public.people_leads SET preferred_language = NULL, updated_by = current_user_id, updated_at = now() WHERE person_id = p_person_id AND is_deleted = false;
+  ELSIF p_field_name = 'referred_by_name' THEN
+    UPDATE public.people_referrals SET referred_by_name = NULL, updated_by = current_user_id, updated_at = now() WHERE person_id = p_person_id AND is_deleted = false;
+  ELSE
+    RETURN json_build_object('success', false, 'message', 'Invalid field name');
+  END IF;
+
+  SELECT json_build_object(
+    'success', true,
+    'message', 'Field cleared successfully'
+  ) INTO result;
+
+  RETURN result;
+END;
+$$;
+
+
+CREATE OR REPLACE FUNCTION public.update_people_contact_field(p_person_id uuid, p_field_name text, p_field_value text)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+DECLARE
+  current_user_id UUID := auth.uid();
+  contact_record_id UUID;
+  result JSON;
+BEGIN
+  -- Email updates are now handled by the comprehensive edge function
+  IF p_field_name = 'email' THEN
+    RETURN json_build_object('success', false, 'message', 'Email updates should use the comprehensive edge function');
+  END IF;
+
+  -- Find existing contact record
+  SELECT id INTO contact_record_id
+  FROM public.people_contacts
+  WHERE person_id = p_person_id AND is_deleted = false
+  LIMIT 1;
+
+  -- If no contact record exists, create one
+  IF contact_record_id IS NULL THEN
+    INSERT INTO public.people_contacts (
+      person_id,
+      email,
+      created_by,
+      updated_by
+    ) VALUES (
+      p_person_id,
+      'temp@example.com',
+      current_user_id,
+      current_user_id
+    ) RETURNING id INTO contact_record_id;
+  END IF;
+
+  -- Update the specific field
+  CASE p_field_name
+    WHEN 'work_email' THEN
+      UPDATE public.people_contacts SET work_email = p_field_value, updated_by = current_user_id, updated_at = now() WHERE id = contact_record_id;
+    WHEN 'phone' THEN
+      UPDATE public.people_contacts SET phone = p_field_value, updated_by = current_user_id, updated_at = now() WHERE id = contact_record_id;
+    WHEN 'phone_home' THEN
+      UPDATE public.people_contacts SET phone_home = p_field_value, updated_by = current_user_id, updated_at = now() WHERE id = contact_record_id;
+    WHEN 'url_facebook' THEN
+      UPDATE public.people_contacts SET url_facebook = p_field_value, updated_by = current_user_id, updated_at = now() WHERE id = contact_record_id;
+    WHEN 'url_instagram' THEN
+      UPDATE public.people_contacts SET url_instagram = p_field_value, updated_by = current_user_id, updated_at = now() WHERE id = contact_record_id;
+    WHEN 'url_tiktok' THEN
+      UPDATE public.people_contacts SET url_tiktok = p_field_value, updated_by = current_user_id, updated_at = now() WHERE id = contact_record_id;
+    WHEN 'url_linkedin' THEN
+      UPDATE public.people_contacts SET url_linkedin = p_field_value, updated_by = current_user_id, updated_at = now() WHERE id = contact_record_id;
+    ELSE
+      RETURN json_build_object('success', false, 'message', 'Invalid field name');
+  END CASE;
+
+  SELECT json_build_object(
+    'success', true,
+    'message', 'Contact field updated successfully'
+  ) INTO result;
+
+  RETURN result;
+END;
+$$;

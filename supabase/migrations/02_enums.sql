@@ -1,5 +1,4 @@
 -- create enums
-CREATE TYPE people_status_enum AS ENUM ('active', 'inactive', 'deleted');
 CREATE TYPE agency_status_enum AS ENUM ('active', 'inactive', 'deleted');
 CREATE TYPE organization_status_enum AS ENUM ('active', 'inactive', 'deleted');
 CREATE TYPE user_status_enum AS ENUM ('invited', 'active', 'inactive', 'deleted');

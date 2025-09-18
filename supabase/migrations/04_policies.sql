@@ -335,3 +335,326 @@ ALTER TABLE public.settings_organization ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.settings_organization_domains ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.people_contacts_referrals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.people_identifiers ENABLE ROW LEVEL SECURITY;
+
+
+-- Add missing RLS policies for people tables
+CREATE POLICY "Users can view identifiers in their organization" 
+ON public.people_identifiers 
+FOR SELECT 
+USING (
+  EXISTS (
+    SELECT 1 FROM public.people p
+    JOIN public.app_users au ON p.user_account_id = au.id
+    JOIN public.app_agencies_people op ON p.id = op.person_id
+    WHERE au.user_id = auth.uid() 
+      AND p.is_deleted = false 
+      AND op.is_deleted = false
+      AND p.id = people_identifiers.person_id
+  )
+);
+
+CREATE POLICY "Users can create identifiers in their organization" 
+ON public.people_identifiers 
+FOR INSERT 
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM public.people p
+    JOIN public.app_users au ON p.user_account_id = au.id
+    JOIN public.app_agencies_people op ON p.id = op.person_id
+    WHERE au.user_id = auth.uid() 
+      AND p.is_deleted = false 
+      AND op.is_deleted = false
+      AND p.id = people_identifiers.person_id
+  )
+);
+
+CREATE POLICY "Users can update identifiers in their organization" 
+ON public.people_identifiers 
+FOR UPDATE 
+USING (
+  EXISTS (
+    SELECT 1 FROM public.people p
+    JOIN public.app_users au ON p.user_account_id = au.id
+    JOIN public.app_agencies_people op ON p.id = op.person_id
+    WHERE au.user_id = auth.uid() 
+      AND p.is_deleted = false 
+      AND op.is_deleted = false
+      AND p.id = people_identifiers.person_id
+  )
+);
+
+-- RLS Policies for people_contacts
+CREATE POLICY "Users can view contacts in their organization" 
+ON public.people_contacts 
+FOR SELECT 
+USING (
+  EXISTS (
+    SELECT 1 FROM public.people p
+    JOIN public.app_users au ON p.user_account_id = au.id
+    JOIN public.app_agencies_people op ON p.id = op.person_id
+    WHERE au.user_id = auth.uid() 
+      AND p.is_deleted = false 
+      AND op.is_deleted = false
+      AND p.id = people_contacts.person_id
+  )
+);
+
+CREATE POLICY "Users can create contacts in their organization" 
+ON public.people_contacts 
+FOR INSERT 
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM public.people p
+    JOIN public.app_users au ON p.user_account_id = au.id
+    JOIN public.app_agencies_people op ON p.id = op.person_id
+    WHERE au.user_id = auth.uid() 
+      AND p.is_deleted = false 
+      AND op.is_deleted = false
+      AND p.id = people_contacts.person_id
+  )
+);
+
+CREATE POLICY "Users can update contacts in their organization" 
+ON public.people_contacts 
+FOR UPDATE 
+USING (
+  EXISTS (
+    SELECT 1 FROM public.people p
+    JOIN public.app_users au ON p.user_account_id = au.id
+    JOIN public.app_agencies_people op ON p.id = op.person_id
+    WHERE au.user_id = auth.uid() 
+      AND p.is_deleted = false 
+      AND op.is_deleted = false
+      AND p.id = people_contacts.person_id
+  )
+);
+
+-- RLS Policies for people_emergency
+CREATE POLICY "Users can view emergency contacts in their organization" 
+ON public.people_emergency 
+FOR SELECT 
+USING (
+  EXISTS (
+    SELECT 1 FROM public.people p
+    JOIN public.app_users au ON p.user_account_id = au.id
+    JOIN public.app_agencies_people op ON p.id = op.person_id
+    WHERE au.user_id = auth.uid() 
+      AND p.is_deleted = false 
+      AND op.is_deleted = false
+      AND p.id = people_emergency.person_id
+  )
+);
+
+CREATE POLICY "Users can create emergency contacts in their organization" 
+ON public.people_emergency 
+FOR INSERT 
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM public.people p
+    JOIN public.app_users au ON p.user_account_id = au.id
+    JOIN public.app_agencies_people op ON p.id = op.person_id
+    WHERE au.user_id = auth.uid() 
+      AND p.is_deleted = false 
+      AND op.is_deleted = false
+      AND p.id = people_emergency.person_id
+  )
+);
+
+CREATE POLICY "Users can update emergency contacts in their organization" 
+ON public.people_emergency 
+FOR UPDATE 
+USING (
+  EXISTS (
+    SELECT 1 FROM public.people p
+    JOIN public.app_users au ON p.user_account_id = au.id
+    JOIN public.app_agencies_people op ON p.id = op.person_id
+    WHERE au.user_id = auth.uid() 
+      AND p.is_deleted = false 
+      AND op.is_deleted = false
+      AND p.id = people_emergency.person_id
+  )
+);
+
+-- Enable RLS
+ALTER TABLE public.people_leads ENABLE ROW LEVEL SECURITY;
+
+-- Create RLS policies
+CREATE POLICY "Users can view leads in their organization" 
+ON public.people_leads 
+FOR SELECT 
+USING (EXISTS (
+  SELECT 1
+  FROM people p
+  JOIN app_users au ON p.user_account_id = au.id
+  JOIN app_agencies_people op ON p.id = op.person_id
+  WHERE au.user_id = auth.uid() 
+    AND p.is_deleted = false 
+    AND op.is_deleted = false 
+    AND op.agency_id = people_leads.agency_id
+));
+
+CREATE POLICY "Users can create leads in their organization" 
+ON public.people_leads 
+FOR INSERT 
+WITH CHECK (EXISTS (
+  SELECT 1
+  FROM people p
+  JOIN app_users au ON p.user_account_id = au.id
+  JOIN app_agencies_people op ON p.id = op.person_id
+  WHERE au.user_id = auth.uid() 
+    AND p.is_deleted = false 
+    AND op.is_deleted = false 
+    AND op.agency_id = people_leads.agency_id
+));
+
+CREATE POLICY "Users can update leads in their organization" 
+ON public.people_leads 
+FOR UPDATE 
+USING (EXISTS (
+  SELECT 1
+  FROM people p
+  JOIN app_users au ON p.user_account_id = au.id
+  JOIN app_agencies_people op ON p.id = op.person_id
+  WHERE au.user_id = auth.uid() 
+    AND p.is_deleted = false 
+    AND op.is_deleted = false 
+    AND op.agency_id = people_leads.agency_id
+));
+
+CREATE POLICY "Users can delete leads in their organization" 
+ON public.people_leads 
+FOR DELETE 
+USING (EXISTS (
+  SELECT 1
+  FROM people p
+  JOIN app_users au ON p.user_account_id = au.id
+  JOIN app_agencies_people op ON p.id = op.person_id
+  WHERE au.user_id = auth.uid() 
+    AND p.is_deleted = false 
+    AND op.is_deleted = false 
+    AND op.agency_id = people_leads.agency_id
+));
+
+-- Enable RLS on people_assign_status table
+ALTER TABLE public.people_assign_status ENABLE ROW LEVEL SECURITY;
+
+-- Create RLS policies for people_assign_status table
+-- Users can view status records for people in their organization
+CREATE POLICY "Users can view status records in their organization" 
+ON public.people_assign_status 
+FOR SELECT 
+USING (EXISTS (
+  SELECT 1
+  FROM public.people p
+  JOIN public.app_users au ON p.user_account_id = au.id
+  JOIN public.app_agencies_people op ON p.id = op.person_id
+  WHERE au.user_id = auth.uid() 
+    AND p.is_deleted = false 
+    AND op.is_deleted = false
+    AND p.id = people_assign_status.person_id
+));
+
+-- Users can create status records for people in their organization
+CREATE POLICY "Users can create status records in their organization" 
+ON public.people_assign_status 
+FOR INSERT 
+WITH CHECK (EXISTS (
+  SELECT 1
+  FROM public.people p
+  JOIN public.app_users au ON p.user_account_id = au.id
+  JOIN public.app_agencies_people op ON p.id = op.person_id
+  WHERE au.user_id = auth.uid() 
+    AND p.is_deleted = false 
+    AND op.is_deleted = false
+    AND p.id = people_assign_status.person_id
+));
+
+-- Users can update status records for people in their organization
+CREATE POLICY "Users can update status records in their organization" 
+ON public.people_assign_status 
+FOR UPDATE 
+USING (EXISTS (
+  SELECT 1
+  FROM public.people p
+  JOIN public.app_users au ON p.user_account_id = au.id
+  JOIN public.app_agencies_people op ON p.id = op.person_id
+  WHERE au.user_id = auth.uid() 
+    AND p.is_deleted = false 
+    AND op.is_deleted = false
+    AND p.id = people_assign_status.person_id
+));
+
+-- Users can delete status records for people in their organization
+CREATE POLICY "Users can delete status records in their organization" 
+ON public.people_assign_status 
+FOR DELETE 
+USING (EXISTS (
+  SELECT 1
+  FROM public.people p
+  JOIN public.app_users au ON p.user_account_id = au.id
+  JOIN public.app_agencies_people op ON p.id = op.person_id
+  WHERE au.user_id = auth.uid() 
+    AND p.is_deleted = false 
+    AND op.is_deleted = false
+    AND p.id = people_assign_status.person_id
+));
+
+-- Step 5: Enable RLS on people_referrals table
+ALTER TABLE public.people_referrals ENABLE ROW LEVEL SECURITY;
+
+-- Step 6: Create RLS policies for people_referrals
+-- Users can view referrals in their organization
+CREATE POLICY "Users can view referrals in their organization" 
+ON public.people_referrals 
+FOR SELECT 
+USING (EXISTS (
+  SELECT 1
+  FROM public.people p
+  JOIN public.app_users au ON p.user_account_id = au.id
+  JOIN public.app_agencies_people op ON p.id = op.person_id
+  WHERE au.user_id = auth.uid() 
+    AND p.is_deleted = false 
+    AND op.is_deleted = false
+));
+
+-- Users can create referrals in their organization
+CREATE POLICY "Users can create referrals in their organization" 
+ON public.people_referrals 
+FOR INSERT 
+WITH CHECK (EXISTS (
+  SELECT 1
+  FROM public.people p
+  JOIN public.app_users au ON p.user_account_id = au.id
+  JOIN public.app_agencies_people op ON p.id = op.person_id
+  WHERE au.user_id = auth.uid() 
+    AND p.is_deleted = false 
+    AND op.is_deleted = false
+));
+
+-- Users can update referrals in their organization
+CREATE POLICY "Users can update referrals in their organization" 
+ON public.people_referrals 
+FOR UPDATE 
+USING (EXISTS (
+  SELECT 1
+  FROM public.people p
+  JOIN public.app_users au ON p.user_account_id = au.id
+  JOIN public.app_agencies_people op ON p.id = op.person_id
+  WHERE au.user_id = auth.uid() 
+    AND p.is_deleted = false 
+    AND op.is_deleted = false
+));
+
+-- Users can delete referrals in their organization
+CREATE POLICY "Users can delete referrals in their organization" 
+ON public.people_referrals 
+FOR DELETE 
+USING (EXISTS (
+  SELECT 1
+  FROM public.people p
+  JOIN public.app_users au ON p.user_account_id = au.id
+  JOIN public.app_agencies_people op ON p.id = op.person_id
+  WHERE au.user_id = auth.uid() 
+    AND p.is_deleted = false 
+    AND op.is_deleted = false
+));

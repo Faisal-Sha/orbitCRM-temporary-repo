@@ -11,6 +11,11 @@ CREATE TRIGGER update_users_updated_at BEFORE
 UPDATE ON public.app_users FOR EACH ROW
 EXECUTE FUNCTION public.update_updated_at_column();
 
+CREATE TRIGGER update_people_leads_updated_at
+BEFORE UPDATE ON public.people_leads
+FOR EACH ROW
+EXECUTE FUNCTION public.update_updated_at_column();
+
 -- Create a comprehensive user registration function that handles both scenarios
 CREATE OR REPLACE FUNCTION public.handle_user_registration()
 RETURNS trigger
@@ -22,7 +27,14 @@ DECLARE
   app_user_id UUID;
   existing_person_id UUID;
   existing_person_record RECORD;
+  default_role_id UUID;
 BEGIN
+  -- Get the default 'general' role ID
+  SELECT id INTO default_role_id
+  FROM public.app_user_roles 
+  WHERE role_name = 'general'::user_roles_enum 
+  LIMIT 1;
+
   -- Step 1: Create app_users record (always needed)
   INSERT INTO public.app_users (user_id, account_email)
   VALUES (NEW.id, NEW.email)
@@ -45,21 +57,26 @@ BEGIN
       user_account_id = app_user_id,
       first_name = COALESCE(NEW.raw_user_meta_data ->> 'first_name', first_name),
       last_name = COALESCE(NEW.raw_user_meta_data ->> 'last_name', last_name),
+      user_role_id = COALESCE(user_role_id, default_role_id),
       updated_at = now()
     WHERE id = existing_person_record.id;
     
   ELSE
     -- Scenario 2: User email does NOT exist in people_contacts
-    -- Create new people record
+    -- Create new people record with default role and active status
     INSERT INTO public.people (
       first_name, 
       last_name, 
-      user_account_id
+      user_account_id,
+      user_role_id,
+      status
     )
     VALUES (
       NEW.raw_user_meta_data ->> 'first_name', 
       NEW.raw_user_meta_data ->> 'last_name', 
-      app_user_id
+      app_user_id,
+      default_role_id,
+      'active'
     )
     RETURNING id INTO existing_person_id;
 
@@ -71,6 +88,18 @@ BEGIN
     VALUES (
       existing_person_id, 
       NEW.email
+    );
+
+    -- Create initial status record in people_assign_status
+    INSERT INTO public.people_assign_status (
+      person_id,
+      new_status,
+      old_status
+    )
+    VALUES (
+      existing_person_id,
+      'active',
+      NULL
     );
   END IF;
 
@@ -109,3 +138,40 @@ CREATE TRIGGER sync_email_on_auth_users_update
   AFTER UPDATE OF email ON auth.users
   FOR EACH ROW
   EXECUTE FUNCTION public.sync_auth_email_to_app_users();
+
+
+-- 5. Create trigger function to track status changes
+CREATE OR REPLACE FUNCTION public.track_people_status_changes()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  -- Only track status changes
+  IF OLD.status IS DISTINCT FROM NEW.status THEN
+    INSERT INTO public.people_assign_status (
+      person_id,
+      new_status,
+      old_status,
+      created_by,
+      updated_by
+    )
+    VALUES (
+      NEW.id,
+      NEW.status,
+      OLD.status,
+      NEW.updated_by,
+      NEW.updated_by
+    );
+  END IF;
+  
+  RETURN NEW;
+END;
+$$;
+
+-- 6. Create trigger on people table for status tracking
+CREATE TRIGGER track_people_status_changes_trigger
+  AFTER UPDATE ON public.people
+  FOR EACH ROW
+  EXECUTE FUNCTION public.track_people_status_changes();

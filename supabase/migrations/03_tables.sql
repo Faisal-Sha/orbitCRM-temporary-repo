@@ -144,7 +144,6 @@ CREATE TABLE public.app_users (
   user_id uuid NOT NULL UNIQUE,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  status public.user_status_enum NOT NULL DEFAULT 'active'::user_status_enum,
   created_by uuid,
   updated_by uuid,
   deleted_by uuid,
@@ -160,6 +159,7 @@ CREATE TABLE public.app_users (
 CREATE TABLE public.people (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   user_account_id uuid,
+  user_role_id uuid,
   first_name text NOT NULL,
   middle_name text,
   last_name text NOT NULL,
@@ -170,11 +170,12 @@ CREATE TABLE public.people (
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   deleted_at timestamp with time zone,
   is_deleted boolean NOT NULL DEFAULT false,
-  status public.people_status_enum NOT NULL DEFAULT 'active'::people_status_enum,
+  status text NOT NULL DEFAULT 'active',
   user_profile_pic text,
   user_profile_bio text,
   CONSTRAINT people_pkey PRIMARY KEY (id),
   CONSTRAINT fk_people_user_account FOREIGN KEY (user_account_id) REFERENCES public.app_users(id),
+  CONSTRAINT fk_people_user_role_id FOREIGN KEY (user_role_id) REFERENCES public.app_user_roles(id),
   CONSTRAINT fk_people_updated_by FOREIGN KEY (updated_by) REFERENCES auth.users(id),
   CONSTRAINT fk_people_deleted_by FOREIGN KEY (deleted_by) REFERENCES auth.users(id),
   CONSTRAINT fk_people_created_by FOREIGN KEY (created_by) REFERENCES auth.users(id)
@@ -211,7 +212,7 @@ CREATE TABLE public.people_contacts (
   CONSTRAINT fk_people_contacts_updated_by FOREIGN KEY (updated_by) REFERENCES auth.users(id)
 );
 
-CREATE TABLE public.people_contacts_emergency (
+CREATE TABLE public.people_emergency (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   person_id uuid NOT NULL,
   first_name text,
@@ -226,21 +227,18 @@ CREATE TABLE public.people_contacts_emergency (
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   deleted_at timestamp with time zone,
   is_deleted boolean NOT NULL DEFAULT false,
-  CONSTRAINT people_contacts_emergency_pkey PRIMARY KEY (id),
-  CONSTRAINT fk_people_contacts_emergency_updated_by FOREIGN KEY (updated_by) REFERENCES auth.users(id),
-  CONSTRAINT fk_people_contacts_emergency_created_by FOREIGN KEY (created_by) REFERENCES auth.users(id),
-  CONSTRAINT fk_people_contacts_emergency_deleted_by FOREIGN KEY (deleted_by) REFERENCES auth.users(id),
-  CONSTRAINT fk_people_contacts_emergency_person FOREIGN KEY (person_id) REFERENCES public.people(id)
+  CONSTRAINT people_emergency_pkey PRIMARY KEY (id),
+  CONSTRAINT fk_people_emergency_updated_by FOREIGN KEY (updated_by) REFERENCES auth.users(id),
+  CONSTRAINT fk_people_emergency_created_by FOREIGN KEY (created_by) REFERENCES auth.users(id),
+  CONSTRAINT fk_people_emergency_deleted_by FOREIGN KEY (deleted_by) REFERENCES auth.users(id),
+  CONSTRAINT fk_people_emergency_person FOREIGN KEY (person_id) REFERENCES public.people(id)
 );
 
-CREATE TABLE public.people_contacts_referrals (
+CREATE TABLE public.people_referrals (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
+  person_id uuid NOT NULL,
   referred_by_id uuid,
   referred_by_name text,
-  first_name text NOT NULL,
-  last_name text,
-  email text,
-  phone_number text,
   referral_type public.referral_type_enum,
   referral_relationship public.referral_relationship_enum,
   referral_note text,
@@ -251,11 +249,12 @@ CREATE TABLE public.people_contacts_referrals (
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   deleted_at timestamp with time zone,
   is_deleted boolean NOT NULL DEFAULT false,
-  CONSTRAINT people_contacts_referrals_pkey PRIMARY KEY (id),
-  CONSTRAINT fk_people_contacts_referrals_created_by FOREIGN KEY (created_by) REFERENCES auth.users(id),
-  CONSTRAINT fk_people_contacts_referrals_updated_by FOREIGN KEY (updated_by) REFERENCES auth.users(id),
-  CONSTRAINT fk_people_contacts_referrals_deleted_by FOREIGN KEY (deleted_by) REFERENCES auth.users(id),
-  CONSTRAINT fk_people_contacts_referrals_referred_by FOREIGN KEY (referred_by_id) REFERENCES public.people(id)
+  CONSTRAINT people_referrals_pkey PRIMARY KEY (id),
+  CONSTRAINT fk_people_referrals_created_by FOREIGN KEY (created_by) REFERENCES auth.users(id),
+  CONSTRAINT fk_people_referrals_updated_by FOREIGN KEY (updated_by) REFERENCES auth.users(id),
+  CONSTRAINT fk_people_referrals_deleted_by FOREIGN KEY (deleted_by) REFERENCES auth.users(id),
+  CONSTRAINT fk_people_referrals_referred_by FOREIGN KEY (referred_by_id) REFERENCES public.people(id)
+  CONSTRAINT fk_people_referrals_person_id FOREIGN KEY (person_id) REFERENCES public.people(id);
 );
 
 CREATE TABLE public.people_identifiers (
@@ -489,4 +488,47 @@ CREATE TABLE public.app_global_people (
   CONSTRAINT fk_deleted_by FOREIGN KEY (deleted_by) REFERENCES auth.users(id),
   CONSTRAINT fk_created_by FOREIGN KEY (created_by) REFERENCES auth.users(id),
   CONSTRAINT fk_user_role FOREIGN KEY (user_role_id) REFERENCES public.app_user_roles(id)
+);
+
+-- Create people_leads table
+CREATE TABLE public.people_leads (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  agency_id uuid NOT NULL,
+  person_id uuid NOT NULL,
+  lead_source text,
+  lead_goals text,
+  preferences text,
+  expectation text,
+  note text,
+  preferred_language text NOT NULL DEFAULT 'English',
+  service_id text,
+  created_by uuid,
+  updated_by uuid,
+  deleted_by uuid,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  deleted_at timestamp with time zone,
+  is_deleted boolean NOT NULL DEFAULT false,
+  CONSTRAINT people_leads_pkey PRIMARY KEY (id),
+  CONSTRAINT people_leads_agency_id_fkey FOREIGN KEY (agency_id) REFERENCES public.app_agencies(id),
+  CONSTRAINT people_leads_person_id_fkey FOREIGN KEY (person_id) REFERENCES public.people(id),
+  CONSTRAINT people_leads_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id),
+  CONSTRAINT people_leads_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES auth.users(id),
+  CONSTRAINT people_leads_deleted_by_fkey FOREIGN KEY (deleted_by) REFERENCES auth.users(id)
+);
+
+-- 3. Create the new people_assign_status table
+CREATE TABLE public.people_assign_status (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  person_id uuid NOT NULL,
+  new_status text,
+  old_status text,
+  created_by uuid,
+  updated_by uuid,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT people_assign_status_pkey PRIMARY KEY (id),
+  CONSTRAINT people_assign_status_person_id_fkey FOREIGN KEY (person_id) REFERENCES public.people(id),
+  CONSTRAINT people_assign_status_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id),
+  CONSTRAINT people_assign_status_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES auth.users(id)
 );
