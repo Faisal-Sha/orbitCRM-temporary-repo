@@ -170,7 +170,7 @@ export const useInsurances = (agencyId?: string) => {
 
   useEffect(() => {
     fetchInsurances();
-  }, [agencyId]);
+  }, []);
 
   return {
     insurances,
