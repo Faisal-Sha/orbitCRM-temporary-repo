@@ -282,7 +282,37 @@ export const useUserProfile = (personId?: string) => {
       if (error) throw error;
       
       if (result && typeof result === 'object' && 'success' in result && result.success) {
-        toast.success('Contact field updated successfully');
+        // Check if auth email update is needed (for primary email field)
+        if (fieldName === 'email' && (result as any).auth_update_needed) {
+          const authUserId = (result as any).auth_user_id;
+          const newEmail = (result as any).new_email;
+          
+          try {
+            // Call edge function to update auth.users
+            const { data: authResult, error: authError } = await supabase.functions.invoke('update-auth-email', {
+              body: {
+                auth_user_id: authUserId,
+                new_email: newEmail
+              }
+            });
+
+            if (authError) {
+              console.error('Failed to update authentication email:', authError);
+              toast.warning('Contact email updated, but authentication email update failed. Please contact support.');
+            } else if (authResult && !authResult.success) {
+              console.error('Auth email update failed:', authResult.message);
+              toast.warning('Contact email updated, but authentication email update failed. Please contact support.');
+            } else {
+              toast.success('Contact field and authentication email updated successfully');
+            }
+          } catch (authErr: any) {
+            console.error('Error calling auth email update function:', authErr);
+            toast.warning('Contact email updated, but authentication email update failed. Please contact support.');
+          }
+        } else {
+          toast.success('Contact field updated successfully');
+        }
+        
         // Refetch data to get updated values
         await fetchProfile(personId);
         return true;

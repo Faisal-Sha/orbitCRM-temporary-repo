@@ -1742,6 +1742,10 @@ export type Database = {
         }
         Returns: Json
       }
+      update_contact_email_comprehensive: {
+        Args: { p_new_email: string; p_person_id: string }
+        Returns: Json
+      }
       update_data_label: {
         Args: {
           p_font_weight: string
