@@ -78,13 +78,17 @@ export const EmergencyContactSection: React.FC<EmergencyContactSectionProps> = (
               key={field.key}
               field={field}
               isEditing={editingField === field.key}
-              onEdit={() => setEditingField(editingField === field.key ? null : field.key)}
+              onEdit={() => setEditingField(field.key)}
               onSave={async (value) => {
                 const success = await handleSave(field.key, value);
                 if (success) setEditingField(null);
                 return success;
               }}
-              onCancel={() => setEditingField(null)}
+              onDelete={async () => {
+                const success = await deleteEmergencyField(field.key);
+                if (success) setEditingField(null);
+                return success;
+              }}
               country={country || 'United States'}
             />
           ))}
@@ -105,7 +109,10 @@ export const EmergencyContactSection: React.FC<EmergencyContactSectionProps> = (
                 if (success) setEditingField(null);
                 return success;
               }}
-              onCancel={() => setEditingField(null)}
+              onDelete={async () => {
+                setEditingField(null);
+                return true;
+              }}
               country={country || 'United States'}
             />
           )}

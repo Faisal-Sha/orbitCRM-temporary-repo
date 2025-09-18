@@ -83,47 +83,70 @@ const EditableDetailItem: React.FC<EditableDetailItemProps> = ({
   iconColor = "text-muted-foreground",
   disabled = false,
   loading = false,
-}) => (
-  <div className="flex items-start space-x-3 group">
-    <Icon className={`h-5 w-5 mt-0.5 ${iconColor}`} />
-    <div className="flex-1">
-      <p className="text-sm font-medium text-gray-700">{label}</p>
-      {isEditing ? (
-        <Select value={value} onValueChange={onChange} disabled={disabled || loading}>
-          <SelectTrigger className="w-full mt-1">
-            <SelectValue placeholder={loading ? 'Loading…' : 'Select'} />
-          </SelectTrigger>
-          <SelectContent>
-            {loading ? (
-              <div className="px-3 py-2 text-xs text-muted-foreground">Loading…</div>
-            ) : options.length > 0 ? (
-              options.map((option) => (
-                <SelectItem key={option} value={option}>
-                  {option}
-                </SelectItem>
-              ))
-            ) : (
-              <div className="px-3 py-2 text-xs text-muted-foreground">No options</div>
-            )}
-          </SelectContent>
-        </Select>
-      ) : (
-        <div className="flex items-center space-x-2">
-          <p className="text-sm text-gray-500">{value || 'Not provided'}</p>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity"
-            onClick={onEdit}
-            disabled={disabled}
-          >
-            <Pencil className="h-3 w-3" />
-          </Button>
-        </div>
-      )}
+}) => {
+  const [isSaving, setIsSaving] = useState(false);
+  
+  const handleChange = async (newValue: string) => {
+    if (isSaving) return;
+    
+    try {
+      setIsSaving(true);
+      await onChange(newValue);
+    } catch (error) {
+      console.error('Error updating field:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="flex items-start space-x-3 group">
+      <Icon className={`h-5 w-5 mt-0.5 ${iconColor}`} />
+      <div className="flex-1">
+        <p className="text-sm font-medium text-gray-700">{label}</p>
+        {isEditing ? (
+          <Select value={value} onValueChange={handleChange} disabled={disabled || loading || isSaving}>
+            <SelectTrigger className="w-full mt-1">
+              <SelectValue placeholder={loading || isSaving ? 'Loading…' : 'Select'} />
+            </SelectTrigger>
+            <SelectContent>
+              {(loading || isSaving) ? (
+                <div className="px-3 py-2 text-xs text-muted-foreground">Loading…</div>
+              ) : options.length > 0 ? (
+                options.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {option}
+                  </SelectItem>
+                ))
+              ) : (
+                <div className="px-3 py-2 text-xs text-muted-foreground">No options</div>
+              )}
+            </SelectContent>
+          </Select>
+        ) : (
+          <div className="flex items-center space-x-2">
+            <p className="text-sm text-gray-500">{value || 'Not provided'}</p>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={onEdit}
+              disabled={disabled}
+            >
+              <Pencil className="h-3 w-3" />
+            </Button>
+          </div>
+        )}
+        {isSaving && (
+          <div className="flex items-center space-x-2 mt-1">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            <span className="text-xs text-muted-foreground">Saving...</span>
+          </div>
+        )}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 // Debounce hook for autosave
 function useDebounce(value: string, delay: number) {
@@ -746,7 +769,7 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
     if (localValue && localValue.trim()) {
       if (field.key === 'email' || field.key === 'work_email') {
         error = getEmailValidationError(localValue);
-      } else if (field.key === 'phone' || field.key === 'phone_home') {
+      } else if (field.key === 'phone' || field.key === 'phone_home' || field.key === 'phone_number') {
         error = getPhoneValidationError(localValue, country);
       }
     }
@@ -765,7 +788,7 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
 
   const getContactSelectOptions = (key: string): string[] => {
     const optionsMap: { [key: string]: string[] } = {
-      relationship: ['Spouse', 'Parent', 'Child', 'Sibling', 'Other Family', 'Friend', 'Colleague', 'Other'],
+      relationship: ['family member', 'colleague', 'friend', 'organization', 'other'],
     };
     return optionsMap[key] || [];
   };
@@ -786,7 +809,7 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
 
   const handlePhoneChange = (value: string) => {
     // Auto-format phone number as user types
-    if (field.key === 'phone' || field.key === 'phone_home') {
+    if (field.key === 'phone' || field.key === 'phone_home' || field.key === 'phone_number') {
       const formatted = formatPhoneNumber(value, country);
       setLocalValue(formatted);
     } else {
@@ -800,6 +823,7 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
       work_email: Mail,
       phone: Phone,
       phone_home: Smartphone,
+      phone_number: Phone,
       address: MapPin,
       url_facebook: Facebook,
       url_instagram: Instagram,
@@ -983,7 +1007,7 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
             type="text"
             value={localValue}
             onChange={(e) => {
-              if (field.key === 'phone' || field.key === 'phone_home') {
+              if (field.key === 'phone' || field.key === 'phone_home' || field.key === 'phone_number') {
                 handlePhoneChange(e.target.value);
               } else {
                 setLocalValue(e.target.value);
