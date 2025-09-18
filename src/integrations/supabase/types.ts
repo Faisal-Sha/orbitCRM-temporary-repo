@@ -1872,6 +1872,7 @@ export type Database = {
         | "friend"
         | "organization"
         | "other"
+      insurance_category_enum: "medicaid" | "medicare" | "dual" | "private"
       organization_status_enum: "active" | "inactive" | "deleted"
       referral_relationship_enum:
         | "family member"
@@ -1880,6 +1881,9 @@ export type Database = {
         | "organization"
         | "other"
       referral_type_enum: "client" | "staff"
+      service_category_enum: "adults" | "teens"
+      service_fee_type_enum: "per hour" | "per session" | "per day" | "flat fee"
+      service_status_enum: "active" | "inactive"
       staff_type_enum:
         | "specialist_marketer"
         | "clinical_assessor"
@@ -2036,6 +2040,7 @@ export const Constants = {
         "organization",
         "other",
       ],
+      insurance_category_enum: ["medicaid", "medicare", "dual", "private"],
       organization_status_enum: ["active", "inactive", "deleted"],
       referral_relationship_enum: [
         "family member",
@@ -2045,6 +2050,9 @@ export const Constants = {
         "other",
       ],
       referral_type_enum: ["client", "staff"],
+      service_category_enum: ["adults", "teens"],
+      service_fee_type_enum: ["per hour", "per session", "per day", "flat fee"],
+      service_status_enum: ["active", "inactive"],
       staff_type_enum: [
         "specialist_marketer",
         "clinical_assessor",
