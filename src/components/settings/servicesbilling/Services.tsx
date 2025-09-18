@@ -23,15 +23,7 @@ interface ServicesProps {
 }
 
 const Services = ({ onBack }: ServicesProps) => {
-  const [services, setServices] = useState<Service[]>([
-    { id: 1, name: "Case Management", category: "Adults", fee: "30", feeType: "per hour", status: "Active" },
-    { id: 2, name: "Counseling", category: "Teens", fee: "75", feeType: "per session", status: "Active" },
-    { id: 3, name: "Therapy", category: "Adults", fee: "120", feeType: "per hour", status: "Active" },
-    { id: 4, name: "SUD", category: "Adults", fee: "90", feeType: "per session", status: "Inactive" },
-    { id: 5, name: "Assessment", category: "Teens", fee: "200", feeType: "flat fee", status: "Active" },
-    { id: 6, name: "Group Therapy", category: "Adults", fee: "50", feeType: "per hour", status: "Active" },
-    { id: 7, name: "Family Therapy", category: "Adults", fee: "150", feeType: "per session", status: "Active" },
-  ]);
+  const [services, setServices] = useState<Service[]>([]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -90,7 +82,7 @@ const Services = ({ onBack }: ServicesProps) => {
       ));
     } else {
       const newService: Service = {
-        id: Math.max(...services.map(s => s.id)) + 1,
+        id: services.length > 0 ? Math.max(...services.map(s => s.id)) + 1 : 1,
         ...formData,
       };
       setServices([...services, newService]);

@@ -17,21 +17,9 @@ const BillingAndRCM = () => {
   const [lateFee, setLateFee] = useState("5%");
   const [editingField, setEditingField] = useState<string | null>(null);
 
-  const insurances = [
-    { name: "Caresource", category: "Medicaid", status: "Active" },
-    { name: "Molina", category: "Medicaid & Medicare", status: "Active" },
-    { name: "UnitedHealthcare", category: "Private", status: "Active" },
-    { name: "Cadem", category: "Medicaid", status: "Inactive" },
-    { name: "NationalHealth", category: "Private", status: "Active" },
-  ];
+  const insurances: { name: string; category: string; status: string }[] = [];
 
-  const services = [
-    { name: "Case Management", category: "Adults", fee: "$30", feeType: "per hour", status: "Active" },
-    { name: "Counseling", category: "Teens", fee: "$75", feeType: "per session", status: "Active" },
-    { name: "Therapy", category: "Adults", fee: "$120", feeType: "per hour", status: "Active" },
-    { name: "SUD", category: "Adults", fee: "$90", feeType: "per session", status: "Inactive" },
-    { name: "Assessment", category: "Teens", fee: "$200", feeType: "flat fee", status: "Active" },
-  ];
+  const services: { name: string; category: string; fee: string; feeType: string; status: string }[] = [];
 
   const payoutRules = [
     { service: "Case Management", category: "Adults", rule: "$30/hr" },

@@ -21,18 +21,7 @@ interface InsurancesProps {
 }
 
 const Insurances = ({ onBack }: InsurancesProps) => {
-  const [insurances, setInsurances] = useState<InsuranceProvider[]>([
-    { id: 1, name: "Caresource", category: "Medicaid", status: "Active" },
-    { id: 2, name: "Molina", category: "Medicaid & Medicare", status: "Active" },
-    { id: 3, name: "UnitedHealthcare", category: "Private", status: "Active" },
-    { id: 4, name: "Cadem", category: "Medicaid", status: "Inactive" },
-    { id: 5, name: "NationalHealth", category: "Private", status: "Active" },
-    { id: 6, name: "Anthem", category: "Private", status: "Active" },
-    { id: 7, name: "Cigna", category: "Private", status: "Inactive" },
-    { id: 8, name: "Humana", category: "Medicare", status: "Active" },
-    { id: 9, name: "Kaiser Permanente", category: "Private", status: "Active" },
-    { id: 10, name: "Wellcare", category: "Medicaid & Medicare", status: "Active" },
-  ]);
+  const [insurances, setInsurances] = useState<InsuranceProvider[]>([]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -85,7 +74,7 @@ const Insurances = ({ onBack }: InsurancesProps) => {
       ));
     } else {
       const newInsurance: InsuranceProvider = {
-        id: Math.max(...insurances.map(i => i.id)) + 1,
+        id: insurances.length > 0 ? Math.max(...insurances.map(i => i.id)) + 1 : 1,
         ...formData,
       };
       setInsurances([...insurances, newInsurance]);
