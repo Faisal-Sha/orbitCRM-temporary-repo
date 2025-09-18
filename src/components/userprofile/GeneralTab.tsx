@@ -6,10 +6,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Mail, Phone, MapPin, Facebook, Instagram, Pencil, X, User, Calendar, Briefcase, ShieldCheck,
   Home, Users, Heart, Languages, Plus, ExternalLink, Linkedin, Shield, FileText, CreditCard,
-  Globe, UserPlus, Edit2, Loader2, Smartphone
+  Globe, UserPlus, Edit2, Loader2, Smartphone, Copy, Check
 } from 'lucide-react';
 import { FaTiktok } from 'react-icons/fa';
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -18,6 +19,7 @@ import { useStaffTypes } from '@/hooks/useStaffTypes';
 import { useOrganizationCountry } from '@/hooks/useOrganizationCountry';
 import { validateEmail, validatePhoneNumber, getEmailValidationError, getPhoneValidationError } from '@/utils/validation';
 import { formatPhoneNumber, getFormattedPhoneDisplay } from '@/utils/phoneFormatting';
+import { supabase } from '@/integrations/supabase/client';
 
 // Format date nicely
 const formatDateNice = (iso?: string | null) => {
@@ -280,17 +282,7 @@ const AdditionalInformationSection: React.FC<{ personId?: string }> = ({ personI
         )}
 
         {/* Show Referred By field as read-only if data exists */}
-        {data?.referralInfo?.referred_by_name && (
-          <div className="flex items-center space-x-3 p-3 rounded-lg bg-muted/20">
-            <div className="p-2 rounded-full bg-muted">
-              <UserPlus className="w-4 h-4 text-primary" />
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-medium text-foreground">Referred By</p>
-              <p className="text-sm text-muted-foreground">{data.referralInfo.referred_by_name}</p>
-            </div>
-          </div>
-        )}
+        <ReferredByField personId={personId} />
       </div>
     </SectionCard>
   );
@@ -500,8 +492,10 @@ const EditableAdditionalField: React.FC<{
     // Only save if value has actually changed
     if (value !== originalValue) {
       handleSave(value);
+    } else {
+      // If no changes were made, just exit editing mode without saving
+      onEdit(); // This will close the editing mode
     }
-    // If no changes were made, just exit editing mode without saving
   };
 
   const formatDisplayValue = (val: string, type: string) => {
@@ -510,6 +504,16 @@ const EditableAdditionalField: React.FC<{
     // SSN Masking
     if (field.key === 'ssn_number' && val.length >= 4) {
       return `***-**-${val.slice(-4)}`;
+    }
+    
+    // NPI Number Masking
+    if (field.key === 'npi_number' && val.length >= 4) {
+      return `****-****-${val.slice(-4)}`;
+    }
+    
+    // Insurance Number Masking
+    if (field.key === 'insurance_number' && val.length >= 4) {
+      return `****-****-${val.slice(-4)}`;
     }
     
     // Date formatting
@@ -552,27 +556,70 @@ const EditableAdditionalField: React.FC<{
   const IconComponent = getFieldIcon(field.key);
   const iconColor = 'text-primary';
 
+  // Copy to clipboard functionality
+  const [copied, setCopied] = useState(false);
+  
+  const handleCopy = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+    }
+  };
+
+  // Check if tooltip should be shown (exclude sensitive fields)
+  const shouldShowTooltip = !['ssn_number', 'npi_number', 'insurance_number'].includes(field.key);
+
   if (!isEditing) {
+    const displayValue = formatDisplayValue(field.value, field.type);
+    
     return (
-      <div className="group flex items-center space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
-        <div className={`p-2 rounded-full bg-muted`}>
-          <IconComponent className={`w-4 h-4 ${iconColor}`} />
+      <TooltipProvider>
+        <div className="group flex items-center space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+          <div className={`p-2 rounded-full bg-muted`}>
+            <IconComponent className={`w-4 h-4 ${iconColor}`} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-foreground">{field.label}</p>
+            {shouldShowTooltip ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <p className="text-sm text-muted-foreground truncate cursor-pointer">
+                    {displayValue}
+                  </p>
+                </TooltipTrigger>
+                <TooltipContent className="bg-white text-black border border-gray-200 shadow-lg max-w-xs p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="break-all">{field.value}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0 hover:bg-gray-100"
+                      onClick={() => handleCopy(field.value)}
+                    >
+                      {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                    </Button>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <p className="text-sm text-muted-foreground truncate">
+                {displayValue}
+              </p>
+            )}
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 p-0 hover:bg-muted"
+            onClick={onEdit}
+          >
+            <Pencil className="h-3 w-3" />
+          </Button>
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-foreground">{field.label}</p>
-          <p className="text-sm text-muted-foreground truncate">
-            {formatDisplayValue(field.value, field.type)}
-          </p>
-        </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6 p-0 hover:bg-muted"
-          onClick={onEdit}
-        >
-          <Pencil className="h-3 w-3" />
-        </Button>
-      </div>
+      </TooltipProvider>
     );
   }
 
@@ -708,6 +755,7 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
     } else if (localValue === originalValue) {
       // If no changes were made, just exit editing mode without saving
       setValidationError(null);
+      onEdit(); // Close editing mode
     }
   };
 
@@ -762,44 +810,78 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
   const IconComponent = getContactIcon(field.key);
   const iconColor = 'text-primary';
 
+  // Copy to clipboard functionality
+  const [copied, setCopied] = useState(false);
+  
+  const handleCopy = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+    }
+  };
+
   if (!isEditing) {
+    const displayValue = field.type === 'url' && field.value ? truncateUrl(field.value) : 
+                        field.key === 'phone' || field.key === 'phone_home' ? getFormattedPhoneDisplay(field.value, country) : 
+                        field.value;
+    
     return (
-      <div className="group flex items-center space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
-        <div className={`p-2 rounded-full bg-muted`}>
-          <IconComponent className={`w-4 h-4 ${iconColor}`} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-foreground">{field.label}</p>
-          <div className="flex items-center gap-2">
-            <p className="text-sm text-muted-foreground truncate flex-1">
-              {field.type === 'url' && field.value ? truncateUrl(field.value) : 
-               field.key === 'phone' || field.key === 'phone_home' ? getFormattedPhoneDisplay(field.value, country) : 
-               field.value}
-            </p>
-            {field.type === 'url' && field.value && (
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-6 w-6 p-0 hover:bg-muted flex-shrink-0"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openUrl(field.value);
-                }}
-              >
-                <ExternalLink className="h-3 w-3" />
-              </Button>
-            )}
+      <TooltipProvider>
+        <div className="group flex items-center space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+          <div className={`p-2 rounded-full bg-muted`}>
+            <IconComponent className={`w-4 h-4 ${iconColor}`} />
           </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-foreground">{field.label}</p>
+            <div className="flex items-center gap-2">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <p className="text-sm text-muted-foreground truncate flex-1 cursor-pointer">
+                    {displayValue}
+                  </p>
+                </TooltipTrigger>
+                <TooltipContent className="bg-white text-black border border-gray-200 shadow-lg max-w-xs p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="break-all">{field.value}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0 hover:bg-gray-100"
+                      onClick={() => handleCopy(field.value)}
+                    >
+                      {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                    </Button>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+              {field.type === 'url' && field.value && (
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-6 w-6 p-0 hover:bg-muted flex-shrink-0"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openUrl(field.value);
+                  }}
+                >
+                  <ExternalLink className="h-3 w-3" />
+                </Button>
+              )}
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 p-0 hover:bg-muted flex-shrink-0"
+            onClick={onEdit}
+          >
+            <Pencil className="h-3 w-3" />
+          </Button>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6 p-0 hover:bg-muted flex-shrink-0"
-          onClick={onEdit}
-        >
-          <Pencil className="h-3 w-3" />
-        </Button>
-      </div>
+      </TooltipProvider>
     );
   }
 
@@ -892,6 +974,82 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
         )}
       </div>
       {isSaving && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+    </div>
+  );
+};
+
+const ReferredByField: React.FC<{ personId?: string }> = ({ personId }) => {
+  const [referrerName, setReferrerName] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchReferrerInfo = async () => {
+      if (!personId) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        
+        // First, get the referral record for this person
+        const { data: referralData, error: referralError } = await supabase
+          .from('people_referrals')
+          .select('referred_by_id, referred_by_name')
+          .eq('person_id', personId)
+          .eq('is_deleted', false)
+          .single();
+
+        if (referralError || !referralData) {
+          setReferrerName(null);
+          return;
+        }
+
+        // If there's a referred_by_id, fetch the person's name
+        if (referralData.referred_by_id) {
+          const { data: personData, error: personError } = await supabase
+            .from('people')
+            .select('first_name, last_name')
+            .eq('id', referralData.referred_by_id)
+            .eq('is_deleted', false)
+            .single();
+
+          if (personError || !personData) {
+            // Fall back to referred_by_name if available
+            setReferrerName(referralData.referred_by_name || null);
+          } else {
+            setReferrerName(`${personData.first_name} ${personData.last_name}`);
+          }
+        } else if (referralData.referred_by_name) {
+          // Use referred_by_name as fallback
+          setReferrerName(referralData.referred_by_name);
+        } else {
+          setReferrerName(null);
+        }
+      } catch (err) {
+        console.error('Error fetching referrer info:', err);
+        setReferrerName(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchReferrerInfo();
+  }, [personId]);
+
+  if (loading || !referrerName) {
+    return null;
+  }
+
+  return (
+    <div className="flex items-center space-x-3 p-3 rounded-lg bg-muted/20">
+      <div className="p-2 rounded-full bg-muted">
+        <UserPlus className="w-4 h-4 text-primary" />
+      </div>
+      <div className="flex-1">
+        <p className="text-sm font-medium text-foreground">Referred By</p>
+        <p className="text-sm text-muted-foreground">{referrerName}</p>
+      </div>
     </div>
   );
 };
