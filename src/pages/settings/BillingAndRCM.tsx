@@ -7,6 +7,7 @@ import { useState } from "react";
 import Insurances from "@/components/settings/servicesbilling/Insurances";
 import Services from "@/components/settings/servicesbilling/Services";
 import PayoutRules from "@/components/settings/servicesbilling/PayoutRules";
+import { useInsurances } from "@/hooks/useInsurances";
 
 const BillingAndRCM = () => {
   const [showInsurances, setShowInsurances] = useState(false);
@@ -17,7 +18,8 @@ const BillingAndRCM = () => {
   const [lateFee, setLateFee] = useState("5%");
   const [editingField, setEditingField] = useState<string | null>(null);
 
-  const insurances: { name: string; category: string; status: string }[] = [];
+  // Get insurance data for display
+  const { insurances, loading: insurancesLoading } = useInsurances();
 
   const services: { name: string; category: string; fee: string; feeType: string; status: string }[] = [];
 
@@ -84,17 +86,23 @@ const BillingAndRCM = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {insurances.map((insurance, index) => (
-              <div key={index} className="flex items-center justify-between p-3 border rounded">
-                <div>
-                  <p className="font-medium">{insurance.name}</p>
-                  <p className="text-sm text-muted-foreground">{insurance.category}</p>
+            {insurancesLoading ? (
+              <p className="text-sm text-muted-foreground">Loading insurances...</p>
+            ) : insurances.length > 0 ? (
+              insurances.map((insurance, index) => (
+                <div key={index} className="flex items-center justify-between p-3 border rounded">
+                  <div>
+                    <p className="font-medium">{insurance.insurance_provider}</p>
+                    <p className="text-sm text-muted-foreground">{insurance.insurance_category}</p>
+                  </div>
+                  <Badge variant={insurance.insurance_status === 'active' ? 'default' : 'secondary'}>
+                    {insurance.insurance_status}
+                  </Badge>
                 </div>
-                <Badge variant={insurance.status === 'Active' ? 'default' : 'secondary'}>
-                  {insurance.status}
-                </Badge>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground">No insurance providers configured yet. Click "Manage" to add some.</p>
+            )}
           </div>
         </CardContent>
       </Card>

@@ -18,24 +18,37 @@ export interface InsuranceFormData {
   status: string;
 }
 
-export const useInsurances = (agencyId?: string) => {
+export const useInsurances = () => {
   const [insurances, setInsurances] = useState<InsuranceProvider[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [agencyId, setAgencyId] = useState<string | null>(null);
   const { toast } = useToast();
 
   const fetchInsurances = async () => {
-    if (!agencyId) {
-      setLoading(false);
-      return;
-    }
-
     try {
       setLoading(true);
+      setError(null);
+      
+      // First get the current user's agency ID
+      const { data: agencyData, error: agencyError } = await supabase
+        .rpc('current_user_agency_id');
+
+      if (agencyError) throw agencyError;
+      
+      if (!agencyData) {
+        setInsurances([]);
+        setAgencyId(null);
+        setLoading(false);
+        return;
+      }
+
+      setAgencyId(agencyData);
+
       const { data, error } = await supabase
         .from('settings_services_insurances')
         .select('*')
-        .eq('agency_id', agencyId)
+        .eq('agency_id', agencyData)
         .eq('is_deleted', false)
         .order('created_at', { ascending: false });
 

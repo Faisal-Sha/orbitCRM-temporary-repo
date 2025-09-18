@@ -15,9 +15,7 @@ interface InsurancesProps {
 }
 
 const Insurances = ({ onBack }: InsurancesProps) => {
-  // TODO: Get actual agency_id from user context/session
-  const agencyId = "temp-agency-id"; // This should come from user's agency context
-  const { insurances, loading, addInsurance, updateInsurance, deleteInsurance } = useInsurances(agencyId);
+  const { insurances, loading, addInsurance, updateInsurance, deleteInsurance } = useInsurances();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
