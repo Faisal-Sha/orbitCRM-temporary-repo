@@ -231,12 +231,12 @@ const App = () => (
               {/* Permission-gated routes */}
               <Route element={<RequirePermission perm="owner.view" />}>
                 <Route path="owner" element={<Owner />} />
-                <Route path="settings" element={<Settings />} />
               </Route>
 
-              {/* <Route element={<RequirePermission perm="settings.view" />}>
+              {/* Settings Routes - Allow both owners and agency admins */}
+              <Route element={<RequirePermission perm="settings.view" />}>
                 <Route path="settings" element={<Settings />} />
-              </Route> */}
+              </Route>
               
               {/* Other Routes */}
               <Route path="profile" element={<Profile />} />
