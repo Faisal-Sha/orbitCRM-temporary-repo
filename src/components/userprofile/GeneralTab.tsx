@@ -763,6 +763,13 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
     }
   };
 
+  const getContactSelectOptions = (key: string): string[] => {
+    const optionsMap: { [key: string]: string[] } = {
+      relationship: ['Spouse', 'Parent', 'Child', 'Sibling', 'Other Family', 'Friend', 'Colleague', 'Other'],
+    };
+    return optionsMap[key] || [];
+  };
+
   const handleAddressBlur = () => {
     // Save address when any address field loses focus
     const newAddress = [addressLine1, addressLine2, city, state, zipCode]
@@ -955,24 +962,41 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-foreground mb-1">{field.label}</p>
-        <input
-          ref={inputRef}
-          type="text"
-          value={localValue}
-          onChange={(e) => {
-            if (field.key === 'phone' || field.key === 'phone_home') {
-              handlePhoneChange(e.target.value);
-            } else {
-              setLocalValue(e.target.value);
-            }
-          }}
-          onBlur={handleBlur}
-          className={`w-full px-2 py-1 text-sm bg-background border rounded focus:outline-none focus:ring-2 focus:ring-primary/20 ${
-            validationError ? 'border-red-500' : 'border-border'
-          }`}
-          placeholder={`Enter ${field.label.toLowerCase()}`}
-          disabled={isSaving}
-        />
+        {field.type === 'select' ? (
+          <select
+            value={localValue}
+            onChange={(e) => setLocalValue(e.target.value)}
+            onBlur={handleBlur}
+            className={`w-full px-2 py-1 text-sm bg-background border rounded focus:outline-none focus:ring-2 focus:ring-primary/20 ${
+              validationError ? 'border-red-500' : 'border-border'
+            }`}
+            disabled={isSaving}
+          >
+            <option value="">Select {field.label}</option>
+            {getContactSelectOptions(field.key).map((option) => (
+              <option key={option} value={option}>{option}</option>
+            ))}
+          </select>
+        ) : (
+          <input
+            ref={inputRef}
+            type="text"
+            value={localValue}
+            onChange={(e) => {
+              if (field.key === 'phone' || field.key === 'phone_home') {
+                handlePhoneChange(e.target.value);
+              } else {
+                setLocalValue(e.target.value);
+              }
+            }}
+            onBlur={handleBlur}
+            className={`w-full px-2 py-1 text-sm bg-background border rounded focus:outline-none focus:ring-2 focus:ring-primary/20 ${
+              validationError ? 'border-red-500' : 'border-border'
+            }`}
+            placeholder={`Enter ${field.label.toLowerCase()}`}
+            disabled={isSaving}
+          />
+        )}
         {validationError && (
           <p className="text-xs text-red-500 mt-1">{validationError}</p>
         )}

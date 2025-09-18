@@ -36,13 +36,23 @@ export const UserDataSection: React.FC<UserDataSectionProps> = ({ personId }) =>
   }, [editingField]);
 
   const handleRoleChange = async (value: string) => {
-    await updateUserRole(value);
-    setEditingField(null);
+    try {
+      await updateUserRole(value);
+      setEditingField(null);
+    } catch (error) {
+      console.error('Failed to update user role:', error);
+      // Don't close edit mode if update failed
+    }
   };
 
   const handleStaffTypeChange = async (value: string) => {
-    await updateStaffType(value);
-    setEditingField(null);
+    try {
+      await updateStaffType(value);
+      setEditingField(null);
+    } catch (error) {
+      console.error('Failed to update staff type:', error);
+      // Don't close edit mode if update failed
+    }
   };
 
   // Determine if staff type should be shown (only if user role is "staff")

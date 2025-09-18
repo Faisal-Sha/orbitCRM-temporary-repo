@@ -32,7 +32,7 @@ interface ContactField {
   key: string;
   label: string;
   value: string;
-  type: 'text' | 'url';
+  type: 'text' | 'url' | 'select';
 }
 
 interface Identifiers {
@@ -695,7 +695,7 @@ export const useUserProfile = (personId?: string) => {
       fields.push({ key: 'phone_number', label: 'Phone', value: data.emergencyContact.phone_number, type: 'text' });
     }
     if (data.emergencyContact.relationship) {
-      fields.push({ key: 'relationship', label: 'Relationship', value: data.emergencyContact.relationship, type: 'text' });
+      fields.push({ key: 'relationship', label: 'Relationship', value: data.emergencyContact.relationship, type: 'select' });
     }
 
     return fields;

@@ -72,13 +72,13 @@ export const EmergencyContactSection: React.FC<EmergencyContactSectionProps> = (
         <CardTitle>Emergency Contact</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4" ref={containerRef}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4" ref={containerRef}>
           {currentFields.map((field) => (
             <EditableContactField
               key={field.key}
               field={field}
               isEditing={editingField === field.key}
-              onEdit={() => setEditingField(field.key)}
+              onEdit={() => setEditingField(editingField === field.key ? null : field.key)}
               onSave={async (value) => {
                 const success = await handleSave(field.key, value);
                 if (success) setEditingField(null);
