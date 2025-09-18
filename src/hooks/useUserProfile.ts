@@ -272,52 +272,47 @@ export const useUserProfile = (personId?: string) => {
     if (!personId) return false;
     
     try {
-      const { data: result, error } = await supabase
-        .rpc('update_people_contact_field', {
-          p_person_id: personId,
-          p_field_name: fieldName,
-          p_field_value: value
-        });
-
-      if (error) throw error;
-      
-      if (result && typeof result === 'object' && 'success' in result && result.success) {
-        // Check if auth email update is needed (for primary email field)
-        if (fieldName === 'email' && (result as any).auth_update_needed) {
-          const authUserId = (result as any).auth_user_id;
-          const newEmail = (result as any).new_email;
-          
-          try {
-            // Call edge function to update auth.users
-            const { data: authResult, error: authError } = await supabase.functions.invoke('update-auth-email', {
-              body: {
-                auth_user_id: authUserId,
-                new_email: newEmail
-              }
-            });
-
-            if (authError) {
-              console.error('Failed to update authentication email:', authError);
-              toast.warning('Contact email updated, but authentication email update failed. Please contact support.');
-            } else if (authResult && !authResult.success) {
-              console.error('Auth email update failed:', authResult.message);
-              toast.warning('Contact email updated, but authentication email update failed. Please contact support.');
-            } else {
-              toast.success('Contact field and authentication email updated successfully');
+      if (fieldName === 'email') {
+        // Use comprehensive edge function for email updates to ensure transactional consistency
+        const { data: result, error } = await supabase.functions.invoke(
+          'update-contact-email-comprehensive',
+          {
+            body: {
+              person_id: personId,
+              new_email: value
             }
-          } catch (authErr: any) {
-            console.error('Error calling auth email update function:', authErr);
-            toast.warning('Contact email updated, but authentication email update failed. Please contact support.');
           }
-        } else {
-          toast.success('Contact field updated successfully');
-        }
+        );
+
+        if (error) throw error;
         
-        // Refetch data to get updated values
-        await fetchProfile(personId);
-        return true;
+        if (result && result.success) {
+          toast.success(result.message || 'Email updated successfully across all systems');
+          // Refetch data to get updated values
+          await fetchProfile(personId);
+          return true;
+        } else {
+          throw new Error(result?.message || 'Email update failed');
+        }
       } else {
-        throw new Error((result as any)?.message || 'Update failed');
+        // Use existing DB function for other contact field updates
+        const { data: result, error } = await supabase
+          .rpc('update_people_contact_field', {
+            p_person_id: personId,
+            p_field_name: fieldName,
+            p_field_value: value
+          });
+
+        if (error) throw error;
+        
+        if (result && typeof result === 'object' && 'success' in result && result.success) {
+          toast.success('Contact field updated successfully');
+          // Refetch data to get updated values
+          await fetchProfile(personId);
+          return true;
+        } else {
+          throw new Error((result as any)?.message || 'Update failed');
+        }
       }
     } catch (err: any) {
       toast.error(err.message || 'Failed to update contact field');

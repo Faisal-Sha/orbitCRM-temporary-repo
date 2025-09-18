@@ -1,4 +1,4 @@
 project_id = "nmgtsstkoqepxoadulzu"
 
-[functions.update-auth-email]
+[functions.update-contact-email-comprehensive]
 verify_jwt = true
