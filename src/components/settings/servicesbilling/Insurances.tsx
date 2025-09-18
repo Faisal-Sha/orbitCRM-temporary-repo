@@ -8,78 +8,85 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Shield, Plus, Edit, Trash2 } from "lucide-react";
 import { useState } from "react";
 import DeleteConfirmationDialog from "@/components/settings/usersandroles/DeleteConfirmationDialog";
-
-interface InsuranceProvider {
-  id: number;
-  name: string;
-  category: string;
-  status: string;
-}
+import { useInsurances, type InsuranceProvider, type InsuranceFormData } from "@/hooks/useInsurances";
 
 interface InsurancesProps {
   onBack: () => void;
 }
 
 const Insurances = ({ onBack }: InsurancesProps) => {
-  const [insurances, setInsurances] = useState<InsuranceProvider[]>([]);
+  // TODO: Get actual agency_id from user context/session
+  const agencyId = "temp-agency-id"; // This should come from user's agency context
+  const { insurances, loading, addInsurance, updateInsurance, deleteInsurance } = useInsurances(agencyId);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [editingInsurance, setEditingInsurance] = useState<InsuranceProvider | null>(null);
-  const [deleteInsuranceId, setDeleteInsuranceId] = useState<number | null>(null);
-  const [formData, setFormData] = useState({
+  const [insuranceToDelete, setInsuranceToDelete] = useState<InsuranceProvider | null>(null);
+  const [formData, setFormData] = useState<InsuranceFormData>({
     name: "",
-    category: "",
-    status: "",
+    category: "medicaid",
+    status: "active",
   });
 
-  const categories = ["Medicaid", "Medicare", "Medicaid & Medicare", "Private"];
-  const statuses = ["Active", "Inactive"];
+  const categories = [
+    { value: "medicaid", label: "Medicaid" },
+    { value: "medicare", label: "Medicare" },
+    { value: "dual", label: "Dual (Medicaid & Medicare)" },
+    { value: "private", label: "Private" }
+  ];
+  const statuses = [
+    { value: "active", label: "Active" },
+    { value: "inactive", label: "Inactive" }
+  ];
 
   const handleAdd = () => {
     setEditingInsurance(null);
-    setFormData({ name: "", category: "", status: "Active" });
+    setFormData({ name: "", category: "medicaid", status: "active" });
     setIsModalOpen(true);
   };
 
   const handleEdit = (insurance: InsuranceProvider) => {
     setEditingInsurance(insurance);
     setFormData({
-      name: insurance.name,
-      category: insurance.category,
-      status: insurance.status,
+      name: insurance.insurance_provider || "",
+      category: insurance.insurance_category,
+      status: insurance.insurance_status,
     });
     setIsModalOpen(true);
   };
 
-  const handleDelete = (id: number) => {
-    setDeleteInsuranceId(id);
+  const handleDelete = (insurance: InsuranceProvider) => {
+    setInsuranceToDelete(insurance);
     setIsDeleteModalOpen(true);
   };
 
-  const confirmDelete = () => {
-    if (deleteInsuranceId) {
-      setInsurances(insurances.filter(insurance => insurance.id !== deleteInsuranceId));
+  const confirmDelete = async () => {
+    if (insuranceToDelete) {
+      await deleteInsurance(insuranceToDelete.id);
+      setInsuranceToDelete(null);
       setIsDeleteModalOpen(false);
-      setDeleteInsuranceId(null);
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (editingInsurance) {
-      setInsurances(insurances.map(insurance =>
-        insurance.id === editingInsurance.id
-          ? { ...insurance, ...formData }
-          : insurance
-      ));
+      await updateInsurance(editingInsurance.id, formData);
     } else {
-      const newInsurance: InsuranceProvider = {
-        id: insurances.length > 0 ? Math.max(...insurances.map(i => i.id)) + 1 : 1,
-        ...formData,
-      };
-      setInsurances([...insurances, newInsurance]);
+      await addInsurance(formData);
     }
     setIsModalOpen(false);
+    setEditingInsurance(null);
+  };
+
+  const getCategoryLabel = (value: string) => {
+    const category = categories.find(c => c.value === value);
+    return category ? category.label : value;
+  };
+
+  const getStatusLabel = (value: string) => {
+    const status = statuses.find(s => s.value === value);
+    return status ? status.label : value;
   };
 
   return (
@@ -105,27 +112,37 @@ const Insurances = ({ onBack }: InsurancesProps) => {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {insurances.map((insurance) => (
-              <div key={insurance.id} className="flex items-center justify-between p-3 border rounded">
-                <div>
-                  <p className="font-medium">{insurance.name}</p>
-                  <p className="text-sm text-muted-foreground">{insurance.category}</p>
+          {loading ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Loading insurance providers...
+            </div>
+          ) : insurances.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No insurance providers added yet. Click "Add Provider" to get started.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {insurances.map((insurance) => (
+                <div key={insurance.id} className="flex items-center justify-between p-3 border rounded">
+                  <div>
+                    <p className="font-medium">{insurance.insurance_provider}</p>
+                    <p className="text-sm text-muted-foreground">{getCategoryLabel(insurance.insurance_category)}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={insurance.insurance_status === 'active' ? 'default' : 'secondary'}>
+                      {getStatusLabel(insurance.insurance_status)}
+                    </Badge>
+                    <Button variant="ghost" size="sm" onClick={() => handleEdit(insurance)}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleDelete(insurance)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant={insurance.status === 'Active' ? 'default' : 'secondary'}>
-                    {insurance.status}
-                  </Badge>
-                  <Button variant="ghost" size="sm" onClick={() => handleEdit(insurance)}>
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => handleDelete(insurance.id)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -154,8 +171,8 @@ const Insurances = ({ onBack }: InsurancesProps) => {
                 </SelectTrigger>
                 <SelectContent>
                   {categories.map((category) => (
-                    <SelectItem key={category} value={category}>
-                      {category}
+                    <SelectItem key={category.value} value={category.value}>
+                      {category.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -169,8 +186,8 @@ const Insurances = ({ onBack }: InsurancesProps) => {
                 </SelectTrigger>
                 <SelectContent>
                   {statuses.map((status) => (
-                    <SelectItem key={status} value={status}>
-                      {status}
+                    <SelectItem key={status.value} value={status.value}>
+                      {status.label}
                     </SelectItem>
                   ))}
                 </SelectContent>

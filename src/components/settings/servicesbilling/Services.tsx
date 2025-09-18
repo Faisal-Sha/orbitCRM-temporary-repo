@@ -8,86 +8,93 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DollarSign, Plus, Edit, Trash2 } from "lucide-react";
 import { useState } from "react";
 import DeleteConfirmationDialog from "@/components/settings/usersandroles/DeleteConfirmationDialog";
-
-interface Service {
-  id: number;
-  name: string;
-  category: string;
-  fee: string;
-  feeType: string;
-  status: string;
-}
+import { useServices, type Service, type ServiceFormData } from "@/hooks/useServices";
 
 interface ServicesProps {
   onBack: () => void;
 }
 
 const Services = ({ onBack }: ServicesProps) => {
-  const [services, setServices] = useState<Service[]>([]);
+  // TODO: Get actual agency_id from user context/session
+  const agencyId = "temp-agency-id"; // This should come from user's agency context
+  const { services, loading, addService, updateService, deleteService } = useServices(agencyId);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
-  const [deleteServiceId, setDeleteServiceId] = useState<number | null>(null);
-  const [formData, setFormData] = useState({
+  const [serviceToDelete, setServiceToDelete] = useState<Service | null>(null);
+  const [formData, setFormData] = useState<ServiceFormData>({
     name: "",
-    category: "",
+    category: "adults",
     fee: "",
-    feeType: "",
-    status: "",
+    feeType: "per hour",
+    status: "active",
   });
 
-  const serviceNames = ["Case Management", "Counseling", "Therapy", "SUD", "Assessment", "Group Therapy", "Family Therapy", "Crisis Intervention", "Peer Support"];
-  const categories = ["Adults", "Teens", "Children", "Seniors"];
-  const feeTypes = ["per hour", "per session", "flat fee", "per day"];
-  const statuses = ["Active", "Inactive"];
+  const categories = [
+    { value: "adults", label: "Adults" },
+    { value: "teens", label: "Teens" }
+  ];
+  const feeTypes = [
+    { value: "per hour", label: "per hour" },
+    { value: "per session", label: "per session" },
+    { value: "per day", label: "per day" },
+    { value: "flat fee", label: "flat fee" }
+  ];
+  const statuses = [
+    { value: "active", label: "Active" },
+    { value: "inactive", label: "Inactive" }
+  ];
 
   const handleAdd = () => {
     setEditingService(null);
-    setFormData({ name: "", category: "", fee: "", feeType: "per hour", status: "Active" });
+    setFormData({ name: "", category: "adults", fee: "", feeType: "per hour", status: "active" });
     setIsModalOpen(true);
   };
 
   const handleEdit = (service: Service) => {
     setEditingService(service);
     setFormData({
-      name: service.name,
-      category: service.category,
-      fee: service.fee,
-      feeType: service.feeType,
-      status: service.status,
+      name: service.service || "",
+      category: service.service_category,
+      fee: service.service_fee || "",
+      feeType: service.service_fee_type,
+      status: service.service_status,
     });
     setIsModalOpen(true);
   };
 
-  const handleDelete = (id: number) => {
-    setDeleteServiceId(id);
+  const handleDelete = (service: Service) => {
+    setServiceToDelete(service);
     setIsDeleteModalOpen(true);
   };
 
-  const confirmDelete = () => {
-    if (deleteServiceId) {
-      setServices(services.filter(service => service.id !== deleteServiceId));
+  const confirmDelete = async () => {
+    if (serviceToDelete) {
+      await deleteService(serviceToDelete.id);
+      setServiceToDelete(null);
       setIsDeleteModalOpen(false);
-      setDeleteServiceId(null);
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (editingService) {
-      setServices(services.map(service =>
-        service.id === editingService.id
-          ? { ...service, ...formData }
-          : service
-      ));
+      await updateService(editingService.id, formData);
     } else {
-      const newService: Service = {
-        id: services.length > 0 ? Math.max(...services.map(s => s.id)) + 1 : 1,
-        ...formData,
-      };
-      setServices([...services, newService]);
+      await addService(formData);
     }
     setIsModalOpen(false);
+    setEditingService(null);
+  };
+
+  const getCategoryLabel = (value: string) => {
+    const category = categories.find(c => c.value === value);
+    return category ? category.label : value;
+  };
+
+  const getStatusLabel = (value: string) => {
+    const status = statuses.find(s => s.value === value);
+    return status ? status.label : value;
   };
 
   return (
@@ -113,31 +120,41 @@ const Services = ({ onBack }: ServicesProps) => {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {services.map((service) => (
-              <div key={service.id} className="flex items-center justify-between p-3 border rounded">
-                <div>
-                  <p className="font-medium">{service.name}</p>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <span>{service.category}</span>
-                    <span>•</span>
-                    <span>${service.fee} {service.feeType}</span>
+          {loading ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Loading services...
+            </div>
+          ) : services.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No services added yet. Click "Add Service" to get started.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {services.map((service) => (
+                <div key={service.id} className="flex items-center justify-between p-3 border rounded">
+                  <div>
+                    <p className="font-medium">{service.service}</p>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <span>{getCategoryLabel(service.service_category)}</span>
+                      <span>•</span>
+                      <span>${service.service_fee} {service.service_fee_type}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={service.service_status === 'active' ? 'default' : 'secondary'}>
+                      {getStatusLabel(service.service_status)}
+                    </Badge>
+                    <Button variant="ghost" size="sm" onClick={() => handleEdit(service)}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleDelete(service)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant={service.status === 'Active' ? 'default' : 'secondary'}>
-                    {service.status}
-                  </Badge>
-                  <Button variant="ghost" size="sm" onClick={() => handleEdit(service)}>
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => handleDelete(service.id)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -151,18 +168,12 @@ const Services = ({ onBack }: ServicesProps) => {
           <div className="space-y-4">
             <div>
               <Label htmlFor="name">Service Name</Label>
-              <Select value={formData.name} onValueChange={(value) => setFormData({ ...formData, name: value })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select service" />
-                </SelectTrigger>
-                <SelectContent>
-                  {serviceNames.map((name) => (
-                    <SelectItem key={name} value={name}>
-                      {name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="Enter service name"
+              />
             </div>
             <div>
               <Label htmlFor="category">Category</Label>
@@ -172,8 +183,8 @@ const Services = ({ onBack }: ServicesProps) => {
                 </SelectTrigger>
                 <SelectContent>
                   {categories.map((category) => (
-                    <SelectItem key={category} value={category}>
-                      {category}
+                    <SelectItem key={category.value} value={category.value}>
+                      {category.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -198,8 +209,8 @@ const Services = ({ onBack }: ServicesProps) => {
                   </SelectTrigger>
                   <SelectContent>
                     {feeTypes.map((feeType) => (
-                      <SelectItem key={feeType} value={feeType}>
-                        {feeType}
+                      <SelectItem key={feeType.value} value={feeType.value}>
+                        {feeType.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -214,8 +225,8 @@ const Services = ({ onBack }: ServicesProps) => {
                 </SelectTrigger>
                 <SelectContent>
                   {statuses.map((status) => (
-                    <SelectItem key={status} value={status}>
-                      {status}
+                    <SelectItem key={status.value} value={status.value}>
+                      {status.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
