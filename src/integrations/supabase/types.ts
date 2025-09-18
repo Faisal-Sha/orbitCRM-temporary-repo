@@ -1548,6 +1548,10 @@ export type Database = {
         Args: { p_field_name: string; p_person_id: string }
         Returns: Json
       }
+      delete_people_emergency_field: {
+        Args: { p_field_name: string; p_person_id: string }
+        Returns: Json
+      }
       delete_permission: {
         Args: { p_permission_id: string }
         Returns: Json
@@ -1772,6 +1776,14 @@ export type Database = {
         }
         Returns: Json
       }
+      update_people_emergency_field: {
+        Args: {
+          p_field_name: string
+          p_field_value: string
+          p_person_id: string
+        }
+        Returns: Json
+      }
       update_people_identifiers_field: {
         Args: {
           p_field_name: string
@@ -1794,6 +1806,14 @@ export type Database = {
           p_field_value: string
           p_person_id: string
         }
+        Returns: Json
+      }
+      update_people_staff_type: {
+        Args: { p_person_id: string; p_staff_type: string }
+        Returns: Json
+      }
+      update_people_user_role: {
+        Args: { p_person_id: string; p_role_name: string }
         Returns: Json
       }
       update_permission: {

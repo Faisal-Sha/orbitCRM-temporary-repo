@@ -602,6 +602,156 @@ export const useUserProfile = (personId?: string) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [personId]);
 
+  // Emergency contact management functions
+  const updateEmergencyField = useCallback(async (fieldName: string, fieldValue: string) => {
+    if (!personId) return false;
+    
+    try {
+      const { data: result, error } = await supabase
+        .rpc('update_people_emergency_field', {
+          p_person_id: personId,
+          p_field_name: fieldName,
+          p_field_value: fieldValue
+        });
+
+      if (error) throw error;
+      
+      if (result && typeof result === 'object' && 'success' in result && result.success) {
+        toast.success('Emergency contact updated successfully');
+        await fetchProfile(personId);
+        return true;
+      } else {
+        throw new Error((result as any)?.message || 'Update failed');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update emergency contact');
+      return false;
+    }
+  }, [personId]);
+
+  const deleteEmergencyField = useCallback(async (fieldName: string) => {
+    if (!personId) return false;
+    
+    try {
+      const { data: result, error } = await supabase
+        .rpc('delete_people_emergency_field', {
+          p_person_id: personId,
+          p_field_name: fieldName
+        });
+
+      if (error) throw error;
+      
+      if (result && typeof result === 'object' && 'success' in result && result.success) {
+        toast.success('Emergency contact field cleared successfully');
+        await fetchProfile(personId);
+        return true;
+      } else {
+        throw new Error((result as any)?.message || 'Delete failed');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete emergency contact field');
+      return false;
+    }
+  }, [personId]);
+
+  // Helper to get available emergency contact fields for dropdown
+  const getAvailableEmergencyFields = useCallback(() => {
+    const allFields = [
+      { key: 'first_name', label: 'First Name' },
+      { key: 'last_name', label: 'Last Name' },
+      { key: 'email', label: 'Email' },
+      { key: 'phone_number', label: 'Phone' },
+      { key: 'relationship', label: 'Relationship' }
+    ];
+
+    if (!data?.emergencyContact) return allFields;
+
+    const existingFields = new Set();
+    if (data.emergencyContact.first_name) existingFields.add('first_name');
+    if (data.emergencyContact.last_name) existingFields.add('last_name');
+    if (data.emergencyContact.email) existingFields.add('email');
+    if (data.emergencyContact.phone_number) existingFields.add('phone_number');
+    if (data.emergencyContact.relationship) existingFields.add('relationship');
+
+    return allFields.filter(field => !existingFields.has(field.key));
+  }, [data?.emergencyContact]);
+
+  // Helper to get current emergency contact fields for display
+  const getCurrentEmergencyFields = useCallback((): ContactField[] => {
+    if (!data?.emergencyContact) return [];
+
+    const fields: ContactField[] = [];
+    
+    if (data.emergencyContact.first_name) {
+      fields.push({ key: 'first_name', label: 'First Name', value: data.emergencyContact.first_name, type: 'text' });
+    }
+    if (data.emergencyContact.last_name) {
+      fields.push({ key: 'last_name', label: 'Last Name', value: data.emergencyContact.last_name, type: 'text' });
+    }
+    if (data.emergencyContact.email) {
+      fields.push({ key: 'email', label: 'Email', value: data.emergencyContact.email, type: 'text' });
+    }
+    if (data.emergencyContact.phone_number) {
+      fields.push({ key: 'phone_number', label: 'Phone', value: data.emergencyContact.phone_number, type: 'text' });
+    }
+    if (data.emergencyContact.relationship) {
+      fields.push({ key: 'relationship', label: 'Relationship', value: data.emergencyContact.relationship, type: 'text' });
+    }
+
+    return fields;
+  }, [data?.emergencyContact]);
+
+  // User role and staff type management functions
+  const updateUserRole = useCallback(async (roleName: string) => {
+    if (!personId) return false;
+    
+    try {
+      const { data: result, error } = await supabase
+        .rpc('update_people_user_role', {
+          p_person_id: personId,
+          p_role_name: roleName
+        });
+
+      if (error) throw error;
+      
+      if (result && typeof result === 'object' && 'success' in result && result.success) {
+        toast.success('User role updated successfully');
+        await fetchProfile(personId);
+        return true;
+      } else {
+        throw new Error((result as any)?.message || 'Update failed');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update user role');
+      return false;
+    }
+  }, [personId]);
+
+  const updateStaffType = useCallback(async (staffType: string) => {
+    if (!personId) return false;
+    
+    try {
+      const { data: result, error } = await supabase
+        .rpc('update_people_staff_type', {
+          p_person_id: personId,
+          p_staff_type: staffType
+        });
+
+      if (error) throw error;
+      
+      if (result && typeof result === 'object' && 'success' in result && result.success) {
+        toast.success('Staff type updated successfully');
+        await fetchProfile(personId);
+        return true;
+      } else {
+        throw new Error((result as any)?.message || 'Update failed');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update staff type');
+      return false;
+    }
+  }, [personId]);
+
   return {
     data,          // normalized display-ready data
     raw,           // original payload if needed elsewhere
@@ -619,5 +769,13 @@ export const useUserProfile = (personId?: string) => {
     deleteAdditionalField,
     getAvailableAdditionalFields,
     getCurrentAdditionalFields,
+    // Emergency contact management functions
+    updateEmergencyField,
+    deleteEmergencyField,
+    getAvailableEmergencyFields,
+    getCurrentEmergencyFields,
+    // User role and staff type management functions
+    updateUserRole,
+    updateStaffType,
   };
 };

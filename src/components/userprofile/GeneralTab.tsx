@@ -20,6 +20,8 @@ import { useOrganizationCountry } from '@/hooks/useOrganizationCountry';
 import { validateEmail, validatePhoneNumber, getEmailValidationError, getPhoneValidationError } from '@/utils/validation';
 import { formatPhoneNumber, getFormattedPhoneDisplay } from '@/utils/phoneFormatting';
 import { supabase } from '@/integrations/supabase/client';
+import { EmergencyContactSection } from './EmergencyContactSection';
+import { UserDataSection } from './UserDataSection';
 
 // Format date nicely
 const formatDateNice = (iso?: string | null) => {
@@ -442,19 +444,21 @@ const ContactInformationSection: React.FC<{ personId?: string }> = ({ personId }
 };
 
 // Editable Contact Field Component
-interface ContactFieldType {
+export interface ContactFieldType {
   key: string;
   label: string;
   value: string;
-  type: 'text' | 'url';
+  type: 'text' | 'url' | 'select';
 }
 
-interface EditableContactFieldProps {
+export interface EditableContactFieldProps {
   field: ContactFieldType;
   isEditing: boolean;
   onEdit: () => void;
   onSave: (value: string) => Promise<boolean>;
-  onDelete: () => Promise<boolean>;
+  onDelete?: () => Promise<boolean>;
+  onCancel?: () => void;
+  country?: string;
 }
 
 // Additional Information Field Component
@@ -1063,46 +1067,9 @@ interface GeneralTabProps {
 const GeneralTab: React.FC<GeneralTabProps> = ({ personId, hideUpcomingAppointments = false }) => {
 
   console.log("personId", personId);
-  const containerRef = useRef<HTMLDivElement>(null);
 
-  // 1) Profile aggregate (assigned values)
+  // Profile aggregate (assigned values)
   const { data, loading: profileLoading, error } = useUserProfile(personId);
-
-  // 2) Catalogs for dropdowns (full options)
-  const { roles, loading: rolesLoading } = useUserRoles();
-  const { staffTypes, loading: staffTypesLoading } = useStaffTypes();
-
-  // Assigned (from aggregate)
-  const assignedRole = data?.userRoles?.[0]?.role_name || '';
-  const assignedStaffType = data?.staffTypes?.[0]?.staff_type || '';
-
-  // Options (full catalogs)
-  const roleOptions = (roles || []).map(r => r.role_name).filter(Boolean);
-  const staffTypeOptions = (staffTypes || []).map(s => s.staff_type).filter(Boolean);
-
-  // Local state; initialize from assigned or fallback to first available option
-  const [userRole, setUserRole] = useState<string>(assignedRole || roleOptions[0] || 'Not provided');
-  const [staffType, setStaffType] = useState<string>(assignedStaffType || staffTypeOptions[0] || 'Not provided');
-  const [editingField, setEditingField] = useState<string | null>(null);
-
-  // Sync when profile/catalogs change
-  useEffect(() => {
-    const newRole = assignedRole || roleOptions[0] || 'Not provided';
-    const newStaff = assignedStaffType || staffTypeOptions[0] || 'Not provided';
-    setUserRole(newRole);
-    setStaffType(newStaff);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assignedRole, assignedStaffType, rolesLoading, staffTypesLoading]);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setEditingField(null);
-      }
-    };
-    if (editingField) document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [editingField]);
 
   const dummyAppointments = [
     { date: "Jun 18, 2025", time: "11:00 AM", clinician: "Dr. Emily Clark" },
@@ -1164,53 +1131,16 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ personId, hideUpcomingAppointme
         <AdditionalInformationSection personId={personId} />
 
         {/* Emergency Contact */}
-        <SectionCard title="Emergency Contact">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-            <DetailItem icon={User} label="Name" value={NA(data?.emergencyContact?.full_name)} />
-            <DetailItem icon={Mail} label="Email" value={NA(data?.emergencyContact?.email)} />
-            <DetailItem icon={Phone} label="Phone" value={NA(data?.emergencyContact?.phone_number)} />
-            <DetailItem icon={Users} label="Relationship" value={NA(data?.emergencyContact?.relationship)} />
-          </div>
-        </SectionCard>
+        <EmergencyContactSection personId={personId} />
 
-        {/* User Data — options from full catalogs; selected from assigned values */}
-        <SectionCard title="User Data">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4" ref={containerRef}>
-            <EditableDetailItem
-              icon={ShieldCheck}
-              label="User Role"
-              value={userRole}
-              options={roleOptions}
-              isEditing={editingField === 'userRole'}
-              onEdit={() => setEditingField('userRole')}
-              onChange={(value) => {
-                setUserRole(value);
-                setEditingField(null);
-                // TODO (later step): persist to people_assign_user_role via RPC
-              }}
-              iconColor="text-blue-500"
-              loading={rolesLoading}
-            />
-            <EditableDetailItem
-              icon={Briefcase}
-              label="Staff Type"
-              value={staffType}
-              options={staffTypeOptions}
-              isEditing={editingField === 'staffType'}
-              onEdit={() => setEditingField('staffType')}
-              onChange={(value) => {
-                setStaffType(value);
-                setEditingField(null);
-                // TODO (later step): persist to people_assign_staff_type via RPC
-              }}
-              iconColor="text-green-500"
-              loading={staffTypesLoading}
-            />
-          </div>
-        </SectionCard>
+        {/* User Data */}
+        <UserDataSection personId={personId} />
       </div>
     </ScrollArea>
   );
 };
 
 export default GeneralTab;
+
+// Export components for use in other modules
+export { EditableDetailItem, EditableContactField };
