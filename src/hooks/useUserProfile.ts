@@ -525,8 +525,6 @@ export const useUserProfile = (personId?: string) => {
 
   // Additional information field management
   const getAvailableAdditionalFields = useCallback(() => {
-    if (!data) return [];
-    
     const allAdditionalFields = [
       { key: 'date_of_birth', label: 'Date of Birth', type: 'date' as const },
       { key: 'ssn_number', label: 'SSN', type: 'text' as const },
@@ -541,6 +539,8 @@ export const useUserProfile = (personId?: string) => {
       { key: 'preferred_language', label: 'Preferred Language', type: 'select' as const },
       { key: 'referred_by_name', label: 'Referred By', type: 'text' as const },
     ];
+    
+    if (!data?.additionalInfo) return allAdditionalFields;
 
     return allAdditionalFields.filter(field => {
       const value = (data as any)[field.key] || (data.additionalInfo as any)?.[field.key] || (data.leadInfo as any)?.[field.key] || (data.referralInfo as any)?.[field.key];
