@@ -28,6 +28,15 @@ export const EmergencyContactSection: React.FC<EmergencyContactSectionProps> = (
 
   const currentFields = getCurrentEmergencyFields();
   const availableFields = getAvailableEmergencyFields();
+  
+  // Debug logging
+  console.log('Emergency Contact Debug:', {
+    data: data?.emergencyContact,
+    currentFields,
+    availableFields,
+    loading,
+    personId
+  });
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -130,7 +139,7 @@ export const EmergencyContactSection: React.FC<EmergencyContactSectionProps> = (
                   <ChevronDown className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-full min-w-[200px]">
+              <DropdownMenuContent className="w-full min-w-[200px] bg-background border z-50">
                 {availableFields.map((field) => (
                   <DropdownMenuItem
                     key={field.key}

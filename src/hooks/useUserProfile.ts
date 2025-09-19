@@ -664,16 +664,21 @@ export const useUserProfile = (personId?: string) => {
       { key: 'relationship', label: 'Relationship' }
     ];
 
+    // If no data or no emergency contact, return all fields
     if (!data?.emergencyContact) return allFields;
 
     const existingFields = new Set();
+    // Only add to existing fields if the value is not null/empty
     if (data.emergencyContact.first_name) existingFields.add('first_name');
     if (data.emergencyContact.last_name) existingFields.add('last_name');
     if (data.emergencyContact.email) existingFields.add('email');
     if (data.emergencyContact.phone_number) existingFields.add('phone_number');
     if (data.emergencyContact.relationship) existingFields.add('relationship');
 
-    return allFields.filter(field => !existingFields.has(field.key));
+    const availableFields = allFields.filter(field => !existingFields.has(field.key));
+    
+    // If no existing fields (all are null/empty), return all fields
+    return existingFields.size === 0 ? allFields : availableFields;
   }, [data?.emergencyContact]);
 
   // Helper to get current emergency contact fields for display
