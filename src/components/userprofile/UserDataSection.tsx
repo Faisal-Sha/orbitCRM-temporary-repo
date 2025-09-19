@@ -37,8 +37,10 @@ export const UserDataSection: React.FC<UserDataSectionProps> = ({ personId }) =>
 
   const handleRoleChange = async (value: string) => {
     try {
-      await updateUserRole(value);
-      setEditingField(null);
+      const success = await updateUserRole(value);
+      if (success) {
+        setEditingField(null);
+      }
     } catch (error) {
       console.error('Failed to update user role:', error);
       // Don't close edit mode if update failed
@@ -47,8 +49,10 @@ export const UserDataSection: React.FC<UserDataSectionProps> = ({ personId }) =>
 
   const handleStaffTypeChange = async (value: string) => {
     try {
-      await updateStaffType(value);
-      setEditingField(null);
+      const success = await updateStaffType(value);
+      if (success) {
+        setEditingField(null);
+      }
     } catch (error) {
       console.error('Failed to update staff type:', error);
       // Don't close edit mode if update failed

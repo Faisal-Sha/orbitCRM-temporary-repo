@@ -616,7 +616,7 @@ export const useUserProfile = (personId?: string) => {
 
       if (error) throw error;
       
-      if (result && typeof result === 'object' && 'success' in result && result.success) {
+      if (result && typeof result === 'object' && 'success' in result && (result as any).success) {
         toast.success('Emergency contact updated successfully');
         await fetchProfile(personId);
         return true;
