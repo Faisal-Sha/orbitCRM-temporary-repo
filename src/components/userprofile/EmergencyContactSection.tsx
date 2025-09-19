@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, ChevronDown } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuItem } from '@/components/ui/dropdown-menu';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { EditableContactField } from './GeneralTab';
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -23,8 +23,9 @@ export const EmergencyContactSection: React.FC<EmergencyContactSectionProps> = (
   
   const { country } = useOrganizationCountry();
   const [editingField, setEditingField] = useState<string | null>(null);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [showAddField, setShowAddField] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const currentFields = getCurrentEmergencyFields();
   const availableFields = getAvailableEmergencyFields();
@@ -33,7 +34,7 @@ export const EmergencyContactSection: React.FC<EmergencyContactSectionProps> = (
     const handleClickOutside = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setEditingField(null);
-        setDropdownOpen(false);
+        setShowAddField(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -42,7 +43,7 @@ export const EmergencyContactSection: React.FC<EmergencyContactSectionProps> = (
 
   const handleAddField = (fieldKey: string) => {
     setEditingField(fieldKey);
-    setDropdownOpen(false);
+    setShowAddField(false);
   };
 
   const handleSave = async (fieldKey: string, value: string): Promise<boolean> => {
@@ -96,6 +97,7 @@ export const EmergencyContactSection: React.FC<EmergencyContactSectionProps> = (
           {/* Add editing field if it's a new field */}
           {editingField && !currentFields.find(f => f.key === editingField) && (
             <EditableContactField
+              key={`new-${editingField}`}
               field={{
                 key: editingField,
                 label: availableFields.find(f => f.key === editingField)?.label || editingField,
@@ -117,31 +119,34 @@ export const EmergencyContactSection: React.FC<EmergencyContactSectionProps> = (
             />
           )}
 
-          {availableFields.length > 0 && (
-            <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-center gap-2"
-                >
-                  <Plus className="h-4 w-4" />
-                  Add Field
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-full min-w-[200px] bg-background border border-border shadow-md z-50">
-                {availableFields.map((field) => (
-                <DropdownMenuItem
-                    key={field.key}
-                    onClick={() => handleAddField(field.key)}
-                    className="cursor-pointer hover:bg-accent focus:bg-accent"
-                  >
-                    {field.label}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+          {/* Add Field Button and Dropdown - mirror Additional Information styling */}
+          {availableFields.length > 0 && !editingField && (
+            <div className="relative" ref={dropdownRef}>
+              <Button
+                variant="ghost"
+                onClick={() => setShowAddField(!showAddField)}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Field
+              </Button>
+
+              {showAddField && (
+                <div className="absolute top-full left-0 mt-2 w-64 bg-background border border-border rounded-md shadow-lg z-50">
+                  <div className="p-2">
+                    {availableFields.map((field) => (
+                      <button
+                        key={field.key}
+                        onClick={() => handleAddField(field.key)}
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded-sm"
+                      >
+                        {field.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           )}
 
           {currentFields.length === 0 && availableFields.length === 0 && (
