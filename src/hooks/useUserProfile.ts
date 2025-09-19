@@ -355,6 +355,37 @@ export const useUserProfile = (personId?: string) => {
     }
   }, [personId]);
 
+  const updatePersonName = useCallback(async (name: {
+    first_name: string;
+    middle_name?: string;
+    last_name: string;
+  }) => {
+    if (!personId) return false;
+    
+    try {
+      const { data: result, error } = await supabase
+        .rpc('update_people_name_field', {
+          p_person_id: personId,
+          p_first_name: name.first_name,
+          p_middle_name: name.middle_name || null,
+          p_last_name: name.last_name
+        });
+
+      if (error) throw error;
+      
+      if (result && typeof result === 'object' && 'success' in result && result.success) {
+        toast.success('Name updated successfully');
+        await fetchProfile(personId);
+        return true;
+      } else {
+        throw new Error((result as any)?.message || 'Update failed');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update name');
+      return false;
+    }
+  }, [personId]);
+
   const deleteContactField = useCallback(async (fieldName: string) => {
     if (!personId) return false;
     
@@ -383,6 +414,7 @@ export const useUserProfile = (personId?: string) => {
   // Helper to get available contact fields for dropdown
   const getAvailableContactFields = useCallback(() => {
     const allFields = [
+      { key: 'name', label: 'Name' },
       { key: 'email', label: 'Email' },
       { key: 'work_email', label: 'Work Email' },
       { key: 'phone', label: 'Phone' },
@@ -394,58 +426,65 @@ export const useUserProfile = (personId?: string) => {
       { key: 'url_linkedin', label: 'LinkedIn' }
     ];
 
-    if (!data?.contactInfo) return allFields;
+    if (!data?.contactInfo && !data?.personalInfo) return allFields;
 
     const existingFields = new Set();
-    if (data.contactInfo.email) existingFields.add('email');
-    if (data.contactInfo.work_email) existingFields.add('work_email');
-    if (data.contactInfo.phone) existingFields.add('phone');
-    if (data.contactInfo.phone_home) existingFields.add('phone_home');
-    if (data.contactInfo.address && data.contactInfo.address !== 'Not provided') existingFields.add('address');
-    if (data.contactInfo.url_facebook) existingFields.add('url_facebook');
-    if (data.contactInfo.url_instagram) existingFields.add('url_instagram');
-    if (data.contactInfo.url_tiktok) existingFields.add('url_tiktok');
-    if (data.contactInfo.url_linkedin) existingFields.add('url_linkedin');
+    if (data?.personalInfo?.first_name || data?.personalInfo?.last_name) existingFields.add('name');
+    if (data?.contactInfo?.email) existingFields.add('email');
+    if (data?.contactInfo?.work_email) existingFields.add('work_email');
+    if (data?.contactInfo?.phone) existingFields.add('phone');
+    if (data?.contactInfo?.phone_home) existingFields.add('phone_home');
+    if (data?.contactInfo?.address && data.contactInfo.address !== 'Not provided') existingFields.add('address');
+    if (data?.contactInfo?.url_facebook) existingFields.add('url_facebook');
+    if (data?.contactInfo?.url_instagram) existingFields.add('url_instagram');
+    if (data?.contactInfo?.url_tiktok) existingFields.add('url_tiktok');
+    if (data?.contactInfo?.url_linkedin) existingFields.add('url_linkedin');
 
     return allFields.filter(field => !existingFields.has(field.key));
-  }, [data?.contactInfo]);
+  }, [data?.contactInfo, data?.personalInfo]);
 
   // Helper to get current contact fields for display
   const getCurrentContactFields = useCallback((): ContactField[] => {
-    if (!data?.contactInfo) return [];
+    if (!data?.contactInfo && !data?.personalInfo) return [];
 
     const fields: ContactField[] = [];
     
-    if (data.contactInfo.email) {
+    if (data?.personalInfo?.first_name || data?.personalInfo?.last_name) {
+      const fullName = [data.personalInfo.first_name, data.personalInfo.middle_name, data.personalInfo.last_name]
+        .filter(Boolean)
+        .join(' ');
+      fields.push({ key: 'name', label: 'Name', value: fullName, type: 'text' });
+    }
+    if (data?.contactInfo?.email) {
       fields.push({ key: 'email', label: 'Email', value: data.contactInfo.email, type: 'text' });
     }
-    if (data.contactInfo.work_email) {
+    if (data?.contactInfo?.work_email) {
       fields.push({ key: 'work_email', label: 'Work Email', value: data.contactInfo.work_email, type: 'text' });
     }
-    if (data.contactInfo.phone) {
+    if (data?.contactInfo?.phone) {
       fields.push({ key: 'phone', label: 'Phone', value: data.contactInfo.phone, type: 'text' });
     }
-    if (data.contactInfo.phone_home) {
+    if (data?.contactInfo?.phone_home) {
       fields.push({ key: 'phone_home', label: 'Home Phone', value: data.contactInfo.phone_home, type: 'text' });
     }
-    if (data.contactInfo.address && data.contactInfo.address !== 'Not provided') {
+    if (data?.contactInfo?.address && data.contactInfo.address !== 'Not provided') {
       fields.push({ key: 'address', label: 'Address', value: data.contactInfo.address, type: 'text' });
     }
-    if (data.contactInfo.url_facebook) {
+    if (data?.contactInfo?.url_facebook) {
       fields.push({ key: 'url_facebook', label: 'Facebook', value: data.contactInfo.url_facebook, type: 'url' });
     }
-    if (data.contactInfo.url_instagram) {
+    if (data?.contactInfo?.url_instagram) {
       fields.push({ key: 'url_instagram', label: 'Instagram', value: data.contactInfo.url_instagram, type: 'url' });
     }
-    if (data.contactInfo.url_tiktok) {
+    if (data?.contactInfo?.url_tiktok) {
       fields.push({ key: 'url_tiktok', label: 'TikTok', value: data.contactInfo.url_tiktok, type: 'url' });
     }
-    if (data.contactInfo.url_linkedin) {
+    if (data?.contactInfo?.url_linkedin) {
       fields.push({ key: 'url_linkedin', label: 'LinkedIn', value: data.contactInfo.url_linkedin, type: 'url' });
     }
 
     return fields;
-  }, [data?.contactInfo]);
+  }, [data?.contactInfo, data?.personalInfo]);
 
   // Additional information management functions
   const updateAdditionalField = useCallback(async (field: string, value: string): Promise<boolean> => {
@@ -766,6 +805,7 @@ export const useUserProfile = (personId?: string) => {
     // Contact management functions
     updateContactField,
     updateContactAddress,
+    updatePersonName,
     deleteContactField,
     getAvailableContactFields,
     getCurrentContactFields,

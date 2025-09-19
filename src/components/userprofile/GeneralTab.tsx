@@ -10,7 +10,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import {
   Mail, Phone, MapPin, Facebook, Instagram, Pencil, X, User, Calendar, Briefcase, ShieldCheck,
   Home, Users, Heart, Languages, Plus, ExternalLink, Linkedin, Shield, FileText, CreditCard,
-  Globe, UserPlus, Edit2, Loader2, Smartphone, Copy, Check
+  Globe, UserPlus, Edit2, Loader2, Smartphone, Copy, Check, UserIcon
 } from 'lucide-react';
 import { FaTiktok } from 'react-icons/fa';
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -327,6 +327,7 @@ const ContactInformationSection: React.FC<{ personId?: string }> = ({ personId }
     loading,
     updateContactField,
     updateContactAddress,
+    updatePersonName,
     deleteContactField,
     getAvailableContactFields,
     getCurrentContactFields 
@@ -368,6 +369,16 @@ const ContactInformationSection: React.FC<{ personId?: string }> = ({ personId }
       });
       if (result) setEditingField(null);
       return result;
+    } else if (fieldKey === 'name') {
+      // Handle name as special case - need to parse components
+      const nameParts = value.split(' ').map(part => part.trim());
+      const result = await updatePersonName({
+        first_name: nameParts[0] || '',
+        middle_name: nameParts.length > 2 ? nameParts.slice(1, -1).join(' ') : '',
+        last_name: nameParts.length > 1 ? nameParts[nameParts.length - 1] : ''
+      });
+      if (result) setEditingField(null);
+      return result;
     } else {
       const result = await updateContactField(fieldKey, value);
       if (result) setEditingField(null);
@@ -401,7 +412,7 @@ const ContactInformationSection: React.FC<{ personId?: string }> = ({ personId }
   }
 
   const currentFields = getCurrentContactFields();
-  const availableFields = getAvailableContactFields().filter(field => field.key !== 'referred_by_name');
+  const availableFields = getAvailableContactFields();
 
   return (
     <SectionCard title="Contact Information">
@@ -718,6 +729,11 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
   const [state, setState] = useState('');
   const [zipCode, setZipCode] = useState('');
   
+  // Name component states for multi-field editing
+  const [firstName, setFirstName] = useState('');
+  const [middleName, setMiddleName] = useState('');
+  const [lastName, setLastName] = useState('');
+  
   useEffect(() => {
     setLocalValue(field.value);
     
@@ -729,6 +745,14 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
       setCity(parts[2] || '');
       setState(parts[3] || '');
       setZipCode(parts[4] || '');
+    }
+    
+    // Parse name fields if this is a name field
+    if (field.key === 'name' && field.value && field.value !== 'Not provided') {
+      const parts = field.value.split(' ').map(part => part.trim());
+      setFirstName(parts[0] || '');
+      setMiddleName(parts.length > 2 ? parts.slice(1, -1).join(' ') : '');
+      setLastName(parts.length > 1 ? parts[parts.length - 1] : '');
     }
   }, [field.value, field.key]);
   
@@ -801,6 +825,38 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
     return optionsMap[key] || [];
   };
 
+  const handleNameSave = async () => {
+    if (isSaving) return;
+    
+    setIsSaving(true);
+    
+    // Combine name parts
+    const nameParts = [firstName, middleName, lastName]
+      .map(part => part.trim())
+      .filter(Boolean);
+    
+    if (nameParts.length === 0) {
+      await onDelete();
+    } else {
+      await onSave(nameParts.join(' '));
+    }
+    setIsSaving(false);
+  };
+
+  const handleNameBlur = () => {
+    // Save name when any name field loses focus
+    const newName = [firstName, middleName, lastName]
+      .map(part => part.trim())
+      .filter(Boolean)
+      .join(' ');
+    
+    const originalName = field.value === 'Not provided' ? '' : field.value;
+    
+    if (newName !== originalName) {
+      handleNameSave();
+    }
+  };
+
   const handleAddressBlur = () => {
     // Save address when any address field loses focus
     const newAddress = [addressLine1, addressLine2, city, state, zipCode]
@@ -827,6 +883,7 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
 
   const getContactIcon = (key: string) => {
     const iconMap: { [key: string]: React.ComponentType<any> } = {
+      name: UserIcon,
       email: Mail,
       work_email: Mail,
       phone: Phone,
@@ -925,6 +982,47 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
           </Button>
         </div>
       </TooltipProvider>
+    );
+  }
+
+  // Name field editing mode with multiple inputs
+  if (field.key === 'name') {
+    return (
+      <div className="flex items-start space-x-3 p-3 rounded-lg bg-muted/50">
+        <div className={`p-2 rounded-full bg-muted`}>
+          <IconComponent className={`w-4 h-4 ${iconColor}`} />
+        </div>
+        <div className="flex-1 min-w-0 space-y-2">
+          <p className="text-sm font-medium text-foreground mb-1">{field.label}</p>
+          <div className="space-y-2">
+            <Input
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              onBlur={handleNameBlur}
+              placeholder="First Name"
+              className="text-sm"
+              disabled={isSaving}
+            />
+            <Input
+              value={middleName}
+              onChange={(e) => setMiddleName(e.target.value)}
+              onBlur={handleNameBlur}
+              placeholder="Middle Name (optional)"
+              className="text-sm"
+              disabled={isSaving}
+            />
+            <Input
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              onBlur={handleNameBlur}
+              placeholder="Last Name"
+              className="text-sm"
+              disabled={isSaving}
+            />
+          </div>
+        </div>
+        {isSaving && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+      </div>
     );
   }
 

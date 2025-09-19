@@ -1988,6 +1988,15 @@ export type Database = {
         }
         Returns: Json
       }
+      update_people_name_field: {
+        Args: {
+          p_first_name: string
+          p_last_name: string
+          p_middle_name: string
+          p_person_id: string
+        }
+        Returns: Json
+      }
       update_people_referrals_field: {
         Args: {
           p_field_name: string
