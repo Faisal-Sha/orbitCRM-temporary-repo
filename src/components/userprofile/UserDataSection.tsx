@@ -27,7 +27,16 @@ export const UserDataSection: React.FC<UserDataSectionProps> = ({ personId }) =>
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      const target = event.target as HTMLElement;
+      // Ignore clicks inside Radix Select portal/content so selection works
+      if (
+        target.closest('[data-radix-popper-content-wrapper]') ||
+        target.closest('[role="listbox"]')
+      ) {
+        return;
+      }
+
+      if (containerRef.current && !containerRef.current.contains(target)) {
         setEditingField(null);
       }
     };
