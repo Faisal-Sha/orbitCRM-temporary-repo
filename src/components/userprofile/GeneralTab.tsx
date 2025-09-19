@@ -284,6 +284,9 @@ const AdditionalInformationSection: React.FC<{ personId?: string }> = ({ personI
           )}
         </div>
 
+        {/* Show Referred By field as read-only if data exists */}
+        <ReferredByField personId={personId} />
+
         {/* Add Field Button and Dropdown */}
         {availableFields.length > 0 && !editingField && (
           <div className="relative" ref={dropdownRef}>
@@ -313,9 +316,6 @@ const AdditionalInformationSection: React.FC<{ personId?: string }> = ({ personI
             )}
           </div>
         )}
-
-        {/* Show Referred By field as read-only if data exists */}
-        <ReferredByField personId={personId} />
       </div>
     </SectionCard>
   );
