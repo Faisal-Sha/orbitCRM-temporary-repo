@@ -255,6 +255,9 @@ const AdditionalInformationSection: React.FC<{ personId?: string }> = ({ personI
             />
           ))}
           
+          {/* Show Referred By field within the grid if data exists */}
+          <ReferredByFieldInGrid personId={personId} />
+          
           {/* Add Field for new additional field */}
           {editingField && !currentFields.find(f => f.key === editingField) && (
             <EditableAdditionalField
@@ -283,9 +286,6 @@ const AdditionalInformationSection: React.FC<{ personId?: string }> = ({ personI
             />
           )}
         </div>
-
-        {/* Show Referred By field as read-only if data exists */}
-        <ReferredByField personId={personId} />
 
         {/* Add Field Button and Dropdown */}
         {availableFields.length > 0 && !editingField && (
@@ -1104,6 +1104,83 @@ const ReferredByField: React.FC<{ personId?: string }> = ({ personId }) => {
   return (
     <div className="flex items-center space-x-3 p-3 rounded-lg bg-muted/20">
       <div className="p-2 rounded-full bg-muted">
+        <UserPlus className="w-4 h-4 text-primary" />
+      </div>
+      <div className="flex-1">
+        <p className="text-sm font-medium text-foreground">Referred By</p>
+        <p className="text-sm text-muted-foreground">{referrerName}</p>
+      </div>
+    </div>
+  );
+};
+
+// ReferredByFieldInGrid component that fits within the grid layout
+const ReferredByFieldInGrid: React.FC<{ personId?: string }> = ({ personId }) => {
+  const [referrerName, setReferrerName] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchReferrerInfo = async () => {
+      if (!personId) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        
+        // First, get the referral record for this person
+        const { data: referralData, error: referralError } = await supabase
+          .from('people_referrals')
+          .select('referred_by_id, referred_by_name')
+          .eq('person_id', personId)
+          .eq('is_deleted', false)
+          .single();
+
+        if (referralError || !referralData) {
+          setReferrerName(null);
+          return;
+        }
+
+        // If there's a referred_by_id, fetch the person's name
+        if (referralData.referred_by_id) {
+          const { data: personData, error: personError } = await supabase
+            .from('people')
+            .select('first_name, last_name')
+            .eq('id', referralData.referred_by_id)
+            .eq('is_deleted', false)
+            .single();
+
+          if (personError || !personData) {
+            // Fall back to referred_by_name if available
+            setReferrerName(referralData.referred_by_name || null);
+          } else {
+            setReferrerName(`${personData.first_name} ${personData.last_name}`);
+          }
+        } else if (referralData.referred_by_name) {
+          // Use referred_by_name as fallback
+          setReferrerName(referralData.referred_by_name);
+        } else {
+          setReferrerName(null);
+        }
+      } catch (err) {
+        console.error('Error fetching referrer info:', err);
+        setReferrerName(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchReferrerInfo();
+  }, [personId]);
+
+  if (loading || !referrerName) {
+    return null;
+  }
+
+  return (
+    <div className="flex items-center space-x-3 p-3 rounded-lg border">
+      <div className="p-2 rounded-full bg-primary/10">
         <UserPlus className="w-4 h-4 text-primary" />
       </div>
       <div className="flex-1">
