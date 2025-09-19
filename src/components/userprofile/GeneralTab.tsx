@@ -85,15 +85,23 @@ const EditableDetailItem: React.FC<EditableDetailItemProps> = ({
   loading = false,
 }) => {
   const [isSaving, setIsSaving] = useState(false);
+  const [currentValue, setCurrentValue] = useState<string>(value);
+
+  useEffect(() => {
+    // Sync when parent value changes or when toggling edit mode
+    setCurrentValue(value);
+  }, [value, isEditing]);
   
   const handleChange = async (newValue: string) => {
     if (isSaving) return;
-    
     try {
       setIsSaving(true);
+      setCurrentValue(newValue); // reflect selection immediately
       await onChange(newValue);
     } catch (error) {
       console.error('Error updating field:', error);
+      // Revert on failure
+      setCurrentValue(value);
     } finally {
       setIsSaving(false);
     }
@@ -105,11 +113,11 @@ const EditableDetailItem: React.FC<EditableDetailItemProps> = ({
       <div className="flex-1">
         <p className="text-sm font-medium text-gray-700">{label}</p>
         {isEditing ? (
-          <Select value={value} onValueChange={handleChange} disabled={disabled || loading || isSaving}>
+          <Select value={currentValue} onValueChange={handleChange} disabled={disabled || loading || isSaving}>
             <SelectTrigger className="w-full mt-1">
               <SelectValue placeholder={loading || isSaving ? 'Loading…' : 'Select'} />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="z-50">
               {(loading || isSaving) ? (
                 <div className="px-3 py-2 text-xs text-muted-foreground">Loading…</div>
               ) : options.length > 0 ? (
