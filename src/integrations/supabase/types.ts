@@ -744,6 +744,7 @@ export type Database = {
           is_deleted: boolean
           last_name: string
           middle_name: string | null
+          staff_type_id: string | null
           status: string
           updated_at: string
           updated_by: string | null
@@ -762,6 +763,7 @@ export type Database = {
           is_deleted?: boolean
           last_name: string
           middle_name?: string | null
+          staff_type_id?: string | null
           status?: string
           updated_at?: string
           updated_by?: string | null
@@ -780,6 +782,7 @@ export type Database = {
           is_deleted?: boolean
           last_name?: string
           middle_name?: string | null
+          staff_type_id?: string | null
           status?: string
           updated_at?: string
           updated_by?: string | null
@@ -794,6 +797,13 @@ export type Database = {
             columns: ["user_account_id"]
             isOneToOne: false
             referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "people_staff_type_id_fkey"
+            columns: ["staff_type_id"]
+            isOneToOne: false
+            referencedRelation: "app_user_staff_types"
             referencedColumns: ["id"]
           },
           {
