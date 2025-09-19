@@ -362,13 +362,6 @@ const UserProfilePage = (props: UserProfilePageProps) => {
                             </svg>
                             <span className="text-sm">{selectedItemData.phone || "000-000-0000"}</span>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" className="text-purple-600">
-                              <circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="2"/>
-                              <path d="M6 20v-2a6 6 0 1112 0v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
-                            <span className="text-sm">Application Portal</span>
-                          </div>
                         </div>
                       </div>
 

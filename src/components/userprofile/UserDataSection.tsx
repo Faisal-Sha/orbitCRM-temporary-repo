@@ -87,7 +87,7 @@ export const UserDataSection: React.FC<UserDataSectionProps> = ({ personId }) =>
   return (
     <Card>
       <CardHeader>
-        <CardTitle>User Data</CardTitle>
+        <CardTitle className="text-lg font-semibold">User Data</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4" ref={containerRef}>

@@ -70,7 +70,7 @@ export const EmergencyContactSection: React.FC<EmergencyContactSectionProps> = (
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Emergency Contact</CardTitle>
+        <CardTitle className="text-lg font-semibold">Emergency Contact</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4" ref={containerRef}>
