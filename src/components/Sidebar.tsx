@@ -103,7 +103,7 @@ const Sidebar = ({ collapsed, toggleSidebar }: SidebarProps) => {
 
     // ↓↓↓ OWNER-ONLY ITEMS
     { title: "Owner", path: "/owner", icon: <Crown size={20} />, requiredPerm: "owner.view" },
-    { title: "Settings", path: "/settings", icon: <SettingsIcon size={20} />, requiredPerm: "owner.view" },
+    { title: "Settings", path: "/settings", icon: <SettingsIcon size={20} /> },
     
     { title: "Profile", path: "/profile", icon: <User size={20} /> },
     { title: "Help", path: "/help", icon: <HelpCircle size={20} /> },
