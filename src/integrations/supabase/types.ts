@@ -1960,7 +1960,7 @@ export type Database = {
           p_field_value: string
           p_person_id: string
         }
-        Returns: Json
+        Returns: undefined
       }
       update_people_identifiers_field: {
         Args: {
@@ -2048,17 +2048,6 @@ export type Database = {
     }
     Enums: {
       agency_status_enum: "active" | "inactive" | "deleted"
-      emergency_contact_relationship_enum:
-        | "spouse"
-        | "parent"
-        | "child"
-        | "sibling"
-        | "friend"
-        | "colleague"
-        | "neighbor"
-        | "relative"
-        | "partner"
-        | "other"
       emergency_relationship_enum:
         | "family member"
         | "colleague"
@@ -2226,18 +2215,6 @@ export const Constants = {
   public: {
     Enums: {
       agency_status_enum: ["active", "inactive", "deleted"],
-      emergency_contact_relationship_enum: [
-        "spouse",
-        "parent",
-        "child",
-        "sibling",
-        "friend",
-        "colleague",
-        "neighbor",
-        "relative",
-        "partner",
-        "other",
-      ],
       emergency_relationship_enum: [
         "family member",
         "colleague",
