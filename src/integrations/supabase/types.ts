@@ -1686,6 +1686,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      current_user_app_user_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       current_user_has_admin_role: {
         Args: Record<PropertyKey, never>
         Returns: boolean
@@ -2036,6 +2040,10 @@ export type Database = {
           | { p_role_id: string; p_role_label_id?: string; p_role_name: string }
           | { p_role_id: string; p_role_name: string }
         Returns: Json
+      }
+      user_can_access_agency: {
+        Args: { target_agency_id: string }
+        Returns: boolean
       }
     }
     Enums: {
