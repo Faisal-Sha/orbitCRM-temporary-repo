@@ -1690,6 +1690,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
+      current_user_has_agency_access: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       current_user_has_permission: {
         Args: { p_permission: string }
         Returns: boolean
