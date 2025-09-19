@@ -1179,13 +1179,13 @@ const ReferredByFieldInGrid: React.FC<{ personId?: string }> = ({ personId }) =>
   }
 
   return (
-    <div className="flex items-center space-x-3 p-3 rounded-lg border">
-      <div className="p-2 rounded-full bg-primary/10">
+    <div className="group flex items-center space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+      <div className="p-2 rounded-full bg-muted">
         <UserPlus className="w-4 h-4 text-primary" />
       </div>
-      <div className="flex-1">
+      <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-foreground">Referred By</p>
-        <p className="text-sm text-muted-foreground">{referrerName}</p>
+        <p className="text-sm text-muted-foreground truncate">{referrerName}</p>
       </div>
     </div>
   );
