@@ -2048,6 +2048,17 @@ export type Database = {
     }
     Enums: {
       agency_status_enum: "active" | "inactive" | "deleted"
+      emergency_contact_relationship_enum:
+        | "spouse"
+        | "parent"
+        | "child"
+        | "sibling"
+        | "friend"
+        | "colleague"
+        | "neighbor"
+        | "relative"
+        | "partner"
+        | "other"
       emergency_relationship_enum:
         | "family member"
         | "colleague"
@@ -2215,6 +2226,18 @@ export const Constants = {
   public: {
     Enums: {
       agency_status_enum: ["active", "inactive", "deleted"],
+      emergency_contact_relationship_enum: [
+        "spouse",
+        "parent",
+        "child",
+        "sibling",
+        "friend",
+        "colleague",
+        "neighbor",
+        "relative",
+        "partner",
+        "other",
+      ],
       emergency_relationship_enum: [
         "family member",
         "colleague",
