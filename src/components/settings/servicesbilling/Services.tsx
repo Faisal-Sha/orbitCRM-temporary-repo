@@ -9,15 +9,15 @@ import { DollarSign, Plus, Edit, Trash2 } from "lucide-react";
 import { useState } from "react";
 import DeleteConfirmationDialog from "@/components/settings/usersandroles/DeleteConfirmationDialog";
 import { useServices, type Service, type ServiceFormData } from "@/hooks/useServices";
+import { useCurrentUserAgency } from "@/hooks/useCurrentUserAgency";
 
 interface ServicesProps {
   onBack: () => void;
 }
 
 const Services = ({ onBack }: ServicesProps) => {
-  // TODO: Get actual agency_id from user context/session
-  const agencyId = "temp-agency-id"; // This should come from user's agency context
-  const { services, loading, addService, updateService, deleteService } = useServices(agencyId);
+  const { agencyId } = useCurrentUserAgency();
+  const { services, loading, addService, updateService, deleteService } = useServices(agencyId || undefined);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
