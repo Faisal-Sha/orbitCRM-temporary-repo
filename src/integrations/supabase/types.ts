@@ -1538,48 +1538,54 @@ export type Database = {
       settings_services_and_fees: {
         Row: {
           agency_id: string
+          billed_fee_type: Database["public"]["Enums"]["service_fee_type_enum"]
           created_at: string
           created_by: string | null
           deleted_at: string | null
           deleted_by: string | null
+          fee_billed: string | null
+          fee_payout: string | null
           id: string
           is_deleted: boolean
+          payout_fee_type: string | null
           service: string | null
           service_category: Database["public"]["Enums"]["service_category_enum"]
-          service_fee: string | null
-          service_fee_type: Database["public"]["Enums"]["service_fee_type_enum"]
           service_status: Database["public"]["Enums"]["service_status_enum"]
           updated_at: string
           updated_by: string | null
         }
         Insert: {
           agency_id: string
+          billed_fee_type?: Database["public"]["Enums"]["service_fee_type_enum"]
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
+          fee_billed?: string | null
+          fee_payout?: string | null
           id?: string
           is_deleted?: boolean
+          payout_fee_type?: string | null
           service?: string | null
           service_category?: Database["public"]["Enums"]["service_category_enum"]
-          service_fee?: string | null
-          service_fee_type?: Database["public"]["Enums"]["service_fee_type_enum"]
           service_status?: Database["public"]["Enums"]["service_status_enum"]
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
           agency_id?: string
+          billed_fee_type?: Database["public"]["Enums"]["service_fee_type_enum"]
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
+          fee_billed?: string | null
+          fee_payout?: string | null
           id?: string
           is_deleted?: boolean
+          payout_fee_type?: string | null
           service?: string | null
           service_category?: Database["public"]["Enums"]["service_category_enum"]
-          service_fee?: string | null
-          service_fee_type?: Database["public"]["Enums"]["service_fee_type_enum"]
           service_status?: Database["public"]["Enums"]["service_status_enum"]
           updated_at?: string
           updated_by?: string | null

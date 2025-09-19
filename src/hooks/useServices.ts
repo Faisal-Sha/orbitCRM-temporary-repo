@@ -7,8 +7,10 @@ export interface Service {
   service: string | null;
   service_category: 'adults' | 'teens';
   service_status: 'active' | 'inactive';
-  service_fee: string | null;
-  service_fee_type: 'per hour' | 'per session' | 'per day' | 'flat fee';
+  fee_billed: string | null;
+  billed_fee_type: 'per hour' | 'per session' | 'per day' | 'flat fee';
+  fee_payout: string | null;
+  payout_fee_type: 'per hour' | 'per session' | 'per day' | 'flat fee' | null;
   agency_id: string;
   created_at: string;
   updated_at: string;
@@ -17,8 +19,10 @@ export interface Service {
 export interface ServiceFormData {
   name: string;
   category: string;
-  fee: string;
-  feeType: string;
+  billedFee: string;
+  billedFeeType: string;
+  payoutFee: string;
+  payoutFeeType: string;
   status: string;
 }
 
@@ -47,7 +51,7 @@ export const useServices = (agencyId?: string) => {
         throw error;
       }
 
-      setServices(data || []);
+      setServices((data || []) as Service[]);
       setError(null);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
@@ -81,8 +85,10 @@ export const useServices = (agencyId?: string) => {
             service: formData.name,
             service_category: formData.category as Service['service_category'],
             service_status: formData.status as Service['service_status'],
-            service_fee: formData.fee,
-            service_fee_type: formData.feeType as Service['service_fee_type'],
+            fee_billed: formData.billedFee,
+            billed_fee_type: formData.billedFeeType as Service['billed_fee_type'],
+            fee_payout: formData.payoutFee,
+            payout_fee_type: formData.payoutFeeType as Service['payout_fee_type'] | null,
           }
         ])
         .select()
@@ -92,7 +98,7 @@ export const useServices = (agencyId?: string) => {
         throw error;
       }
 
-      setServices(prev => [data, ...prev]);
+      setServices(prev => [data as Service, ...prev]);
       toast({
         title: "Success",
         description: "Service added successfully",
@@ -115,8 +121,10 @@ export const useServices = (agencyId?: string) => {
           service: formData.name,
           service_category: formData.category as Service['service_category'],
           service_status: formData.status as Service['service_status'],
-          service_fee: formData.fee,
-          service_fee_type: formData.feeType as Service['service_fee_type'],
+          fee_billed: formData.billedFee,
+          billed_fee_type: formData.billedFeeType as Service['billed_fee_type'],
+          fee_payout: formData.payoutFee,
+          payout_fee_type: formData.payoutFeeType as Service['payout_fee_type'] | null,
           updated_at: new Date().toISOString(),
         })
         .eq('id', id)
@@ -129,7 +137,7 @@ export const useServices = (agencyId?: string) => {
 
       setServices(prev => 
         prev.map(service => 
-          service.id === id ? data : service
+          service.id === id ? data as Service : service
         )
       );
       

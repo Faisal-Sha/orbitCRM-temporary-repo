@@ -26,8 +26,10 @@ const Services = ({ onBack }: ServicesProps) => {
   const [formData, setFormData] = useState<ServiceFormData>({
     name: "",
     category: "adults",
-    fee: "",
-    feeType: "per hour",
+    billedFee: "",
+    billedFeeType: "per hour",
+    payoutFee: "",
+    payoutFeeType: "per hour",
     status: "active",
   });
 
@@ -48,7 +50,15 @@ const Services = ({ onBack }: ServicesProps) => {
 
   const handleAdd = () => {
     setEditingService(null);
-    setFormData({ name: "", category: "adults", fee: "", feeType: "per hour", status: "active" });
+    setFormData({ 
+      name: "", 
+      category: "adults", 
+      billedFee: "", 
+      billedFeeType: "per hour", 
+      payoutFee: "", 
+      payoutFeeType: "per hour", 
+      status: "active" 
+    });
     setIsModalOpen(true);
   };
 
@@ -57,8 +67,10 @@ const Services = ({ onBack }: ServicesProps) => {
     setFormData({
       name: service.service || "",
       category: service.service_category,
-      fee: service.service_fee || "",
-      feeType: service.service_fee_type,
+      billedFee: service.fee_billed || "",
+      billedFeeType: service.billed_fee_type,
+      payoutFee: service.fee_payout || "",
+      payoutFeeType: service.payout_fee_type || "per hour",
       status: service.service_status,
     });
     setIsModalOpen(true);
@@ -137,7 +149,13 @@ const Services = ({ onBack }: ServicesProps) => {
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <span>{getCategoryLabel(service.service_category)}</span>
                       <span>•</span>
-                      <span>${service.service_fee} {service.service_fee_type}</span>
+                      <span>Bill: ${service.fee_billed} {service.billed_fee_type}</span>
+                      {service.fee_payout && (
+                        <>
+                          <span>•</span>
+                          <span>Payout: ${service.fee_payout} {service.payout_fee_type}</span>
+                        </>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -192,18 +210,47 @@ const Services = ({ onBack }: ServicesProps) => {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="fee">Fee Amount ($)</Label>
+                <Label htmlFor="billedFee">Fee – Billed ($)</Label>
                 <Input
-                  id="fee"
+                  id="billedFee"
                   type="number"
-                  value={formData.fee}
-                  onChange={(e) => setFormData({ ...formData, fee: e.target.value })}
-                  placeholder="Enter fee amount"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={formData.billedFee}
+                  onChange={(e) => setFormData({ ...formData, billedFee: e.target.value })}
                 />
               </div>
               <div>
-                <Label htmlFor="feeType">Fee Type</Label>
-                <Select value={formData.feeType} onValueChange={(value) => setFormData({ ...formData, feeType: value })}>
+                <Label htmlFor="billedFeeType">Billed Fee Type</Label>
+                <Select value={formData.billedFeeType} onValueChange={(value) => setFormData({ ...formData, billedFeeType: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select fee type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {feeTypes.map((feeType) => (
+                      <SelectItem key={feeType.value} value={feeType.value}>
+                        {feeType.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="payoutFee">Fee - Payout ($)</Label>
+                <Input
+                  id="payoutFee"
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={formData.payoutFee}
+                  onChange={(e) => setFormData({ ...formData, payoutFee: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="payoutFeeType">Payout Fee Type</Label>
+                <Select value={formData.payoutFeeType} onValueChange={(value) => setFormData({ ...formData, payoutFeeType: value })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select fee type" />
                   </SelectTrigger>
@@ -237,7 +284,7 @@ const Services = ({ onBack }: ServicesProps) => {
             <Button variant="outline" onClick={() => setIsModalOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSubmit} disabled={!formData.name || !formData.category || !formData.fee}>
+            <Button onClick={handleSubmit} disabled={!formData.name || !formData.category || !formData.billedFee}>
               {editingService ? 'Update' : 'Add'} Service
             </Button>
           </DialogFooter>

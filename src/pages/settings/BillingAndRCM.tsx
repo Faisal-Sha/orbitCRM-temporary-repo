@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Calendar, DollarSign, Users, Shield } from "lucide-react";
+import { Calendar, DollarSign, Users, Shield, Loader2 } from "lucide-react";
 import { useState } from "react";
 import Insurances from "@/components/settings/servicesbilling/Insurances";
 import Services from "@/components/settings/servicesbilling/Services";
@@ -23,8 +23,8 @@ const BillingAndRCM = () => {
   // Get insurance data for display
   const { insurances, loading: insurancesLoading } = useInsurances();
 
-const { agencyId } = useCurrentUserAgency();
-const { services, loading: servicesLoading } = useServices(agencyId || undefined);
+  const { agencyId } = useCurrentUserAgency();
+  const { services, loading: servicesLoading } = useServices(agencyId || undefined);
 
   const payoutRules = [
     { service: "Case Management", category: "Adults", rule: "$30/hr" },
@@ -79,71 +79,99 @@ const { services, loading: servicesLoading } = useServices(agencyId || undefined
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Shield className="h-5 w-5" />
-              Accepted Insurances
-            </CardTitle>
-            <Button onClick={() => setShowInsurances(true)}>Manage</Button>
-          </div>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="h-5 w-5" />
+            Accepted Insurances ({insurancesLoading ? '...' : insurances.length})
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {insurancesLoading ? (
-              <p className="text-sm text-muted-foreground">Loading insurances...</p>
-            ) : insurances.length > 0 ? (
-              insurances.map((insurance, index) => (
-                <div key={index} className="flex items-center justify-between p-3 border rounded">
-                  <div>
-                    <p className="font-medium">{insurance.insurance_provider}</p>
-                    <p className="text-sm text-muted-foreground">{insurance.insurance_category}</p>
-                  </div>
-                  <Badge variant={insurance.insurance_status === 'active' ? 'default' : 'secondary'}>
-                    {insurance.insurance_status}
-                  </Badge>
+          {insurancesLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              Loading insurances...
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {insurances.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Shield className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No insurances configured yet</p>
+                  <p className="text-sm">Click "View All Insurances" to get started</p>
                 </div>
-              ))
-            ) : (
-              <p className="text-sm text-muted-foreground">No insurance providers configured yet. Click "Manage" to add some.</p>
-            )}
-          </div>
+              ) : (
+                <>
+                  {insurances.slice(0, 3).map((insurance) => (
+                    <div key={insurance.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div>
+                        <p className="font-medium">{insurance.insurance_provider}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {insurance.insurance_category}
+                        </p>
+                      </div>
+                      <Badge variant="outline">
+                        {insurance.insurance_status}
+                      </Badge>
+                    </div>
+                  ))}
+                  <div className="text-center pt-4">
+                    <Button variant="outline" onClick={() => setShowInsurances(true)}>
+                      View All Insurances
+                    </Button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5" />
-              Services & Fees
-            </CardTitle>
-            <Button onClick={() => setShowServices(true)}>Manage</Button>
-          </div>
+          <CardTitle className="flex items-center gap-2">
+            <DollarSign className="h-5 w-5" />
+            Services & Fees ({servicesLoading ? '...' : services.length})
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {servicesLoading ? (
-              <p className="text-sm text-muted-foreground">Loading services...</p>
-            ) : services.length > 0 ? (
-              services.map((service) => (
-                <div key={service.id} className="flex items-center justify-between p-3 border rounded">
-                  <div>
-                    <p className="font-medium">{service.service}</p>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <span>{service.service_category === 'adults' ? 'Adults' : 'Teens'}</span>
-                      <span>•</span>
-                      <span>${service.service_fee} {service.service_fee_type}</span>
-                    </div>
-                  </div>
-                  <Badge variant={service.service_status === 'active' ? 'default' : 'secondary'}>
-                    {service.service_status === 'active' ? 'Active' : 'Inactive'}
-                  </Badge>
+          {servicesLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              Loading services...
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {services.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <DollarSign className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No services configured yet</p>
+                  <p className="text-sm">Click "View All Services" to get started</p>
                 </div>
-              ))
-            ) : (
-              <p className="text-sm text-muted-foreground">No services configured yet. Click "Manage" to add some.</p>
-            )}
-          </div>
+              ) : (
+                <>
+                  {services.slice(0, 3).map((service) => (
+                    <div key={service.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div>
+                        <p className="font-medium">{service.service}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {service.service_category === 'adults' ? 'Adults' : 'Teens'} • 
+                          Bill: ${service.fee_billed} {service.billed_fee_type}
+                          {service.fee_payout && ` • Payout: $${service.fee_payout} ${service.payout_fee_type}`}
+                        </p>
+                      </div>
+                      <Badge variant="outline">
+                        {service.service_status}
+                      </Badge>
+                    </div>
+                  ))}
+                  <div className="text-center pt-4">
+                    <Button variant="outline" onClick={() => setShowServices(true)}>
+                      View All Services
+                    </Button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 
