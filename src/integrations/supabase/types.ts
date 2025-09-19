@@ -1960,7 +1960,7 @@ export type Database = {
           p_field_value: string
           p_person_id: string
         }
-        Returns: undefined
+        Returns: Json
       }
       update_people_identifiers_field: {
         Args: {
