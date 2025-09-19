@@ -8,6 +8,8 @@ import Insurances from "@/components/settings/servicesbilling/Insurances";
 import Services from "@/components/settings/servicesbilling/Services";
 import PayoutRules from "@/components/settings/servicesbilling/PayoutRules";
 import { useInsurances } from "@/hooks/useInsurances";
+import { useServices } from "@/hooks/useServices";
+import { useCurrentUserAgency } from "@/hooks/useCurrentUserAgency";
 
 const BillingAndRCM = () => {
   const [showInsurances, setShowInsurances] = useState(false);
@@ -21,7 +23,8 @@ const BillingAndRCM = () => {
   // Get insurance data for display
   const { insurances, loading: insurancesLoading } = useInsurances();
 
-  const services: { name: string; category: string; fee: string; feeType: string; status: string }[] = [];
+const { agencyId } = useCurrentUserAgency();
+const { services, loading: servicesLoading } = useServices(agencyId || undefined);
 
   const payoutRules = [
     { service: "Case Management", category: "Adults", rule: "$30/hr" },
@@ -119,21 +122,27 @@ const BillingAndRCM = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {services.map((service, index) => (
-              <div key={index} className="flex items-center justify-between p-3 border rounded">
-                <div>
-                  <p className="font-medium">{service.name}</p>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <span>{service.category}</span>
-                    <span>•</span>
-                    <span>{service.fee} {service.feeType}</span>
+            {servicesLoading ? (
+              <p className="text-sm text-muted-foreground">Loading services...</p>
+            ) : services.length > 0 ? (
+              services.map((service) => (
+                <div key={service.id} className="flex items-center justify-between p-3 border rounded">
+                  <div>
+                    <p className="font-medium">{service.service}</p>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <span>{service.service_category === 'adults' ? 'Adults' : 'Teens'}</span>
+                      <span>•</span>
+                      <span>${service.service_fee} {service.service_fee_type}</span>
+                    </div>
                   </div>
+                  <Badge variant={service.service_status === 'active' ? 'default' : 'secondary'}>
+                    {service.service_status === 'active' ? 'Active' : 'Inactive'}
+                  </Badge>
                 </div>
-                <Badge variant={service.status === 'Active' ? 'default' : 'secondary'}>
-                  {service.status}
-                </Badge>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground">No services configured yet. Click "Manage" to add some.</p>
+            )}
           </div>
         </CardContent>
       </Card>
