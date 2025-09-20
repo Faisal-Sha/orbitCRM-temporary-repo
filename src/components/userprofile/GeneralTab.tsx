@@ -426,6 +426,7 @@ const ContactInformationSection: React.FC<{ personId?: string }> = ({ personId }
               onEdit={() => handleEditField(field.key)}
               onSave={(value) => handleSaveField(field.key, value)}
               onDelete={() => handleDeleteField(field.key)}
+              onCancel={() => setEditingField(null)}
             />
           ))}
           
@@ -443,6 +444,7 @@ const ContactInformationSection: React.FC<{ personId?: string }> = ({ personId }
               onEdit={() => {}}
               onSave={(value) => handleSaveField(editingField, value)}
               onDelete={() => handleDeleteField(editingField)}
+              onCancel={() => setEditingField(null)}
             />
           )}
         </div>
@@ -724,7 +726,8 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
   isEditing, 
   onEdit, 
   onSave, 
-  onDelete 
+  onDelete,
+  onCancel
 }) => {
   const [localValue, setLocalValue] = useState(field.value);
   const [isSaving, setIsSaving] = useState(false);
@@ -780,12 +783,17 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
     
     setIsSaving(true);
     
+    let success = false;
     if (valueToSave.trim() === '') {
-      await onDelete();
+      success = await (onDelete ? onDelete() : Promise.resolve(false));
     } else {
-      await onSave(valueToSave.trim());
+      success = await onSave(valueToSave.trim());
     }
     setIsSaving(false);
+    if (success) {
+      setValidationError(null);
+      onCancel?.();
+    }
   };
 
   const handleAddressSave = async () => {
@@ -838,13 +846,27 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
       handleSave(localValue);
     } else {
       // If no changes were made, just exit editing mode without saving
-      onEdit(); // Close editing mode
+      onCancel?.(); // Close editing mode
     }
+  };
+
+  // Relationship options mapping (UI label -> backend value)
+  const RELATIONSHIP_OPTIONS: { label: string; value: string }[] = [
+    { label: 'Family member', value: 'family_member' },
+    { label: 'Colleague', value: 'colleague' },
+    { label: 'Friend', value: 'friend' },
+    { label: 'Organization', value: 'organization' },
+    { label: 'Other', value: 'other' },
+  ];
+
+  const getRelationshipLabel = (value?: string | null) => {
+    if (!value) return 'None';
+    return RELATIONSHIP_OPTIONS.find(o => o.value === value)?.label || 'None';
   };
 
   const getContactSelectOptions = (key: string): string[] => {
     const optionsMap: { [key: string]: string[] } = {
-      relationship: ['None', 'Family member', 'Colleague', 'Friend', 'Organization', 'Other'],
+      // Keep for future selects; do not include 'None' here
     };
     return optionsMap[key] || [];
   };
@@ -948,9 +970,11 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
   };
 
   if (!isEditing) {
-    const displayValue = field.type === 'url' && field.value ? truncateUrl(field.value) : 
-                        field.key === 'phone' || field.key === 'phone_home' ? getFormattedPhoneDisplay(field.value, country) : 
-                        field.value;
+    const displayValue = field.key === 'relationship'
+      ? getRelationshipLabel(field.value)
+      : (field.type === 'url' && field.value ? truncateUrl(field.value) : 
+         (field.key === 'phone' || field.key === 'phone_home' ? getFormattedPhoneDisplay(field.value, country) : 
+          field.value));
     
     return (
       <TooltipProvider>
@@ -1118,14 +1142,14 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
         <p className="text-sm font-medium text-foreground mb-1">{field.label}</p>
         {field.type === 'select' ? (
           <select
-            value={localValue}
+            value={localValue || ''}
             onChange={async (e) => {
               const newValue = e.target.value;
               setLocalValue(newValue);
               // Auto-save and close editing mode for relationship field
               if (field.key === 'relationship') {
-                await handleSave(newValue);
-                onEdit(); // Close editing mode
+                const success = await onSave(newValue);
+                if (success) onCancel?.();
               }
             }}
             onBlur={() => {
@@ -1140,9 +1164,15 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
             disabled={isSaving}
           >
             <option value="">None</option>
-            {getContactSelectOptions(field.key).map((option) => (
-              <option key={option} value={option}>{option}</option>
-            ))}
+            {field.key === 'relationship' ? (
+              RELATIONSHIP_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))
+            ) : (
+              getContactSelectOptions(field.key).map((option) => (
+                <option key={option} value={option}>{option}</option>
+              ))
+            )}
           </select>
         ) : (
           <input

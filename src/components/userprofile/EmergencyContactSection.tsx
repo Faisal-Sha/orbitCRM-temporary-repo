@@ -91,6 +91,7 @@ export const EmergencyContactSection: React.FC<EmergencyContactSectionProps> = (
                 return success;
               }}
               country={country || 'United States'}
+              onCancel={() => setEditingField(null)}
             />
           ))}
 
@@ -116,6 +117,7 @@ export const EmergencyContactSection: React.FC<EmergencyContactSectionProps> = (
                 return true;
               }}
               country={country || 'United States'}
+              onCancel={() => setEditingField(null)}
             />
           )}
 
