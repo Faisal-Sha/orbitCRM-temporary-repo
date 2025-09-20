@@ -63,13 +63,7 @@ interface ReferralInfo {
   referral_note?: string | null;
 }
 
-interface LeadInfo {
-  preferred_language?: string | null;
-  lead_goals?: string | null;
-  preferences?: string | null;
-  expectation?: string | null;
-  note?: string | null;
-}
+// LeadInfo interface removed - fields no longer exist in database
 
 interface RoleItem {
   role_id: string;
@@ -87,7 +81,7 @@ export interface UserProfileRaw {
   identifiers?: Identifiers | null;
   emergency_contact?: EmergencyContact | null;
   referral_info?: ReferralInfo | null;
-  lead_info?: LeadInfo | null;
+  lead_info?: Record<string, never> | null; // Empty object since lead fields were removed
   user_roles?: RoleItem[] | null;
   staff_types?: StaffTypeItem[] | null;
 }
@@ -107,7 +101,6 @@ export interface UserProfileDisplay {
     full_name: string;
   };
   referralInfo: ReferralInfo;
-  leadInfo: LeadInfo;
   userRoles: RoleItem[];     // array (possibly empty)
   staffTypes: StaffTypeItem[]; // array (possibly empty)
 }
@@ -182,7 +175,6 @@ export const useUserProfile = (personId?: string) => {
       const identifiers = payload.identifiers || {};
       const emergency = payload.emergency_contact || {};
       const referral = payload.referral_info || {};
-      const lead = payload.lead_info || {};
       const roles = (payload.user_roles || []) as RoleItem[];
       const staff = (payload.staff_types || []) as StaffTypeItem[];
 
@@ -242,13 +234,6 @@ export const useUserProfile = (personId?: string) => {
           referral_relationship: referral.referral_relationship ?? null,
           referred_by_name: referral.referred_by_name ?? null,
           referral_note: referral.referral_note ?? null,
-        },
-        leadInfo: {
-          preferred_language: lead.preferred_language ?? null,
-          lead_goals: lead.lead_goals ?? null,
-          preferences: lead.preferences ?? null,
-          expectation: lead.expectation ?? null,
-          note: lead.note ?? null,
         },
         userRoles: roles || [],
         staffTypes: staff || [],
@@ -573,7 +558,7 @@ export const useUserProfile = (personId?: string) => {
     if (!data?.additionalInfo) return allAdditionalFields;
 
     return allAdditionalFields.filter(field => {
-      const value = (data as any)[field.key] || (data.additionalInfo as any)?.[field.key] || (data.leadInfo as any)?.[field.key] || (data.referralInfo as any)?.[field.key];
+      const value = (data as any)[field.key] || (data.additionalInfo as any)?.[field.key] || (data.referralInfo as any)?.[field.key];
       return !value || value === 'Not provided' || value === 'N/A';
     });
   }, [data]);
