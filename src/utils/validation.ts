@@ -52,23 +52,43 @@ export const getPhoneValidationError = (phone: string, country: string = 'United
 // URL validation functions for social media platforms
 export const validateFacebookUrl = (url: string): boolean => {
   if (!url.trim()) return true; // Empty URLs are allowed
-  const urlLower = url.toLowerCase();
-  return urlLower.includes('facebook.com') || urlLower.includes('fb.com');
+  try {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname.toLowerCase();
+    return hostname.includes('facebook.com') || hostname.includes('fb.com');
+  } catch {
+    return false; // Invalid URL format
+  }
 };
 
 export const validateInstagramUrl = (url: string): boolean => {
   if (!url.trim()) return true; // Empty URLs are allowed
-  return url.toLowerCase().includes('instagram.com');
+  try {
+    const urlObj = new URL(url);
+    return urlObj.hostname.toLowerCase().includes('instagram.com');
+  } catch {
+    return false; // Invalid URL format
+  }
 };
 
 export const validateTikTokUrl = (url: string): boolean => {
   if (!url.trim()) return true; // Empty URLs are allowed
-  return url.toLowerCase().includes('tiktok.com');
+  try {
+    const urlObj = new URL(url);
+    return urlObj.hostname.toLowerCase().includes('tiktok.com');
+  } catch {
+    return false; // Invalid URL format
+  }
 };
 
 export const validateLinkedInUrl = (url: string): boolean => {
   if (!url.trim()) return true; // Empty URLs are allowed
-  return url.toLowerCase().includes('linkedin.com');
+  try {
+    const urlObj = new URL(url);
+    return urlObj.hostname.toLowerCase().includes('linkedin.com');
+  } catch {
+    return false; // Invalid URL format
+  }
 };
 
 // Get validation error message for URLs
@@ -77,13 +97,13 @@ export const getUrlValidationError = (url: string, platform: string): string | n
   
   switch (platform) {
     case 'facebook':
-      return validateFacebookUrl(url) ? null : 'Please enter a valid Facebook URL (must contain facebook.com or fb.com)';
+      return validateFacebookUrl(url) ? null : 'Please enter a valid Facebook URL (e.g., https://facebook.com/username)';
     case 'instagram':
-      return validateInstagramUrl(url) ? null : 'Please enter a valid Instagram URL (must contain instagram.com)';
+      return validateInstagramUrl(url) ? null : 'Please enter a valid Instagram URL (e.g., https://instagram.com/username)';
     case 'tiktok':
-      return validateTikTokUrl(url) ? null : 'Please enter a valid TikTok URL (must contain tiktok.com)';
+      return validateTikTokUrl(url) ? null : 'Please enter a valid TikTok URL (e.g., https://tiktok.com/@username)';
     case 'linkedin':
-      return validateLinkedInUrl(url) ? null : 'Please enter a valid LinkedIn URL (must contain linkedin.com)';
+      return validateLinkedInUrl(url) ? null : 'Please enter a valid LinkedIn URL (e.g., https://linkedin.com/in/username)';
     default:
       return null;
   }

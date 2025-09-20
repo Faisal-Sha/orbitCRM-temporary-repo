@@ -852,7 +852,7 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
 
   // Relationship options mapping (UI label -> backend value)
   const RELATIONSHIP_OPTIONS: { label: string; value: string }[] = [
-    { label: 'Family member', value: 'family_member' },
+    { label: 'Family member', value: 'family member' },
     { label: 'Colleague', value: 'colleague' },
     { label: 'Friend', value: 'friend' },
     { label: 'Organization', value: 'organization' },
