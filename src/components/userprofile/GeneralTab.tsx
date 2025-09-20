@@ -582,7 +582,7 @@ const EditableAdditionalField: React.FC<{
       ethnicity_identity: Users,
       marital_status: Heart,
       living_situation: Home,
-      preferred_language: Globe,
+      
       referred_by_name: UserPlus,
     };
     return iconMap[key] || FileText;
@@ -594,7 +594,7 @@ const EditableAdditionalField: React.FC<{
       ethnicity_identity: ['White', 'Black or African American', 'Hispanic or Latino', 'Asian', 'Native American', 'Pacific Islander', 'Other', 'Prefer not to say'],
       marital_status: ['Single', 'Married', 'Divorced', 'Widowed', 'Separated', 'Domestic Partnership'],
       living_situation: ['Independent', 'With Family', 'Assisted Living', 'Nursing Home', 'Group Home', 'Other'],
-      preferred_language: ['English', 'Spanish', 'French', 'German', 'Italian', 'Portuguese', 'Chinese', 'Japanese', 'Korean', 'Arabic', 'Russian', 'Other'],
+      
     };
     return optionsMap[key] || [];
   };

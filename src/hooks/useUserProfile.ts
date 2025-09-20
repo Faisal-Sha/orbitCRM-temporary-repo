@@ -503,14 +503,6 @@ export const useUserProfile = (personId?: string) => {
         });
         result = response.data;
         error = response.error;
-      } else if (field === 'preferred_language') {
-        const response = await supabase.rpc('update_people_leads_field' as any, {
-          p_person_id: personId,
-          p_field_name: field,
-          p_field_value: value
-        });
-        result = response.data;
-        error = response.error;
       } else if (field === 'referred_by_name') {
         const response = await supabase.rpc('update_people_referrals_field' as any, {
           p_person_id: personId,
@@ -575,7 +567,6 @@ export const useUserProfile = (personId?: string) => {
       { key: 'ethnicity_identity', label: 'Ethnicity', type: 'select' as const },
       { key: 'marital_status', label: 'Marital Status', type: 'select' as const },
       { key: 'living_situation', label: 'Living Situation', type: 'select' as const },
-      { key: 'preferred_language', label: 'Preferred Language', type: 'select' as const },
       { key: 'referred_by_name', label: 'Referred By', type: 'text' as const },
     ];
     
@@ -601,7 +592,7 @@ export const useUserProfile = (personId?: string) => {
       { key: 'ethnicity_identity', label: 'Ethnicity', type: 'select' as const },
       { key: 'marital_status', label: 'Marital Status', type: 'select' as const },
       { key: 'living_situation', label: 'Living Situation', type: 'select' as const },
-      { key: 'preferred_language', label: 'Preferred Language', type: 'select' as const },
+      
       { key: 'referred_by_name', label: 'Referred By', type: 'text' as const },
     ];
 
@@ -610,8 +601,6 @@ export const useUserProfile = (personId?: string) => {
         let value = '';
         if (['date_of_birth', 'ssn_number', 'npi_number', 'insurance_provider', 'insurance_number', 'insurance_expiration_date', 'gender_identity', 'ethnicity_identity', 'marital_status', 'living_situation'].includes(field.key)) {
           value = (data.additionalInfo as any)?.[field.key] || '';
-        } else if (field.key === 'preferred_language') {
-          value = data.leadInfo?.preferred_language || '';
         } else if (field.key === 'referred_by_name') {
           value = data.referralInfo?.referred_by_name || '';
         }
