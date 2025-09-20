@@ -48,3 +48,43 @@ export const getPhoneValidationError = (phone: string, country: string = 'United
   if (!phone.trim()) return null;
   return validatePhoneNumber(phone, country) ? null : `Please enter a valid ${country} phone number`;
 };
+
+// URL validation functions for social media platforms
+export const validateFacebookUrl = (url: string): boolean => {
+  if (!url.trim()) return true; // Empty URLs are allowed
+  const urlLower = url.toLowerCase();
+  return urlLower.includes('facebook.com') || urlLower.includes('fb.com');
+};
+
+export const validateInstagramUrl = (url: string): boolean => {
+  if (!url.trim()) return true; // Empty URLs are allowed
+  return url.toLowerCase().includes('instagram.com');
+};
+
+export const validateTikTokUrl = (url: string): boolean => {
+  if (!url.trim()) return true; // Empty URLs are allowed
+  return url.toLowerCase().includes('tiktok.com');
+};
+
+export const validateLinkedInUrl = (url: string): boolean => {
+  if (!url.trim()) return true; // Empty URLs are allowed
+  return url.toLowerCase().includes('linkedin.com');
+};
+
+// Get validation error message for URLs
+export const getUrlValidationError = (url: string, platform: string): string | null => {
+  if (!url.trim()) return null;
+  
+  switch (platform) {
+    case 'facebook':
+      return validateFacebookUrl(url) ? null : 'Please enter a valid Facebook URL (must contain facebook.com or fb.com)';
+    case 'instagram':
+      return validateInstagramUrl(url) ? null : 'Please enter a valid Instagram URL (must contain instagram.com)';
+    case 'tiktok':
+      return validateTikTokUrl(url) ? null : 'Please enter a valid TikTok URL (must contain tiktok.com)';
+    case 'linkedin':
+      return validateLinkedInUrl(url) ? null : 'Please enter a valid LinkedIn URL (must contain linkedin.com)';
+    default:
+      return null;
+  }
+};

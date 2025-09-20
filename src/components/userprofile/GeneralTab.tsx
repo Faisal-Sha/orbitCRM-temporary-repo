@@ -17,7 +17,7 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import { useUserRoles } from '@/hooks/useUserRoles';
 import { useStaffTypes } from '@/hooks/useStaffTypes';
 import { useOrganizationCountry } from '@/hooks/useOrganizationCountry';
-import { validateEmail, validatePhoneNumber, getEmailValidationError, getPhoneValidationError } from '@/utils/validation';
+import { validateEmail, validatePhoneNumber, getEmailValidationError, getPhoneValidationError, getUrlValidationError } from '@/utils/validation';
 import { formatPhoneNumber, getFormattedPhoneDisplay } from '@/utils/phoneFormatting';
 import { supabase } from '@/integrations/supabase/client';
 import { EmergencyContactSection } from './EmergencyContactSection';
@@ -590,10 +590,10 @@ const EditableAdditionalField: React.FC<{
 
   const getSelectOptions = (key: string): string[] => {
     const optionsMap: { [key: string]: string[] } = {
-      gender_identity: ['Male', 'Female', 'Non-binary', 'Other', 'Prefer not to say'],
-      ethnicity_identity: ['White', 'Black or African American', 'Hispanic or Latino', 'Asian', 'Native American', 'Pacific Islander', 'Other', 'Prefer not to say'],
-      marital_status: ['Single', 'Married', 'Divorced', 'Widowed', 'Separated', 'Domestic Partnership'],
-      living_situation: ['Independent', 'With Family', 'Assisted Living', 'Nursing Home', 'Group Home', 'Other'],
+      gender_identity: ['None', 'Male', 'Female', 'Non-binary', 'Other', 'Prefer not to say'],
+      ethnicity_identity: ['None', 'White', 'Black or African American', 'Hispanic or Latino', 'Asian', 'Native American', 'Pacific Islander', 'Other', 'Prefer not to say'],
+      marital_status: ['None', 'Single', 'Married', 'Divorced', 'Widowed', 'Separated', 'Domestic Partnership'],
+      living_situation: ['None', 'Independent', 'With Family', 'Assisted Living', 'Nursing Home', 'Group Home', 'Other'],
       
     };
     return optionsMap[key] || [];
@@ -680,12 +680,23 @@ const EditableAdditionalField: React.FC<{
           <select
             ref={selectRef}
             value={value}
-            onChange={(e) => setValue(e.target.value)}
-            onBlur={handleBlur}
+            onChange={(e) => {
+              const newValue = e.target.value;
+              setValue(newValue);
+              // Auto-save and close editing mode for specific dropdown fields
+              if (['gender_identity', 'ethnicity_identity', 'marital_status', 'living_situation'].includes(field.key)) {
+                handleSave(newValue);
+              }
+            }}
+            onBlur={() => {
+              // Only use blur for fields that don't auto-save
+              if (!['gender_identity', 'ethnicity_identity', 'marital_status', 'living_situation'].includes(field.key)) {
+                handleBlur();
+              }
+            }}
             className="w-full px-2 py-1 text-sm bg-background border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary/20"
             disabled={loading}
           >
-            <option value="">Select {field.label}</option>
             {getSelectOptions(field.key).map((option) => (
               <option key={option} value={option}>{option}</option>
             ))}
@@ -803,6 +814,14 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
         error = getEmailValidationError(localValue);
       } else if (field.key === 'phone' || field.key === 'phone_home' || field.key === 'phone_number') {
         error = getPhoneValidationError(localValue, country);
+      } else if (field.key === 'url_facebook') {
+        error = getUrlValidationError(localValue, 'facebook');
+      } else if (field.key === 'url_instagram') {
+        error = getUrlValidationError(localValue, 'instagram');
+      } else if (field.key === 'url_tiktok') {
+        error = getUrlValidationError(localValue, 'tiktok');
+      } else if (field.key === 'url_linkedin') {
+        error = getUrlValidationError(localValue, 'linkedin');
       }
     }
     
