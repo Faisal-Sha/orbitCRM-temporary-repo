@@ -337,7 +337,7 @@ const ContactInformationSection: React.FC<{ personId?: string }> = ({ personId }
   const [showAddField, setShowAddField] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Add click-outside behavior for dropdown
+  // Add click-outside behavior for dropdown only
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -515,7 +515,7 @@ const EditableAdditionalField: React.FC<{
 }> = ({ field, isEditing, onEdit, onSave, onDelete }) => {
   const [value, setValue] = useState(field.value);
   const [loading, setLoading] = useState(false);
-  const [originalValue] = useState(field.value);
+  const [originalValue, setOriginalValue] = useState(field.value);
   const inputRef = useRef<HTMLInputElement>(null);
   const selectRef = useRef<HTMLSelectElement>(null);
 
@@ -530,10 +530,18 @@ const EditableAdditionalField: React.FC<{
     }
   }, [isEditing]);
 
+  // Reset original value at the start of each edit session
+  useEffect(() => {
+    if (isEditing) {
+      setOriginalValue(field.value);
+    }
+  }, [isEditing, field.value]);
+
   const handleSave = async (saveValue: string) => {
     setLoading(true);
-    await onSave(saveValue);
+    const success = await onSave(saveValue);
     setLoading(false);
+    return success;
   };
 
   const handleBlur = () => {
@@ -696,6 +704,16 @@ const EditableAdditionalField: React.FC<{
                 handleBlur();
               }
             }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleBlur();
+              } else if (e.key === 'Escape') {
+                e.preventDefault();
+                setValue(originalValue);
+                onEdit(); // Close editing mode
+              }
+            }}
             className="w-full px-2 py-1 text-sm bg-background border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary/20"
             disabled={loading}
           >
@@ -710,6 +728,16 @@ const EditableAdditionalField: React.FC<{
             value={value}
             onChange={(e) => setValue(e.target.value)}
             onBlur={handleBlur}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleBlur();
+              } else if (e.key === 'Escape') {
+                e.preventDefault();
+                setValue(originalValue);
+                onEdit(); // Close editing mode
+              }
+            }}
             className="w-full px-2 py-1 text-sm bg-background border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary/20"
             placeholder={`Enter ${field.label.toLowerCase()}`}
             disabled={loading}
