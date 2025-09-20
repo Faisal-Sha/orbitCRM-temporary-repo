@@ -559,7 +559,7 @@ export const useUserProfile = (personId?: string) => {
 
     return allAdditionalFields.filter(field => {
       const value = (data as any)[field.key] || (data.additionalInfo as any)?.[field.key] || (data.referralInfo as any)?.[field.key];
-      return !value || value === 'Not provided' || value === 'N/A';
+      return !value || value === 'Not provided' || value === 'N/A' || value === 'None';
     });
   }, [data]);
 
@@ -595,7 +595,7 @@ export const useUserProfile = (personId?: string) => {
           value: value || ''
         };
       })
-      .filter(field => field.value && field.value !== 'Not provided' && field.value !== 'N/A');
+      .filter(field => field.value && field.value !== 'Not provided' && field.value !== 'N/A' && field.value !== 'None');
   }, [data]);
 
   const refetch = async () => {
@@ -681,12 +681,12 @@ export const useUserProfile = (personId?: string) => {
     if (!data?.emergencyContact) return allFields;
 
     const existingFields = new Set();
-    // Only add to existing fields if the value is not null/empty
-    if (data.emergencyContact.first_name) existingFields.add('first_name');
-    if (data.emergencyContact.last_name) existingFields.add('last_name');
-    if (data.emergencyContact.email) existingFields.add('email');
-    if (data.emergencyContact.phone_number) existingFields.add('phone_number');
-    if (data.emergencyContact.relationship) existingFields.add('relationship');
+    // Only add to existing fields if the value is not null/empty and not "None"
+    if (data.emergencyContact.first_name && data.emergencyContact.first_name !== 'None') existingFields.add('first_name');
+    if (data.emergencyContact.last_name && data.emergencyContact.last_name !== 'None') existingFields.add('last_name');
+    if (data.emergencyContact.email && data.emergencyContact.email !== 'None') existingFields.add('email');
+    if (data.emergencyContact.phone_number && data.emergencyContact.phone_number !== 'None') existingFields.add('phone_number');
+    if (data.emergencyContact.relationship && data.emergencyContact.relationship !== 'None') existingFields.add('relationship');
 
     const availableFields = allFields.filter(field => !existingFields.has(field.key));
     
@@ -700,19 +700,19 @@ export const useUserProfile = (personId?: string) => {
 
     const fields: ContactField[] = [];
     
-    if (data.emergencyContact.first_name) {
+    if (data.emergencyContact.first_name && data.emergencyContact.first_name !== 'None') {
       fields.push({ key: 'first_name', label: 'First Name', value: data.emergencyContact.first_name, type: 'text' });
     }
-    if (data.emergencyContact.last_name) {
+    if (data.emergencyContact.last_name && data.emergencyContact.last_name !== 'None') {
       fields.push({ key: 'last_name', label: 'Last Name', value: data.emergencyContact.last_name, type: 'text' });
     }
-    if (data.emergencyContact.email) {
+    if (data.emergencyContact.email && data.emergencyContact.email !== 'None') {
       fields.push({ key: 'email', label: 'Email', value: data.emergencyContact.email, type: 'text' });
     }
-    if (data.emergencyContact.phone_number) {
+    if (data.emergencyContact.phone_number && data.emergencyContact.phone_number !== 'None') {
       fields.push({ key: 'phone_number', label: 'Phone', value: data.emergencyContact.phone_number, type: 'text' });
     }
-    if (data.emergencyContact.relationship) {
+    if (data.emergencyContact.relationship && data.emergencyContact.relationship !== 'None') {
       fields.push({ key: 'relationship', label: 'Relationship', value: data.emergencyContact.relationship, type: 'select' });
     }
 

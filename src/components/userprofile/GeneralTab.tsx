@@ -825,21 +825,26 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
       }
     }
     
-    setValidationError(error);
+    if (error) {
+      setValidationError(error);
+      return;
+    }
     
-    // Only save if value has actually changed and there are no validation errors
-    if (localValue !== originalValue && !error) {
+    // Clear any existing validation error
+    setValidationError(null);
+    
+    // Only save if value has actually changed
+    if (localValue !== originalValue) {
       handleSave(localValue);
-    } else if (localValue === originalValue) {
+    } else {
       // If no changes were made, just exit editing mode without saving
-      setValidationError(null);
       onEdit(); // Close editing mode
     }
   };
 
   const getContactSelectOptions = (key: string): string[] => {
     const optionsMap: { [key: string]: string[] } = {
-      relationship: ['family member', 'colleague', 'friend', 'organization', 'other'],
+      relationship: ['None', 'Family member', 'Colleague', 'Friend', 'Organization', 'Other'],
     };
     return optionsMap[key] || [];
   };
@@ -1114,14 +1119,27 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
         {field.type === 'select' ? (
           <select
             value={localValue}
-            onChange={(e) => setLocalValue(e.target.value)}
-            onBlur={handleBlur}
+            onChange={async (e) => {
+              const newValue = e.target.value;
+              setLocalValue(newValue);
+              // Auto-save and close editing mode for relationship field
+              if (field.key === 'relationship') {
+                await handleSave(newValue);
+                onEdit(); // Close editing mode
+              }
+            }}
+            onBlur={() => {
+              // Only use blur for fields that don't auto-save
+              if (field.key !== 'relationship') {
+                handleBlur();
+              }
+            }}
             className={`w-full px-2 py-1 text-sm bg-background border rounded focus:outline-none focus:ring-2 focus:ring-primary/20 ${
               validationError ? 'border-red-500' : 'border-border'
             }`}
             disabled={isSaving}
           >
-            <option value="">Select {field.label}</option>
+            <option value="">None</option>
             {getContactSelectOptions(field.key).map((option) => (
               <option key={option} value={option}>{option}</option>
             ))}
