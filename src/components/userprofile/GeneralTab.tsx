@@ -731,7 +731,7 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
 }) => {
   const [localValue, setLocalValue] = useState(field.value);
   const [isSaving, setIsSaving] = useState(false);
-  const [originalValue] = useState(field.value);
+  const [originalValue, setOriginalValue] = useState(field.value);
   const [validationError, setValidationError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { country } = useOrganizationCountry();
@@ -775,6 +775,13 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
       inputRef.current.focus();
     }
   }, [isEditing]);
+
+  // Reset original value at the start of each edit session
+  useEffect(() => {
+    if (isEditing) {
+      setOriginalValue(field.value);
+    }
+  }, [isEditing, field.value]);
 
   // Validation on blur only - don't validate while typing
 
@@ -1047,6 +1054,19 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
               onBlur={handleNameBlur}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleNameSave();
+                } else if (e.key === 'Escape') {
+                  e.preventDefault();
+                  const parts = field.value && field.value !== 'Not provided' ? field.value.split(' ').map(p => p.trim()) : [];
+                  setFirstName(parts[0] || '');
+                  setMiddleName(parts.length > 2 ? parts.slice(1, -1).join(' ') : '');
+                  setLastName(parts.length > 1 ? parts[parts.length - 1] : '');
+                  onCancel?.();
+                }
+              }}
               placeholder="First Name"
               className="text-sm"
               disabled={isSaving}
@@ -1055,6 +1075,19 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
               value={middleName}
               onChange={(e) => setMiddleName(e.target.value)}
               onBlur={handleNameBlur}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleNameSave();
+                } else if (e.key === 'Escape') {
+                  e.preventDefault();
+                  const parts = field.value && field.value !== 'Not provided' ? field.value.split(' ').map(p => p.trim()) : [];
+                  setFirstName(parts[0] || '');
+                  setMiddleName(parts.length > 2 ? parts.slice(1, -1).join(' ') : '');
+                  setLastName(parts.length > 1 ? parts[parts.length - 1] : '');
+                  onCancel?.();
+                }
+              }}
               placeholder="Middle Name (optional)"
               className="text-sm"
               disabled={isSaving}
@@ -1063,6 +1096,19 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
               onBlur={handleNameBlur}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleNameSave();
+                } else if (e.key === 'Escape') {
+                  e.preventDefault();
+                  const parts = field.value && field.value !== 'Not provided' ? field.value.split(' ').map(p => p.trim()) : [];
+                  setFirstName(parts[0] || '');
+                  setMiddleName(parts.length > 2 ? parts.slice(1, -1).join(' ') : '');
+                  setLastName(parts.length > 1 ? parts[parts.length - 1] : '');
+                  onCancel?.();
+                }
+              }}
               placeholder="Last Name"
               className="text-sm"
               disabled={isSaving}
@@ -1187,6 +1233,17 @@ const EditableContactField: React.FC<EditableContactFieldProps> = ({
               }
             }}
             onBlur={handleBlur}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleBlur();
+              } else if (e.key === 'Escape') {
+                e.preventDefault();
+                setLocalValue(originalValue);
+                setValidationError(null);
+                onCancel?.();
+              }
+            }}
             className={`w-full px-2 py-1 text-sm bg-background border rounded focus:outline-none focus:ring-2 focus:ring-primary/20 ${
               validationError ? 'border-red-500' : 'border-border'
             }`}

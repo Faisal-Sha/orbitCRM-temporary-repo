@@ -32,14 +32,15 @@ export const EmergencyContactSection: React.FC<EmergencyContactSectionProps> = (
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setEditingField(null);
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setShowAddField(false);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
+    if (showAddField) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [showAddField]);
 
   const handleAddField = (fieldKey: string) => {
     setEditingField(fieldKey);
