@@ -815,6 +815,84 @@ export type Database = {
           },
         ]
       }
+      people_assign_assessor: {
+        Row: {
+          agency_id: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          id: string
+          is_deleted: boolean
+          person_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          agency_id: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          id?: string
+          is_deleted?: boolean
+          person_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          agency_id?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          id?: string
+          is_deleted?: boolean
+          person_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      people_assign_provider: {
+        Row: {
+          agency_id: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          id: string
+          is_deleted: boolean
+          person_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          agency_id: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          id?: string
+          is_deleted?: boolean
+          person_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          agency_id?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          id?: string
+          is_deleted?: boolean
+          person_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       people_assign_service: {
         Row: {
           created_at: string
@@ -1017,6 +1095,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      people_clients: {
+        Row: {
+          agency_id: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          id: string
+          is_deleted: boolean
+          person_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          agency_id: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          id?: string
+          is_deleted?: boolean
+          person_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          agency_id?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          id?: string
+          is_deleted?: boolean
+          person_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
       }
       people_contacts: {
         Row: {
