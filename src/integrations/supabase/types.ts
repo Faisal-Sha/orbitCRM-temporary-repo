@@ -1250,9 +1250,16 @@ export type Database = {
           created_by: string | null
           deleted_at: string | null
           deleted_by: string | null
+          expectation: string | null
           id: string
           is_deleted: boolean
+          lead_goals: string | null
+          lead_source: string | null
+          note: string | null
           person_id: string
+          preferences: string | null
+          preferred_language: string | null
+          service_id: string | null
           updated_at: string
           updated_by: string | null
         }
@@ -1262,9 +1269,16 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
+          expectation?: string | null
           id?: string
           is_deleted?: boolean
+          lead_goals?: string | null
+          lead_source?: string | null
+          note?: string | null
           person_id: string
+          preferences?: string | null
+          preferred_language?: string | null
+          service_id?: string | null
           updated_at?: string
           updated_by?: string | null
         }
@@ -1274,9 +1288,16 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
+          expectation?: string | null
           id?: string
           is_deleted?: boolean
+          lead_goals?: string | null
+          lead_source?: string | null
+          note?: string | null
           person_id?: string
+          preferences?: string | null
+          preferred_language?: string | null
+          service_id?: string | null
           updated_at?: string
           updated_by?: string | null
         }
@@ -1772,11 +1793,15 @@ export type Database = {
         Returns: {
           created_at: string
           email: string
+          expectation: string
           first_name: string
           last_name: string
+          lead_goals: string
           lead_id: string
+          note: string
           person_id: string
           phone: string
+          preferences: string
         }[]
       }
       get_organization_settings: {

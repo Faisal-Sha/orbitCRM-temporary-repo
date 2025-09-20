@@ -64,7 +64,11 @@ interface ReferralInfo {
 }
 
 interface LeadInfo {
-  // No lead-specific fields remain after column removal
+  preferred_language?: string | null;
+  lead_goals?: string | null;
+  preferences?: string | null;
+  expectation?: string | null;
+  note?: string | null;
 }
 
 interface RoleItem {
@@ -240,7 +244,11 @@ export const useUserProfile = (personId?: string) => {
           referral_note: referral.referral_note ?? null,
         },
         leadInfo: {
-          // No lead-specific fields remain after column removal
+          preferred_language: lead.preferred_language ?? null,
+          lead_goals: lead.lead_goals ?? null,
+          preferences: lead.preferences ?? null,
+          expectation: lead.expectation ?? null,
+          note: lead.note ?? null,
         },
         userRoles: roles || [],
         staffTypes: staff || [],

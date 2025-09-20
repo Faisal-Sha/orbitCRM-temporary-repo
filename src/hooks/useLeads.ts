@@ -9,6 +9,10 @@ export interface LeadRecord {
   email: string | null;
   phone: string | null;
   created_at: string;
+  lead_goals: string | null;
+  preferences: string | null;
+  expectation: string | null;
+  note: string | null;
 }
 
 export const useLeads = () => {
