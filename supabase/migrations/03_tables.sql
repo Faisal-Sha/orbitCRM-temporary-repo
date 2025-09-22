@@ -160,6 +160,7 @@ CREATE TABLE public.people (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   user_account_id uuid,
   user_role_id uuid,
+  staff_type_id uuid,
   first_name text NOT NULL,
   middle_name text,
   last_name text NOT NULL,
@@ -176,6 +177,7 @@ CREATE TABLE public.people (
   CONSTRAINT people_pkey PRIMARY KEY (id),
   CONSTRAINT fk_people_user_account FOREIGN KEY (user_account_id) REFERENCES public.app_users(id),
   CONSTRAINT fk_people_user_role_id FOREIGN KEY (user_role_id) REFERENCES public.app_user_roles(id),
+  CONSTRAINT fk_people_staff_type_id FOREIGN KEY (staff_type_id) REFERENCES public.app_user_staff_types(id),
   CONSTRAINT fk_people_updated_by FOREIGN KEY (updated_by) REFERENCES auth.users(id),
   CONSTRAINT fk_people_deleted_by FOREIGN KEY (deleted_by) REFERENCES auth.users(id),
   CONSTRAINT fk_people_created_by FOREIGN KEY (created_by) REFERENCES auth.users(id)
@@ -531,4 +533,127 @@ CREATE TABLE public.people_assign_status (
   CONSTRAINT people_assign_status_person_id_fkey FOREIGN KEY (person_id) REFERENCES public.people(id),
   CONSTRAINT people_assign_status_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id),
   CONSTRAINT people_assign_status_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES auth.users(id)
+);
+
+-- Create settings_services_insurances table
+CREATE TABLE public.settings_services_insurances (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  agency_id uuid NOT NULL,
+  insurance_provider text,
+  insurance_category public.insurance_category_enum NOT NULL DEFAULT 'medicaid',
+  insurance_status public.service_status_enum NOT NULL DEFAULT 'active',
+  created_by uuid,
+  updated_by uuid,
+  deleted_by uuid,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  deleted_at timestamp with time zone,
+  is_deleted boolean NOT NULL DEFAULT false,
+  CONSTRAINT settings_services_insurances_pkey PRIMARY KEY (id),
+  CONSTRAINT settings_services_insurances_agency_id_fkey FOREIGN KEY (agency_id) REFERENCES public.app_agencies(id),
+  CONSTRAINT settings_services_insurances_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id),
+  CONSTRAINT settings_services_insurances_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES auth.users(id),
+  CONSTRAINT settings_services_insurances_deleted_by_fkey FOREIGN KEY (deleted_by) REFERENCES auth.users(id)
+);
+
+-- Create settings_services_and_fees table
+CREATE TABLE public.settings_services_and_fees (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  agency_id uuid NOT NULL,
+  service text,
+  service_category public.service_category_enum NOT NULL DEFAULT 'adults',
+  service_status public.service_status_enum NOT NULL DEFAULT 'active',
+  fee_billed text,
+  billed_fee_type public.service_fee_type_enum NOT NULL DEFAULT 'per hour',
+  fee_payout text,
+  payout_fee_type TEXT CHECK (payout_fee_type IN ('per hour', 'per session', 'per day', 'flat fee')),
+  created_by uuid,
+  updated_by uuid,
+  deleted_by uuid,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  deleted_at timestamp with time zone,
+  is_deleted boolean NOT NULL DEFAULT false,
+  CONSTRAINT settings_services_and_fees_pkey PRIMARY KEY (id),
+  CONSTRAINT settings_services_and_fees_agency_id_fkey FOREIGN KEY (agency_id) REFERENCES public.app_agencies(id),
+  CONSTRAINT settings_services_and_fees_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id),
+  CONSTRAINT settings_services_and_fees_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES auth.users(id),
+  CONSTRAINT settings_services_and_fees_deleted_by_fkey FOREIGN KEY (deleted_by) REFERENCES auth.users(id)
+);
+
+-- Create people_assign_service table
+CREATE TABLE public.people_assign_service (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  person_id uuid NOT NULL,
+  service_id uuid NOT NULL,
+  created_by uuid,
+  updated_by uuid,
+  deleted_by uuid,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  deleted_at timestamp with time zone,
+  is_deleted boolean NOT NULL DEFAULT false,
+  CONSTRAINT people_assign_service_pkey PRIMARY KEY (id),
+  CONSTRAINT people_assign_service_person_id_fkey FOREIGN KEY (person_id) REFERENCES public.people(id),
+  CONSTRAINT people_assign_service_service_id_fkey FOREIGN KEY (service_id) REFERENCES public.settings_services_and_fees(id),
+  CONSTRAINT people_assign_service_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id),
+  CONSTRAINT people_assign_service_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES auth.users(id),
+  CONSTRAINT people_assign_service_deleted_by_fkey FOREIGN KEY (deleted_by) REFERENCES auth.users(id)
+);
+
+-- Create people_clients table
+CREATE TABLE public.people_clients (
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  agency_id uuid NOT NULL,
+  person_id uuid NOT NULL,
+  created_by uuid,
+  updated_by uuid,
+  deleted_by uuid,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  deleted_at timestamp with time zone,
+  is_deleted boolean NOT NULL DEFAULT false,
+  CONSTRAINT people_clients_agency_id_fkey FOREIGN KEY (agency_id) REFERENCES public.app_agencies(id) ON UPDATE CASCADE ON DELETE RESTRICT,
+  CONSTRAINT people_clients_person_id_fkey FOREIGN KEY (person_id) REFERENCES public.people(id) ON UPDATE CASCADE ON DELETE RESTRICT,
+  CONSTRAINT people_clients_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL,
+  CONSTRAINT people_clients_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES auth.users(id) ON DELETE SET NULL,
+  CONSTRAINT people_clients_deleted_by_fkey FOREIGN KEY (deleted_by) REFERENCES auth.users(id) ON DELETE SET NULL
+);
+
+-- Create people_assign_assessor table
+CREATE TABLE public.people_assign_assessor (
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  agency_id uuid NOT NULL,
+  person_id uuid NOT NULL,
+  created_by uuid,
+  updated_by uuid,
+  deleted_by uuid,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  deleted_at timestamp with time zone,
+  is_deleted boolean NOT NULL DEFAULT false,
+  CONSTRAINT people_assign_assessor_agency_id_fkey FOREIGN KEY (agency_id) REFERENCES public.app_agencies(id) ON UPDATE CASCADE ON DELETE RESTRICT,
+  CONSTRAINT people_assign_assessor_person_id_fkey FOREIGN KEY (person_id) REFERENCES public.people(id) ON UPDATE CASCADE ON DELETE RESTRICT,
+  CONSTRAINT people_assign_assessor_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL,
+  CONSTRAINT people_assign_assessor_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES auth.users(id) ON DELETE SET NULL,
+  CONSTRAINT people_assign_assessor_deleted_by_fkey FOREIGN KEY (deleted_by) REFERENCES auth.users(id) ON DELETE SET NULL
+);
+
+-- Create people_assign_provider table
+CREATE TABLE public.people_assign_provider (
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  agency_id uuid NOT NULL,
+  person_id uuid NOT NULL,
+  created_by uuid,
+  updated_by uuid,
+  deleted_by uuid,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  deleted_at timestamp with time zone,
+  is_deleted boolean NOT NULL DEFAULT false,
+  CONSTRAINT people_assign_provider_agency_id_fkey FOREIGN KEY (agency_id) REFERENCES public.app_agencies(id) ON UPDATE CASCADE ON DELETE RESTRICT,
+  CONSTRAINT people_assign_provider_person_id_fkey FOREIGN KEY (person_id) REFERENCES public.people(id) ON UPDATE CASCADE ON DELETE RESTRICT,
+  CONSTRAINT people_assign_provider_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL,
+  CONSTRAINT people_assign_provider_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES auth.users(id) ON DELETE SET NULL,
+  CONSTRAINT people_assign_provider_deleted_by_fkey FOREIGN KEY (deleted_by) REFERENCES auth.users(id) ON DELETE SET NULL
 );

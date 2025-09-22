@@ -2104,11 +2104,11 @@ END;
 $fn$;
 
 CREATE OR REPLACE FUNCTION public.get_user_profile_data(p_person_id uuid)
-RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
 DECLARE
   profile_data jsonb;
 BEGIN
@@ -2202,13 +2202,7 @@ BEGIN
 
     'lead_info',
       COALESCE((
-        SELECT jsonb_build_object(
-          'preferred_language', pl.preferred_language,
-          'lead_goals', pl.lead_goals,
-          'preferences', pl.preferences,
-          'expectation', pl.expectation,
-          'note', pl.note
-        )
+        SELECT jsonb_build_object()
         FROM public.people_leads pl
         WHERE pl.person_id = p.id
           AND pl.is_deleted = false
@@ -2253,7 +2247,7 @@ BEGIN
 
   RETURN COALESCE(profile_data, '{}'::jsonb);
 END;
-$$;
+$function$;
 
 -- Allow authenticated clients to execute (RLS-hardening to follow in Step 6)
 GRANT EXECUTE ON FUNCTION public.get_user_profile_data(uuid) TO authenticated;
@@ -2345,6 +2339,65 @@ BEGIN
     AND p.status = 'active'
     AND paur.is_deleted = false
     AND aur.role_name = 'lead'::user_roles_enum
+  ORDER BY pl.created_at DESC;
+END;
+$$;
+
+-- Fix get_leads_data function - remove non-existent role column
+DROP FUNCTION IF EXISTS public.get_leads_data();
+
+CREATE OR REPLACE FUNCTION public.get_leads_data()
+RETURNS TABLE (
+    lead_id uuid,
+    person_id uuid,
+    first_name text,
+    last_name text,
+    email text,
+    phone text,
+    created_at timestamp with time zone,
+    lead_goals text,
+    preferences text,
+    expectation text,
+    note text
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  current_agency_id uuid;
+BEGIN
+  -- Get the current user's agency ID
+  SELECT current_user_agency_id() INTO current_agency_id;
+  
+  IF current_agency_id IS NULL THEN
+    -- Return empty result if user has no agency access
+    RETURN;
+  END IF;
+
+  RETURN QUERY
+  SELECT 
+    pl.id as lead_id,
+    p.id as person_id,
+    p.first_name,
+    p.last_name,
+    pc.email,
+    pc.phone,
+    pl.created_at,
+    NULL::text as lead_goals,
+    NULL::text as preferences,
+    NULL::text as expectation,
+    NULL::text as note
+  FROM people_leads pl
+  JOIN people p ON pl.person_id = p.id
+  JOIN app_agencies_people aap ON p.id = aap.person_id
+  LEFT JOIN people_contacts pc ON p.id = pc.person_id AND pc.is_deleted = false
+  WHERE p.is_deleted = FALSE
+      AND pl.is_deleted = FALSE
+      AND NOT EXISTS (
+          SELECT 1 FROM people_referrals pr 
+          WHERE pr.person_id = p.id AND pr.is_deleted = FALSE
+      )
+      AND aap.agency_id = current_agency_id
   ORDER BY pl.created_at DESC;
 END;
 $$;
@@ -2548,58 +2601,20 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.update_people_leads_field(
-  p_person_id uuid,
-  p_field_name text,
-  p_field_value text
-)
-RETURNS json
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path TO 'public'
-AS $$
+CREATE OR REPLACE FUNCTION public.update_people_leads_field(p_person_id uuid, p_field_name text, p_field_value text)
+ RETURNS json
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
 DECLARE
   current_user_id UUID := auth.uid();
-  lead_record_id UUID;
   result JSON;
 BEGIN
-  -- Find existing leads record
-  SELECT id INTO lead_record_id
-  FROM public.people_leads
-  WHERE person_id = p_person_id AND is_deleted = false
-  LIMIT 1;
-
-  -- If no leads record exists, create one
-  IF lead_record_id IS NULL THEN
-    INSERT INTO public.people_leads (
-      person_id,
-      agency_id,
-      created_by,
-      updated_by
-    ) VALUES (
-      p_person_id,
-      (SELECT op.agency_id FROM public.app_agencies_people op WHERE op.person_id = p_person_id AND op.is_deleted = false LIMIT 1),
-      current_user_id,
-      current_user_id
-    ) RETURNING id INTO lead_record_id;
-  END IF;
-
-  -- Update the specific field
-  CASE p_field_name
-    WHEN 'preferred_language' THEN
-      UPDATE public.people_leads SET preferred_language = p_field_value, updated_by = current_user_id, updated_at = now() WHERE id = lead_record_id;
-    ELSE
-      RETURN json_build_object('success', false, 'message', 'Invalid field name');
-  END CASE;
-
-  SELECT json_build_object(
-    'success', true,
-    'message', 'Lead field updated successfully'
-  ) INTO result;
-
-  RETURN result;
+  -- All lead-specific fields have been removed, so return error for any field name
+  RETURN json_build_object('success', false, 'message', 'Lead field updates are no longer supported');
 END;
-$$;
+$function$;
 
 CREATE OR REPLACE FUNCTION public.update_people_referrals_field(
   p_person_id uuid,
@@ -2652,15 +2667,12 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.delete_people_additional_field(
-  p_person_id uuid,
-  p_field_name text
-)
-RETURNS json
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path TO 'public'
-AS $$
+CREATE OR REPLACE FUNCTION public.delete_people_additional_field(p_person_id uuid, p_field_name text)
+ RETURNS json
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
 DECLARE
   current_user_id UUID := auth.uid();
   result JSON;
@@ -2669,42 +2681,54 @@ BEGIN
   IF p_field_name IN ('date_of_birth', 'ssn_number', 'npi_number', 'insurance_provider', 'insurance_number', 'insurance_expiration_date', 'gender_identity', 'ethnicity_identity', 'marital_status', 'living_situation') THEN
     CASE p_field_name
       WHEN 'date_of_birth' THEN
-        UPDATE public.people_identifiers SET date_of_birth = NULL, updated_by = current_user_id, updated_at = now() WHERE person_id = p_person_id AND is_deleted = false;
+        UPDATE public.people_identifiers SET date_of_birth = NULL, updated_by = current_user_id, updated_at = now() 
+        WHERE person_id = p_person_id AND is_deleted = false;
       WHEN 'ssn_number' THEN
-        UPDATE public.people_identifiers SET ssn_number = NULL, updated_by = current_user_id, updated_at = now() WHERE person_id = p_person_id AND is_deleted = false;
+        UPDATE public.people_identifiers SET ssn_number = NULL, updated_by = current_user_id, updated_at = now() 
+        WHERE person_id = p_person_id AND is_deleted = false;
       WHEN 'npi_number' THEN
-        UPDATE public.people_identifiers SET npi_number = NULL, updated_by = current_user_id, updated_at = now() WHERE person_id = p_person_id AND is_deleted = false;
+        UPDATE public.people_identifiers SET npi_number = NULL, updated_by = current_user_id, updated_at = now() 
+        WHERE person_id = p_person_id AND is_deleted = false;
       WHEN 'insurance_provider' THEN
-        UPDATE public.people_identifiers SET insurance_provider = NULL, updated_by = current_user_id, updated_at = now() WHERE person_id = p_person_id AND is_deleted = false;
+        UPDATE public.people_identifiers SET insurance_provider = NULL, updated_by = current_user_id, updated_at = now() 
+        WHERE person_id = p_person_id AND is_deleted = false;
       WHEN 'insurance_number' THEN
-        UPDATE public.people_identifiers SET insurance_number = NULL, updated_by = current_user_id, updated_at = now() WHERE person_id = p_person_id AND is_deleted = false;
+        UPDATE public.people_identifiers SET insurance_number = NULL, updated_by = current_user_id, updated_at = now() 
+        WHERE person_id = p_person_id AND is_deleted = false;
       WHEN 'insurance_expiration_date' THEN
-        UPDATE public.people_identifiers SET insurance_expiration_date = NULL, updated_by = current_user_id, updated_at = now() WHERE person_id = p_person_id AND is_deleted = false;
+        UPDATE public.people_identifiers SET insurance_expiration_date = NULL, updated_by = current_user_id, updated_at = now() 
+        WHERE person_id = p_person_id AND is_deleted = false;
       WHEN 'gender_identity' THEN
-        UPDATE public.people_identifiers SET gender_identity = NULL, updated_by = current_user_id, updated_at = now() WHERE person_id = p_person_id AND is_deleted = false;
+        UPDATE public.people_identifiers SET gender_identity = NULL, updated_by = current_user_id, updated_at = now() 
+        WHERE person_id = p_person_id AND is_deleted = false;
       WHEN 'ethnicity_identity' THEN
-        UPDATE public.people_identifiers SET ethnicity_identity = NULL, updated_by = current_user_id, updated_at = now() WHERE person_id = p_person_id AND is_deleted = false;
+        UPDATE public.people_identifiers SET ethnicity_identity = NULL, updated_by = current_user_id, updated_at = now() 
+        WHERE person_id = p_person_id AND is_deleted = false;
       WHEN 'marital_status' THEN
-        UPDATE public.people_identifiers SET marital_status = NULL, updated_by = current_user_id, updated_at = now() WHERE person_id = p_person_id AND is_deleted = false;
+        UPDATE public.people_identifiers SET marital_status = NULL, updated_by = current_user_id, updated_at = now() 
+        WHERE person_id = p_person_id AND is_deleted = false;
       WHEN 'living_situation' THEN
-        UPDATE public.people_identifiers SET living_situation = NULL, updated_by = current_user_id, updated_at = now() WHERE person_id = p_person_id AND is_deleted = false;
+        UPDATE public.people_identifiers SET living_situation = NULL, updated_by = current_user_id, updated_at = now() 
+        WHERE person_id = p_person_id AND is_deleted = false;
     END CASE;
-  ELSIF p_field_name = 'preferred_language' THEN
-    UPDATE public.people_leads SET preferred_language = NULL, updated_by = current_user_id, updated_at = now() WHERE person_id = p_person_id AND is_deleted = false;
-  ELSIF p_field_name = 'referred_by_name' THEN
-    UPDATE public.people_referrals SET referred_by_name = NULL, updated_by = current_user_id, updated_at = now() WHERE person_id = p_person_id AND is_deleted = false;
+  ELSIF p_field_name IN ('referred_by_name') THEN
+    CASE p_field_name
+      WHEN 'referred_by_name' THEN
+        UPDATE public.people_referrals SET referred_by_name = NULL, updated_by = current_user_id, updated_at = now() 
+        WHERE person_id = p_person_id AND is_deleted = false;
+    END CASE;
   ELSE
     RETURN json_build_object('success', false, 'message', 'Invalid field name');
   END IF;
 
   SELECT json_build_object(
     'success', true,
-    'message', 'Field cleared successfully'
+    'message', 'Additional field cleared successfully'
   ) INTO result;
 
   RETURN result;
 END;
-$$;
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.update_people_contact_field(p_person_id uuid, p_field_name text, p_field_value text)
@@ -2772,3 +2796,377 @@ BEGIN
   RETURN result;
 END;
 $$;
+
+-- Create function to update people name fields
+CREATE OR REPLACE FUNCTION public.update_people_name_field(
+  p_person_id uuid,
+  p_first_name text,
+  p_middle_name text,
+  p_last_name text
+)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = 'public'
+AS $function$
+DECLARE
+  current_user_id UUID := auth.uid();
+  result JSON;
+BEGIN
+  -- Update the name fields in people table
+  UPDATE public.people 
+  SET 
+    first_name = p_first_name,
+    middle_name = p_middle_name,
+    last_name = p_last_name,
+    updated_by = current_user_id,
+    updated_at = now()
+  WHERE id = p_person_id
+    AND is_deleted = false;
+
+  SELECT json_build_object(
+    'success', true,
+    'message', 'Name updated successfully'
+  ) INTO result;
+
+  RETURN result;
+END;
+$function$;
+
+-- Add emergency contact management functions
+CREATE OR REPLACE FUNCTION public.update_people_emergency_field(p_person_id uuid, p_field_name text, p_field_value text)
+ RETURNS json
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE
+  current_user_id UUID := auth.uid();
+  emergency_record_id UUID;
+  result JSON;
+BEGIN
+  -- Find existing emergency record
+  SELECT id INTO emergency_record_id
+  FROM public.people_emergency
+  WHERE person_id = p_person_id AND is_deleted = false
+  LIMIT 1;
+
+  -- If no emergency record exists, create one
+  IF emergency_record_id IS NULL THEN
+    INSERT INTO public.people_emergency (
+      person_id,
+      created_by,
+      updated_by
+    ) VALUES (
+      p_person_id,
+      current_user_id,
+      current_user_id
+    ) RETURNING id INTO emergency_record_id;
+  END IF;
+
+  -- Update the specific field
+  IF p_field_name = 'relationship' THEN
+    UPDATE public.people_emergency 
+    SET relationship = p_field_value::emergency_relationship_enum,
+        updated_by = current_user_id,
+        updated_at = now()
+    WHERE id = emergency_record_id;
+  ELSIF p_field_name = 'first_name' THEN
+    UPDATE public.people_emergency 
+    SET first_name = p_field_value,
+        updated_by = current_user_id,
+        updated_at = now()
+    WHERE id = emergency_record_id;
+  ELSIF p_field_name = 'last_name' THEN
+    UPDATE public.people_emergency 
+    SET last_name = p_field_value,
+        updated_by = current_user_id,
+        updated_at = now()
+    WHERE id = emergency_record_id;
+  ELSIF p_field_name = 'phone_number' THEN
+    UPDATE public.people_emergency 
+    SET phone_number = p_field_value,
+        updated_by = current_user_id,
+        updated_at = now()
+    WHERE id = emergency_record_id;
+  ELSIF p_field_name = 'email' THEN
+    UPDATE public.people_emergency 
+    SET email = p_field_value,
+        updated_by = current_user_id,
+        updated_at = now()
+    WHERE id = emergency_record_id;
+  ELSE
+    RETURN json_build_object('success', false, 'message', 'Invalid field name');
+  END IF;
+
+  SELECT json_build_object(
+    'success', true,
+    'message', 'Emergency contact field updated successfully'
+  ) INTO result;
+
+  RETURN result;
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.delete_people_emergency_field(p_person_id uuid, p_field_name text)
+ RETURNS json
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE
+  current_user_id UUID := auth.uid();
+  emergency_record_id UUID;
+  result JSON;
+BEGIN
+  -- Find existing emergency record
+  SELECT id INTO emergency_record_id
+  FROM public.people_emergency
+  WHERE person_id = p_person_id AND is_deleted = false
+  LIMIT 1;
+
+  IF emergency_record_id IS NULL THEN
+    RETURN json_build_object('success', false, 'message', 'Emergency contact record not found');
+  END IF;
+
+  -- Clear the specific field
+  CASE p_field_name
+    WHEN 'first_name' THEN
+      UPDATE public.people_emergency SET first_name = NULL, updated_by = current_user_id, updated_at = now() WHERE id = emergency_record_id;
+    WHEN 'last_name' THEN
+      UPDATE public.people_emergency SET last_name = NULL, updated_by = current_user_id, updated_at = now() WHERE id = emergency_record_id;
+    WHEN 'email' THEN
+      UPDATE public.people_emergency SET email = NULL, updated_by = current_user_id, updated_at = now() WHERE id = emergency_record_id;
+    WHEN 'phone_number' THEN
+      UPDATE public.people_emergency SET phone_number = NULL, updated_by = current_user_id, updated_at = now() WHERE id = emergency_record_id;
+    WHEN 'relationship' THEN
+      UPDATE public.people_emergency SET relationship = NULL, updated_by = current_user_id, updated_at = now() WHERE id = emergency_record_id;
+    ELSE
+      RETURN json_build_object('success', false, 'message', 'Invalid field name');
+  END CASE;
+
+  SELECT json_build_object(
+    'success', true,
+    'message', 'Emergency contact field cleared successfully'
+  ) INTO result;
+
+  RETURN result;
+END;
+$function$;
+
+-- Update update_people_user_role function to handle staff role transitions
+CREATE OR REPLACE FUNCTION public.update_people_user_role(p_person_id uuid, p_role_name text)
+ RETURNS json
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE
+  current_user_id UUID := auth.uid();
+  role_id UUID;
+  current_role_name text;
+  user_agency_id UUID;
+  result JSON;
+BEGIN
+  -- Find role ID
+  SELECT id INTO role_id
+  FROM public.app_user_roles
+  WHERE role_name = p_role_name::user_roles_enum AND is_deleted = false
+  LIMIT 1;
+
+  IF role_id IS NULL THEN
+    RETURN json_build_object('success', false, 'message', 'Role not found');
+  END IF;
+
+  -- Get current role to check if transitioning from admin or staff
+  SELECT aur.role_name::text INTO current_role_name
+  FROM public.people p
+  JOIN public.app_user_roles aur ON p.user_role_id = aur.id
+  WHERE p.id = p_person_id AND p.is_deleted = false AND aur.is_deleted = false;
+
+  -- Get agency_id for this person
+  SELECT ap.agency_id INTO user_agency_id
+  FROM public.app_agencies_people ap
+  WHERE ap.person_id = p_person_id AND ap.is_deleted = false
+  LIMIT 1;
+
+  -- Update user_role_id in people table
+  UPDATE public.people
+  SET user_role_id = role_id, updated_by = current_user_id, updated_at = now()
+  WHERE id = p_person_id;
+
+  -- Update user_role_id in app_agencies_people table
+  UPDATE public.app_agencies_people
+  SET user_role_id = role_id, updated_by = current_user_id, updated_at = now()
+  WHERE person_id = p_person_id AND is_deleted = false;
+
+  -- Handle admin role transitions
+  IF p_role_name = 'admin' AND current_role_name != 'admin' THEN
+    -- Adding admin role - insert into app_agencies_admins if not exists
+    IF user_agency_id IS NOT NULL THEN
+      INSERT INTO public.app_agencies_admins (
+        person_id,
+        agency_id,
+        created_by,
+        updated_by
+      )
+      SELECT p_person_id, user_agency_id, current_user_id, current_user_id
+      WHERE NOT EXISTS (
+        SELECT 1 FROM public.app_agencies_admins 
+        WHERE person_id = p_person_id AND agency_id = user_agency_id AND is_deleted = false
+      );
+    END IF;
+  ELSIF current_role_name = 'admin' AND p_role_name != 'admin' THEN
+    -- Removing admin role - soft delete from app_agencies_admins
+    UPDATE public.app_agencies_admins
+    SET is_deleted = true, deleted_by = current_user_id, deleted_at = now()
+    WHERE person_id = p_person_id AND is_deleted = false;
+  END IF;
+
+  -- Handle staff role transitions
+  IF current_role_name = 'staff' AND p_role_name != 'staff' THEN
+    -- Transitioning away from staff role - clear staff type data
+    UPDATE public.people
+    SET staff_type_id = NULL, updated_by = current_user_id, updated_at = now()
+    WHERE id = p_person_id;
+    
+    UPDATE public.app_agencies_people
+    SET user_staff_type_id = NULL, updated_by = current_user_id, updated_at = now()
+    WHERE person_id = p_person_id AND is_deleted = false;
+    
+    -- Soft delete all staff type assignments for this person
+    UPDATE public.people_assign_staff_type
+    SET is_deleted = true, deleted_by = current_user_id, deleted_at = now()
+    WHERE person_id = p_person_id AND is_deleted = false;
+  END IF;
+
+  -- First, soft delete all existing role assignments for this person
+  UPDATE public.people_assign_user_role
+  SET is_deleted = true, deleted_by = current_user_id, deleted_at = now()
+  WHERE person_id = p_person_id AND is_deleted = false;
+
+  -- Then insert the new role assignment
+  INSERT INTO public.people_assign_user_role (
+    person_id,
+    user_role_id,
+    created_by,
+    updated_by
+  ) VALUES (
+    p_person_id,
+    role_id,
+    current_user_id,
+    current_user_id
+  );
+
+  SELECT json_build_object(
+    'success', true,
+    'message', 'User role updated successfully'
+  ) INTO result;
+
+  RETURN result;
+END;
+$function$;
+
+-- Update update_people_staff_type function to include people_assign_staff_type management
+CREATE OR REPLACE FUNCTION public.update_people_staff_type(p_person_id uuid, p_staff_type text)
+ RETURNS json
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE
+  current_user_id UUID := auth.uid();
+  v_staff_type_id UUID;
+  result JSON;
+BEGIN
+  -- Find staff type ID
+  SELECT id INTO v_staff_type_id
+  FROM public.app_user_staff_types
+  WHERE staff_type::text = p_staff_type
+    AND is_deleted = false
+  LIMIT 1;
+
+  IF v_staff_type_id IS NULL THEN
+    RETURN json_build_object('success', false, 'message', 'Staff type not found');
+  END IF;
+
+  -- Update people table
+  UPDATE public.people
+  SET staff_type_id = v_staff_type_id,
+      updated_by = current_user_id,
+      updated_at = now()
+  WHERE id = p_person_id
+    AND is_deleted = false;
+
+  -- Update app_agencies_people table's user_staff_type_id
+  UPDATE public.app_agencies_people
+  SET user_staff_type_id = v_staff_type_id,
+      updated_by = current_user_id,
+      updated_at = now()
+  WHERE person_id = p_person_id
+    AND is_deleted = false;
+
+  -- Soft delete existing staff type assignments for this person
+  UPDATE public.people_assign_staff_type
+  SET is_deleted = true,
+      deleted_by = current_user_id,
+      deleted_at = now()
+  WHERE person_id = p_person_id
+    AND is_deleted = false;
+
+  -- Insert new staff type assignment
+  INSERT INTO public.people_assign_staff_type (
+    person_id,
+    staff_type_id,
+    created_by,
+    updated_by
+  ) VALUES (
+    p_person_id,
+    v_staff_type_id,
+    current_user_id,
+    current_user_id
+  );
+
+  SELECT json_build_object(
+    'success', true,
+    'message', 'Staff type updated successfully'
+  ) INTO result;
+
+  RETURN result;
+END;
+$function$;
+
+
+-- Create function to update people status
+CREATE OR REPLACE FUNCTION public.update_people_status(p_person_id uuid, p_status text)
+ RETURNS json
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE
+  current_user_id UUID := auth.uid();
+  result JSON;
+BEGIN
+  -- Update the status in people table
+  UPDATE public.people 
+  SET 
+    status = p_status,
+    updated_by = current_user_id,
+    updated_at = now()
+  WHERE id = p_person_id
+    AND is_deleted = false;
+
+  -- Check if update was successful
+  IF NOT FOUND THEN
+    RETURN json_build_object('success', false, 'message', 'Person not found or no permission to update');
+  END IF;
+
+  SELECT json_build_object(
+    'success', true,
+    'message', 'Status updated successfully'
+  ) INTO result;
+
+  RETURN result;
+END;
+$function$;

@@ -658,3 +658,279 @@ USING (EXISTS (
     AND p.is_deleted = false 
     AND op.is_deleted = false
 ));
+
+-- Enable RLS on the new tables
+ALTER TABLE public.settings_services_insurances ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.settings_services_and_fees ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.people_assign_service ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for settings_services_insurances
+CREATE POLICY "Users can view insurances in their agency" 
+ON public.settings_services_insurances 
+FOR SELECT 
+USING (
+  EXISTS (
+    SELECT 1 FROM public.people p
+    JOIN public.app_users au ON p.user_account_id = au.id
+    JOIN public.app_agencies_people ap ON p.id = ap.person_id
+    WHERE au.user_id = auth.uid() 
+      AND p.is_deleted = false 
+      AND ap.is_deleted = false
+      AND ap.agency_id = settings_services_insurances.agency_id
+  )
+);
+
+CREATE POLICY "Users can create insurances in their agency" 
+ON public.settings_services_insurances 
+FOR INSERT 
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM public.people p
+    JOIN public.app_users au ON p.user_account_id = au.id
+    JOIN public.app_agencies_people ap ON p.id = ap.person_id
+    WHERE au.user_id = auth.uid() 
+      AND p.is_deleted = false 
+      AND ap.is_deleted = false
+      AND ap.agency_id = settings_services_insurances.agency_id
+  )
+);
+
+CREATE POLICY "Users can update insurances in their agency" 
+ON public.settings_services_insurances 
+FOR UPDATE 
+USING (
+  EXISTS (
+    SELECT 1 FROM public.people p
+    JOIN public.app_users au ON p.user_account_id = au.id
+    JOIN public.app_agencies_people ap ON p.id = ap.person_id
+    WHERE au.user_id = auth.uid() 
+      AND p.is_deleted = false 
+      AND ap.is_deleted = false
+      AND ap.agency_id = settings_services_insurances.agency_id
+  )
+);
+
+CREATE POLICY "Users can delete insurances in their agency" 
+ON public.settings_services_insurances 
+FOR DELETE 
+USING (
+  EXISTS (
+    SELECT 1 FROM public.people p
+    JOIN public.app_users au ON p.user_account_id = au.id
+    JOIN public.app_agencies_people ap ON p.id = ap.person_id
+    WHERE au.user_id = auth.uid() 
+      AND p.is_deleted = false 
+      AND ap.is_deleted = false
+      AND ap.agency_id = settings_services_insurances.agency_id
+  )
+);
+
+-- RLS Policies for people_assign_service
+CREATE POLICY "Users can view service assignments in their agency" 
+ON public.people_assign_service 
+FOR SELECT 
+USING (
+  EXISTS (
+    SELECT 1 FROM public.people p
+    JOIN public.app_users au ON p.user_account_id = au.id
+    JOIN public.app_agencies_people ap ON p.id = ap.person_id
+    WHERE au.user_id = auth.uid() 
+      AND p.is_deleted = false 
+      AND ap.is_deleted = false
+      AND p.id = people_assign_service.person_id
+  )
+);
+
+CREATE POLICY "Users can create service assignments in their agency" 
+ON public.people_assign_service 
+FOR INSERT 
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM public.people p
+    JOIN public.app_users au ON p.user_account_id = au.id
+    JOIN public.app_agencies_people ap ON p.id = ap.person_id
+    WHERE au.user_id = auth.uid() 
+      AND p.is_deleted = false 
+      AND ap.is_deleted = false
+      AND p.id = people_assign_service.person_id
+  )
+);
+
+CREATE POLICY "Users can update service assignments in their agency" 
+ON public.people_assign_service 
+FOR UPDATE 
+USING (
+  EXISTS (
+    SELECT 1 FROM public.people p
+    JOIN public.app_users au ON p.user_account_id = au.id
+    JOIN public.app_agencies_people ap ON p.id = ap.person_id
+    WHERE au.user_id = auth.uid() 
+      AND p.is_deleted = false 
+      AND ap.is_deleted = false
+      AND p.id = people_assign_service.person_id
+  )
+);
+
+CREATE POLICY "Users can delete service assignments in their agency" 
+ON public.people_assign_service 
+FOR DELETE 
+USING (
+  EXISTS (
+    SELECT 1 FROM public.people p
+    JOIN public.app_users au ON p.user_account_id = au.id
+    JOIN public.app_agencies_people ap ON p.id = ap.person_id
+    WHERE au.user_id = auth.uid() 
+      AND p.is_deleted = false 
+      AND ap.is_deleted = false
+      AND p.id = people_assign_service.person_id
+  )
+);
+
+
+-- Drop existing problematic policies
+DROP POLICY IF EXISTS "Users can create people in their organization" ON public.people;
+DROP POLICY IF EXISTS "Users can update people in their organization" ON public.people;
+DROP POLICY IF EXISTS "Users can view people in their organization" ON public.people;
+
+-- Create new policies using the security definer function
+CREATE POLICY "Users can view people in their organization" 
+ON public.people 
+FOR SELECT 
+USING (public.current_user_has_agency_access());
+
+CREATE POLICY "Users can create people in their organization" 
+ON public.people 
+FOR INSERT 
+WITH CHECK (public.current_user_has_agency_access());
+
+CREATE POLICY "Users can update people in their organization" 
+ON public.people 
+FOR UPDATE 
+USING (public.current_user_has_agency_access());
+
+-- Drop existing problematic policies for app_agencies_people
+DROP POLICY IF EXISTS "Admins can create agency people" ON public.app_agencies_people;
+DROP POLICY IF EXISTS "Users can view agency people in their organization" ON public.app_agencies_people;
+
+-- Create new policies using security definer functions
+CREATE POLICY "Users can view agency people in their organization" 
+ON public.app_agencies_people 
+FOR SELECT 
+USING (public.user_can_access_agency(agency_id));
+
+CREATE POLICY "Admins can create agency people" 
+ON public.app_agencies_people 
+FOR INSERT 
+WITH CHECK (public.user_can_access_agency(agency_id));
+
+
+-- Enable RLS on all tables
+ALTER TABLE public.people_clients ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.people_assign_assessor ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.people_assign_provider ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for people_clients
+CREATE POLICY "Users can view clients in their agency"
+  ON public.people_clients
+  FOR SELECT
+  USING (user_can_access_agency(agency_id));
+
+CREATE POLICY "Users can create clients in their agency"
+  ON public.people_clients
+  FOR INSERT
+  WITH CHECK (user_can_access_agency(agency_id));
+
+CREATE POLICY "Users can update clients in their agency"
+  ON public.people_clients
+  FOR UPDATE
+  USING (user_can_access_agency(agency_id));
+
+CREATE POLICY "Users can delete clients in their agency"
+  ON public.people_clients
+  FOR DELETE
+  USING (user_can_access_agency(agency_id));
+
+-- RLS Policies for people_assign_assessor
+CREATE POLICY "Users can view assessor assignments in their agency"
+  ON public.people_assign_assessor
+  FOR SELECT
+  USING (user_can_access_agency(agency_id));
+
+CREATE POLICY "Users can create assessor assignments in their agency"
+  ON public.people_assign_assessor
+  FOR INSERT
+  WITH CHECK (user_can_access_agency(agency_id));
+
+CREATE POLICY "Users can update assessor assignments in their agency"
+  ON public.people_assign_assessor
+  FOR UPDATE
+  USING (user_can_access_agency(agency_id));
+
+CREATE POLICY "Users can delete assessor assignments in their agency"
+  ON public.people_assign_assessor
+  FOR DELETE
+  USING (user_can_access_agency(agency_id));
+
+-- RLS Policies for people_assign_provider
+CREATE POLICY "Users can view provider assignments in their agency"
+  ON public.people_assign_provider
+  FOR SELECT
+  USING (user_can_access_agency(agency_id));
+
+CREATE POLICY "Users can create provider assignments in their agency"
+  ON public.people_assign_provider
+  FOR INSERT
+  WITH CHECK (user_can_access_agency(agency_id));
+
+CREATE POLICY "Users can update provider assignments in their agency"
+  ON public.people_assign_provider
+  FOR UPDATE
+  USING (user_can_access_agency(agency_id));
+
+CREATE POLICY "Users can delete provider assignments in their agency"
+  ON public.people_assign_provider
+  FOR DELETE
+  USING (user_can_access_agency(agency_id));
+
+-- Create indexes for performance
+CREATE INDEX idx_people_clients_agency_person ON public.people_clients (agency_id, person_id) WHERE is_deleted = false;
+CREATE INDEX idx_people_clients_agency ON public.people_clients (agency_id) WHERE is_deleted = false;
+CREATE INDEX idx_people_clients_person ON public.people_clients (person_id) WHERE is_deleted = false;
+
+CREATE INDEX idx_people_assign_assessor_agency_person ON public.people_assign_assessor (agency_id, person_id) WHERE is_deleted = false;
+CREATE INDEX idx_people_assign_assessor_agency ON public.people_assign_assessor (agency_id) WHERE is_deleted = false;
+CREATE INDEX idx_people_assign_assessor_person ON public.people_assign_assessor (person_id) WHERE is_deleted = false;
+
+CREATE INDEX idx_people_assign_provider_agency_person ON public.people_assign_provider (agency_id, person_id) WHERE is_deleted = false;
+CREATE INDEX idx_people_assign_provider_agency ON public.people_assign_provider (agency_id) WHERE is_deleted = false;
+CREATE INDEX idx_people_assign_provider_person ON public.people_assign_provider (person_id) WHERE is_deleted = false;
+
+
+-- Fix RLS policies for settings_services_and_fees table to prevent infinite recursion
+-- Drop existing policies
+DROP POLICY IF EXISTS "Users can view services in their agency" ON public.settings_services_and_fees;
+DROP POLICY IF EXISTS "Users can create services in their agency" ON public.settings_services_and_fees;
+DROP POLICY IF EXISTS "Users can update services in their agency" ON public.settings_services_and_fees;
+DROP POLICY IF EXISTS "Users can delete services in their agency" ON public.settings_services_and_fees;
+
+-- Create new policies using security definer function
+CREATE POLICY "Users can view services in their agency" 
+ON public.settings_services_and_fees 
+FOR SELECT 
+USING (user_can_access_agency(agency_id));
+
+CREATE POLICY "Users can create services in their agency" 
+ON public.settings_services_and_fees 
+FOR INSERT 
+WITH CHECK (user_can_access_agency(agency_id));
+
+CREATE POLICY "Users can update services in their agency" 
+ON public.settings_services_and_fees 
+FOR UPDATE 
+USING (user_can_access_agency(agency_id))
+WITH CHECK (user_can_access_agency(agency_id));
+
+CREATE POLICY "Users can delete services in their agency" 
+ON public.settings_services_and_fees 
+FOR DELETE 
+USING (user_can_access_agency(agency_id));

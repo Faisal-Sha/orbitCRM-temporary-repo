@@ -1,49 +1,91 @@
+-- Update current_user_has_admin_role to check both app_agencies_admins and ownership
 CREATE OR REPLACE FUNCTION public.current_user_has_admin_role()
-RETURNS boolean
-LANGUAGE plpgsql
-SECURITY DEFINER
-STABLE
-SET search_path = public
-AS $func$
+ RETURNS boolean
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path = public
+AS $function$
 DECLARE
-  v_person_id uuid;
-  has_rights  boolean;
+  pid uuid;
+  is_admin boolean := false;
 BEGIN
-  -- Find the current user's person_id
-  SELECT p.id
-    INTO v_person_id
-  FROM public.app_users au
-  JOIN public.people p
-    ON p.user_account_id = au.id
-   AND p.is_deleted = false
-  WHERE au.user_id = auth.uid()
-  LIMIT 1;
-
-  -- If not logged in or no person row, deny
-  IF v_person_id IS NULL THEN
-    RETURN FALSE;
+  pid := public.current_user_person_id();
+  IF pid IS NULL THEN
+    RETURN false;
   END IF;
 
-  -- Owner OR agency admin
-  SELECT
-    EXISTS (
+  -- Check if user is an owner
+  IF public.current_user_is_owner() THEN
+    RETURN true;
+  END IF;
+
+  -- Check if user is an agency admin
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.app_agencies_admins aa
+    WHERE aa.person_id = pid
+      AND aa.is_deleted = false
+  ) INTO is_admin;
+
+  RETURN is_admin;
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.current_user_app_user_id()
+RETURNS uuid AS $$
+DECLARE
+  app_user_id uuid;
+BEGIN
+  SELECT au.id INTO app_user_id
+  FROM public.app_users au
+  WHERE au.user_id = auth.uid()
+  AND au.is_deleted = false
+  LIMIT 1;
+  
+  RETURN app_user_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER STABLE SET search_path = public;
+
+-- Create function to check if user can access agency data
+CREATE OR REPLACE FUNCTION public.user_can_access_agency(target_agency_id uuid)
+RETURNS boolean AS $$
+DECLARE
+  user_app_id uuid;
+  has_access boolean := false;
+BEGIN
+  user_app_id := public.current_user_app_user_id();
+  
+  IF user_app_id IS NULL THEN
+    RETURN false;
+  END IF;
+
+  -- Check if user is in the agency via app_agencies_people
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.app_agencies_people ap
+    JOIN public.people p ON ap.person_id = p.id
+    WHERE p.user_account_id = user_app_id
+    AND ap.agency_id = target_agency_id
+    AND p.is_deleted = false
+    AND ap.is_deleted = false
+  ) INTO has_access;
+
+  -- If not found, check if user is agency admin
+  IF NOT has_access THEN
+    SELECT EXISTS (
       SELECT 1
       FROM public.app_agencies_admins aa
-      WHERE aa.person_id = v_person_id
-        AND aa.is_deleted = false
-    )
-    OR
-    EXISTS (
-      SELECT 1
-      FROM public.app_organizations_owners oo
-      WHERE oo.owner_id = v_person_id
-        AND oo.is_deleted = false
-    )
-  INTO has_rights;
+      JOIN public.people p ON aa.person_id = p.id
+      WHERE p.user_account_id = user_app_id
+      AND aa.agency_id = target_agency_id
+      AND p.is_deleted = false
+      AND aa.is_deleted = false
+    ) INTO has_access;
+  END IF;
 
-  RETURN COALESCE(has_rights, FALSE);
+  RETURN has_access;
 END;
-$func$;
+$$ LANGUAGE plpgsql SECURITY DEFINER STABLE SET search_path = public;
 
 CREATE OR REPLACE FUNCTION public.current_user_person_id()
 RETURNS uuid
@@ -76,16 +118,54 @@ AS $$
   );
 $$;
 
+-- Update current_user_agency_id to check both app_agencies_people and app_agencies_admins
+CREATE OR REPLACE FUNCTION public.current_user_agency_id()
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE
+  agency_id UUID;
+BEGIN
+  -- First check app_agencies_people (regular people)
+  SELECT ap.agency_id INTO agency_id
+  FROM public.people p
+  JOIN public.app_users au ON p.user_account_id = au.id
+  JOIN public.app_agencies_people ap ON p.id = ap.person_id
+  WHERE au.user_id = auth.uid() 
+    AND p.is_deleted = false 
+    AND ap.is_deleted = false
+  LIMIT 1;
+
+  -- If not found, check app_agencies_admins (admin access)
+  IF agency_id IS NULL THEN
+    SELECT aa.agency_id INTO agency_id
+    FROM public.people p
+    JOIN public.app_users au ON p.user_account_id = au.id
+    JOIN public.app_agencies_admins aa ON p.id = aa.person_id
+    WHERE au.user_id = auth.uid() 
+      AND p.is_deleted = false 
+      AND aa.is_deleted = false
+    LIMIT 1;
+  END IF;
+
+  RETURN agency_id;
+END;
+$function$;
+
+-- Update current_user_permissions function to grant settings.view permission to agency admins
 CREATE OR REPLACE FUNCTION public.current_user_permissions()
-RETURNS text[]
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $fn$
+ RETURNS text[]
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
 DECLARE
   pid uuid;
   perms text[];
   is_owner boolean;
+  is_agency_admin boolean;
 BEGIN
   pid := public.current_user_person_id();
   IF pid IS NULL THEN
@@ -151,9 +231,27 @@ BEGIN
     );
   END IF;
 
+  -- Agency admin bonus permissions
+  is_agency_admin := EXISTS (
+    SELECT 1
+    FROM public.app_agencies_admins aa
+    WHERE aa.person_id = pid
+      AND aa.is_deleted = false
+  );
+  
+  IF is_agency_admin THEN
+    perms := ARRAY(
+      SELECT DISTINCT z
+      FROM (
+        SELECT unnest(perms) AS z
+        UNION SELECT 'settings.view'
+      ) t2
+    );
+  END IF;
+
   RETURN COALESCE(perms, ARRAY[]::text[]);
 END;
-$fn$;
+$function$
 
 CREATE OR REPLACE FUNCTION public.current_user_has_permission(p_permission text)
 RETURNS boolean
@@ -173,4 +271,45 @@ BEGIN
   RETURN p_permission = ANY(perms);
 END;
 $fn$;
+
+CREATE OR REPLACE FUNCTION public.current_user_has_agency_access()
+RETURNS boolean AS $$
+DECLARE
+  has_access boolean := false;
+BEGIN
+  -- Check if user has agency access via app_agencies_people
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.app_users au
+    JOIN public.app_agencies_people ap ON au.id = (
+      SELECT p.user_account_id 
+      FROM public.people p 
+      WHERE p.id = ap.person_id 
+      AND p.is_deleted = false
+      LIMIT 1
+    )
+    WHERE au.user_id = auth.uid()
+    AND ap.is_deleted = false
+  ) INTO has_access;
+
+  -- If not found in agencies_people, check agencies_admins
+  IF NOT has_access THEN
+    SELECT EXISTS (
+      SELECT 1
+      FROM public.app_users au
+      JOIN public.app_agencies_admins aa ON au.id = (
+        SELECT p.user_account_id 
+        FROM public.people p 
+        WHERE p.id = aa.person_id 
+        AND p.is_deleted = false
+        LIMIT 1
+      )
+      WHERE au.user_id = auth.uid()
+      AND aa.is_deleted = false
+    ) INTO has_access;
+  END IF;
+
+  RETURN has_access;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER STABLE SET search_path = public;
 
