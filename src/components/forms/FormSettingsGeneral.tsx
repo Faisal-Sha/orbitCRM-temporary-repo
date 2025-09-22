@@ -17,13 +17,13 @@ export const FormSettingsGeneral: React.FC<FormSettingsGeneralProps> = ({
   setFormData,
 }) => {
   const updateSetting = (key: string, value: any) => {
-    setFormData({
-      ...formData,
+    setFormData((prevData: any) => ({
+      ...prevData,
       settings: {
-        ...formData.settings,
+        ...prevData.settings,
         [key]: value
       }
-    });
+    }));
   };
 
   const handleCampaignSelection = (campaignData: any) => {
@@ -70,12 +70,15 @@ export const FormSettingsGeneral: React.FC<FormSettingsGeneralProps> = ({
   };
 
   const handleUserRoleChange = (value: string) => {
-    updateSetting('userRole', value);
-    // Reset staff type and status when role changes
-    if (value !== 'Staff') {
-      updateSetting('staffType', '');
-    }
-    updateSetting('userStatus', '');
+    setFormData((prevData: any) => ({
+      ...prevData,
+      settings: {
+        ...prevData.settings,
+        userRole: value,
+        staffType: value !== 'Staff' ? undefined : prevData.settings?.staffType,
+        userStatus: undefined
+      }
+    }));
   };
 
   return (
@@ -155,13 +158,13 @@ export const FormSettingsGeneral: React.FC<FormSettingsGeneralProps> = ({
         <div className="space-y-2">
           <Label htmlFor="user-role">User Role Assignment</Label>
           <Select 
-            value={formData.settings?.userRole || ''} 
+            value={formData.settings?.userRole || undefined} 
             onValueChange={handleUserRoleChange}
           >
             <SelectTrigger>
               <SelectValue placeholder="Select" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="z-50 bg-background">
               {userRoleOptions.map((role) => (
                 <SelectItem key={role} value={role}>
                   {role}
@@ -176,13 +179,13 @@ export const FormSettingsGeneral: React.FC<FormSettingsGeneralProps> = ({
           <div className="space-y-2">
             <Label htmlFor="staff-type">Staff Type Assignment</Label>
             <Select 
-              value={formData.settings?.staffType || ''} 
+              value={formData.settings?.staffType || undefined} 
               onValueChange={(value) => updateSetting('staffType', value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-50 bg-background">
                 {staffTypeOptions.map((type) => (
                   <SelectItem key={type} value={type}>
                     {type}
@@ -198,13 +201,13 @@ export const FormSettingsGeneral: React.FC<FormSettingsGeneralProps> = ({
           <div className="space-y-2">
             <Label htmlFor="user-status">User Status Assignment</Label>
             <Select 
-              value={formData.settings?.userStatus || ''} 
+              value={formData.settings?.userStatus || undefined} 
               onValueChange={(value) => updateSetting('userStatus', value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-50 bg-background">
                 {getStatusOptions(formData.settings.userRole).map((status) => (
                   <SelectItem key={status} value={status}>
                     {status}
@@ -219,13 +222,13 @@ export const FormSettingsGeneral: React.FC<FormSettingsGeneralProps> = ({
         <div className="space-y-2">
           <Label htmlFor="form-purpose">Form Purpose Assignment</Label>
           <Select 
-            value={formData.settings?.formPurpose || ''} 
+            value={formData.settings?.formPurpose || undefined} 
             onValueChange={(value) => updateSetting('formPurpose', value)}
           >
             <SelectTrigger>
               <SelectValue placeholder="Select" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="z-50 bg-background">
               {formPurposeOptions.map((purpose) => (
                 <SelectItem key={purpose} value={purpose}>
                   {purpose}
