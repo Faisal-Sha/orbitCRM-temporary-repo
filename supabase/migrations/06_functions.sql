@@ -2252,97 +2252,6 @@ $function$;
 -- Allow authenticated clients to execute (RLS-hardening to follow in Step 6)
 GRANT EXECUTE ON FUNCTION public.get_user_profile_data(uuid) TO authenticated;
 
-CREATE OR REPLACE FUNCTION public.get_leads_data()
-RETURNS TABLE(
-  lead_id uuid,
-  person_id uuid,               -- 👈 add this
-  first_name text,
-  last_name text,
-  email text,
-  phone text,
-  created_at timestamptz,
-  lead_goals text,
-  preferences text,
-  expectation text,
-  note text
-)
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path TO public
-AS $$
-BEGIN
-  RETURN QUERY
-  SELECT 
-    pl.id AS lead_id,
-    p.id  AS person_id,
-    p.first_name,
-    p.last_name, 
-    pc.email,
-    pc.phone,
-    pl.created_at,
-    pl.lead_goals,
-    pl.preferences,
-    pl.expectation,
-    pl.note
-  FROM public.people_leads pl
-  JOIN public.people p ON pl.person_id = p.id
-  JOIN public.people_assign_user_role paur ON p.id = paur.person_id
-  JOIN public.app_user_roles aur ON paur.user_role_id = aur.id
-  LEFT JOIN public.people_contacts pc ON p.id = pc.person_id AND pc.is_deleted = false
-  WHERE pl.is_deleted = false 
-    AND p.is_deleted = false 
-    AND p.status = 'active'
-    AND paur.is_deleted = false
-    AND aur.is_deleted = false
-    AND aur.role_name = 'lead'
-  ORDER BY pl.created_at DESC;
-END;
-$$;
-
-CREATE OR REPLACE FUNCTION public.get_leads_data()
-RETURNS TABLE(
-  lead_id uuid,
-  first_name text,
-  last_name text,
-  email text,
-  phone text,
-  created_at timestamp with time zone,
-  lead_goals text,
-  preferences text,
-  expectation text,
-  note text
-)
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path TO 'public'
-AS $$
-BEGIN
-  RETURN QUERY
-  SELECT 
-    pl.id as lead_id,
-    p.first_name,
-    p.last_name, 
-    pc.email,
-    pc.phone,
-    pl.created_at,
-    pl.lead_goals,
-    pl.preferences,
-    pl.expectation,
-    pl.note
-  FROM people_leads pl
-  JOIN people p ON pl.person_id = p.id
-  JOIN people_assign_user_role paur ON p.id = paur.person_id
-  JOIN app_user_roles aur ON paur.user_role_id = aur.id
-  LEFT JOIN people_contacts pc ON p.id = pc.person_id AND pc.is_deleted = false
-  WHERE pl.is_deleted = false 
-    AND p.is_deleted = false 
-    AND p.status = 'active'
-    AND paur.is_deleted = false
-    AND aur.role_name = 'lead'::user_roles_enum
-  ORDER BY pl.created_at DESC;
-END;
-$$;
-
 -- Update get_leads_data function to properly filter cold leads
 CREATE OR REPLACE FUNCTION public.get_leads_data()
  RETURNS TABLE(lead_id uuid, person_id uuid, first_name text, last_name text, email text, phone text, created_at timestamp with time zone)
@@ -2378,8 +2287,7 @@ BEGIN
   LEFT JOIN public.people_contacts pc ON p.id = pc.person_id AND pc.is_deleted = false
   LEFT JOIN public.people_referrals pr ON p.id = pr.person_id AND pr.is_deleted = false
   WHERE pl.is_deleted = false 
-    AND p.is_deleted = false 
-    AND p.status = 'active'
+    AND p.is_deleted = false
     AND paur.is_deleted = false
     AND aur.is_deleted = false
     AND aur.role_name = 'lead'
@@ -2389,65 +2297,6 @@ BEGIN
   ORDER BY pl.created_at DESC;
 END;
 $function$
-
--- Fix get_leads_data function - remove non-existent role column
-DROP FUNCTION IF EXISTS public.get_leads_data();
-
-CREATE OR REPLACE FUNCTION public.get_leads_data()
-RETURNS TABLE (
-    lead_id uuid,
-    person_id uuid,
-    first_name text,
-    last_name text,
-    email text,
-    phone text,
-    created_at timestamp with time zone,
-    lead_goals text,
-    preferences text,
-    expectation text,
-    note text
-)
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-DECLARE
-  current_agency_id uuid;
-BEGIN
-  -- Get the current user's agency ID
-  SELECT current_user_agency_id() INTO current_agency_id;
-  
-  IF current_agency_id IS NULL THEN
-    -- Return empty result if user has no agency access
-    RETURN;
-  END IF;
-
-  RETURN QUERY
-  SELECT 
-    pl.id as lead_id,
-    p.id as person_id,
-    p.first_name,
-    p.last_name,
-    pc.email,
-    pc.phone,
-    pl.created_at,
-    NULL::text as lead_goals,
-    NULL::text as preferences,
-    NULL::text as expectation,
-    NULL::text as note
-  FROM people_leads pl
-  JOIN people p ON pl.person_id = p.id
-  JOIN app_agencies_people aap ON p.id = aap.person_id
-  LEFT JOIN people_contacts pc ON p.id = pc.person_id AND pc.is_deleted = false
-  WHERE p.is_deleted = FALSE
-      AND pl.is_deleted = FALSE
-      AND NOT EXISTS (
-          SELECT 1 FROM people_referrals pr 
-          WHERE pr.person_id = p.id AND pr.is_deleted = FALSE
-      )
-      AND aap.agency_id = current_agency_id
-  ORDER BY pl.created_at DESC;
-END;
-$$;
 
 
 
