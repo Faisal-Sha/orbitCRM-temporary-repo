@@ -17,15 +17,24 @@ export const FormSettingsGeneral: React.FC<FormSettingsGeneralProps> = ({
   setFormData,
 }) => {
   const updateSetting = (key: string, value: any) => {
-    setFormData({
-      ...formData,
+    setFormData((prev: any) => ({
+      ...prev,
       settings: {
-        ...formData.settings,
-        [key]: value
-      }
-    });
+        ...prev.settings,
+        [key]: value,
+      },
+    }));
   };
 
+  const updateSettings = (updates: Record<string, any>) => {
+    setFormData((prev: any) => ({
+      ...prev,
+      settings: {
+        ...prev.settings,
+        ...updates,
+      },
+    }));
+  };
   const handleCampaignSelection = (campaignData: any) => {
     updateSetting('leadCampaign', campaignData);
   };
@@ -147,12 +156,11 @@ export const FormSettingsGeneral: React.FC<FormSettingsGeneralProps> = ({
             <Select
               value={formData.settings?.userRole || undefined}
               onValueChange={(value) => {
-                updateSetting('userRole', value);
-                // Clear staff type and status when role changes
-                if (value !== 'Staff') {
-                  updateSetting('staffType', '');
-                }
-                updateSetting('userStatus', '');
+                const resets: Record<string, any> = { userRole: value, userStatus: '' };
+                if (value !== 'Staff') resets.staffType = '';
+                updateSettings(resets);
+                // Debug
+                console.log('[FormSettingsGeneral] userRole changed:', value, resets);
               }}
             >
               <SelectTrigger className="bg-background">
