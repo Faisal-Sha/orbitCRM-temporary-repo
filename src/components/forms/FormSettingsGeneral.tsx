@@ -145,7 +145,7 @@ export const FormSettingsGeneral: React.FC<FormSettingsGeneralProps> = ({
               Select the user role this form is designed for
             </p>
             <Select
-              value={formData.settings?.userRole || ''}
+              value={formData.settings?.userRole || undefined}
               onValueChange={(value) => {
                 updateSetting('userRole', value);
                 // Clear staff type and status when role changes
@@ -155,10 +155,10 @@ export const FormSettingsGeneral: React.FC<FormSettingsGeneralProps> = ({
                 updateSetting('userStatus', '');
               }}
             >
-              <SelectTrigger>
+              <SelectTrigger className="bg-background">
                 <SelectValue placeholder="Select" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-50 bg-popover">
                 {userRoleOptions.map((role) => (
                   <SelectItem key={role} value={role}>
                     {role}
@@ -176,13 +176,13 @@ export const FormSettingsGeneral: React.FC<FormSettingsGeneralProps> = ({
                 Select the specific staff type for this form
               </p>
               <Select
-                value={formData.settings?.staffType || ''}
+                value={formData.settings?.staffType || undefined}
                 onValueChange={(value) => updateSetting('staffType', value)}
               >
-                <SelectTrigger>
+                <SelectTrigger className="bg-background">
                   <SelectValue placeholder="Select" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-50 bg-popover">
                   {staffTypeOptions.map((type) => (
                     <SelectItem key={type} value={type}>
                       {type}
@@ -201,13 +201,13 @@ export const FormSettingsGeneral: React.FC<FormSettingsGeneralProps> = ({
                 Select the user status this form targets
               </p>
               <Select
-                value={formData.settings?.userStatus || ''}
+                value={formData.settings?.userStatus || undefined}
                 onValueChange={(value) => updateSetting('userStatus', value)}
               >
-                <SelectTrigger>
+                <SelectTrigger className="bg-background">
                   <SelectValue placeholder="Select" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-50 bg-popover">
                   {getStatusOptions(formData.settings.userRole).map((status) => (
                     <SelectItem key={status} value={status}>
                       {status}
@@ -225,13 +225,13 @@ export const FormSettingsGeneral: React.FC<FormSettingsGeneralProps> = ({
               Define the primary purpose of this form
             </p>
             <Select
-              value={formData.settings?.formPurpose || ''}
+              value={formData.settings?.formPurpose || undefined}
               onValueChange={(value) => updateSetting('formPurpose', value)}
             >
-              <SelectTrigger>
+              <SelectTrigger className="bg-background">
                 <SelectValue placeholder="Select" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-50 bg-popover">
                 {formPurposeOptions.map((purpose) => (
                   <SelectItem key={purpose} value={purpose}>
                     {purpose}
