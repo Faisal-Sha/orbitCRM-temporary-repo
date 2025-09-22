@@ -17,13 +17,13 @@ export const FormSettingsGeneral: React.FC<FormSettingsGeneralProps> = ({
   setFormData,
 }) => {
   const updateSetting = (key: string, value: any) => {
-    setFormData({
-      ...formData,
+    setFormData((prev: any) => ({
+      ...prev,
       settings: {
-        ...formData.settings,
-        [key]: value
-      }
-    });
+        ...prev?.settings,
+        [key]: value,
+      },
+    }));
   };
 
   const handleCampaignSelection = (campaignData: any) => {
@@ -138,6 +138,38 @@ export const FormSettingsGeneral: React.FC<FormSettingsGeneralProps> = ({
             <h4 className="text-base font-semibold text-foreground">Form Assignments</h4>
           </div>
           
+          {/* Form Purpose Assignment */}
+          <div className="space-y-2">
+            <Label>Form Purpose Assignment</Label>
+            <p className="text-sm text-muted-foreground">
+              Define the primary purpose of this form
+            </p>
+            <Select
+              value={formData.settings?.formPurpose || ''}
+              onValueChange={(value) => updateSetting('formPurpose', value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select" />
+              </SelectTrigger>
+              <SelectContent>
+                {formPurposeOptions.map((purpose) => (
+                  <SelectItem key={purpose} value={purpose}>
+                    {purpose}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Lead Campaign Assignment */}
+          <div className="space-y-2">
+            <Label>Lead Campaign Assignment</Label>
+            <p className="text-sm text-muted-foreground">
+              Assign this form to specific lead campaigns for tracking and analytics
+            </p>
+            <LeadCampaignSelector onSelectionChange={handleCampaignSelection} />
+          </div>
+
           {/* User Role Assignment */}
           <div className="space-y-2">
             <Label>User Role Assignment</Label>
@@ -218,37 +250,6 @@ export const FormSettingsGeneral: React.FC<FormSettingsGeneralProps> = ({
             </div>
           )}
 
-          {/* Form Purpose Assignment */}
-          <div className="space-y-2">
-            <Label>Form Purpose Assignment</Label>
-            <p className="text-sm text-muted-foreground">
-              Define the primary purpose of this form
-            </p>
-            <Select
-              value={formData.settings?.formPurpose || ''}
-              onValueChange={(value) => updateSetting('formPurpose', value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select" />
-              </SelectTrigger>
-              <SelectContent>
-                {formPurposeOptions.map((purpose) => (
-                  <SelectItem key={purpose} value={purpose}>
-                    {purpose}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Lead Campaign Assignment */}
-          <div className="space-y-2">
-            <Label>Lead Campaign Assignment</Label>
-            <p className="text-sm text-muted-foreground">
-              Assign this form to specific lead campaigns for tracking and analytics
-            </p>
-            <LeadCampaignSelector onSelectionChange={handleCampaignSelection} />
-          </div>
         </div>
       </div>
     </div>
