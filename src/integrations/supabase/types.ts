@@ -1903,6 +1903,17 @@ export type Database = {
         Args: { p_role_id: string }
         Returns: Json
       }
+      get_active_clients_data: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          created_at: string
+          email: string
+          first_name: string
+          last_name: string
+          person_id: string
+          phone: string
+        }[]
+      }
       get_agencies_with_admins: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -1934,15 +1945,11 @@ export type Database = {
         Returns: {
           created_at: string
           email: string
-          expectation: string
           first_name: string
           last_name: string
-          lead_goals: string
           lead_id: string
-          note: string
           person_id: string
           phone: string
-          preferences: string
         }[]
       }
       get_organization_settings: {

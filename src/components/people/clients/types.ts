@@ -1,5 +1,6 @@
 
 export interface ClientData {
+  person_id?: string;
   name: string;
   dateStarted?: string;
   dateDischarged?: string;
