@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ShieldCheck, Briefcase } from 'lucide-react';
+import { ShieldCheck, Briefcase, UserCheck } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { EditableDetailItem } from './GeneralTab';
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -11,7 +11,7 @@ interface UserDataSectionProps {
 }
 
 export const UserDataSection: React.FC<UserDataSectionProps> = ({ personId }) => {
-  const { data, loading: profileLoading, updateUserRole, updateStaffType } = useUserProfile(personId);
+  const { data, loading: profileLoading, updateUserRole, updateStaffType, updateStatus } = useUserProfile(personId);
   const { roles, loading: rolesLoading } = useUserRoles();
   const { staffTypes, loading: staffTypesLoading } = useStaffTypes();
   const [editingField, setEditingField] = useState<string | null>(null);
@@ -20,10 +20,31 @@ export const UserDataSection: React.FC<UserDataSectionProps> = ({ personId }) =>
   // Get current assigned values
   const assignedRole = data?.userRoles?.[0]?.role_name || '';
   const assignedStaffType = data?.staffTypes?.[0]?.staff_type || '';
+  const currentStatus = data?.personalInfo?.status || '';
 
   // Get options for dropdowns
   const roleOptions = (roles || []).map(r => r.role_name).filter(Boolean);
   const staffTypeOptions = (staffTypes || []).map(s => s.staff_type).filter(Boolean);
+
+  // Get status options based on user role
+  const getStatusOptions = (role: string): string[] => {
+    switch (role?.toLowerCase()) {
+      case 'owner':
+      case 'admin':  
+      case 'general':
+        return ['Active', 'Inactive'];
+      case 'lead':
+        return ['Applied', 'Qualified', 'Unqualified', 'Unsubscribed'];
+      case 'client':
+        return ['Active', 'On Hold', 'Discharged', 'Inactive', 'Deceased'];
+      case 'staff':
+        return ['Onboarding', 'Active', 'On Leave', 'Terminated'];
+      default:
+        return ['Active', 'Inactive']; // fallback
+    }
+  };
+
+  const statusOptions = getStatusOptions(assignedRole);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -68,8 +89,22 @@ export const UserDataSection: React.FC<UserDataSectionProps> = ({ personId }) =>
     }
   };
 
+  const handleStatusChange = async (value: string) => {
+    try {
+      const success = await updateStatus(value);
+      if (success) {
+        setEditingField(null);
+      }
+    } catch (error) {
+      console.error('Failed to update status:', error);
+      // Don't close edit mode if update failed
+    }
+  };
+
   // Determine if staff type should be shown (only if user role is "staff")
   const shouldShowStaffType = assignedRole?.toLowerCase() === 'staff';
+  // Status should be shown if a user role is assigned
+  const shouldShowStatus = !!assignedRole;
 
   if (profileLoading && !data) {
     return (
@@ -114,6 +149,20 @@ export const UserDataSection: React.FC<UserDataSectionProps> = ({ personId }) =>
               onChange={handleStaffTypeChange}
               iconColor="text-green-500"
               loading={staffTypesLoading}
+            />
+          )}
+
+          {shouldShowStatus && (
+            <EditableDetailItem
+              icon={UserCheck}
+              label="Status"
+              value={currentStatus || 'Not assigned'}
+              options={statusOptions}
+              isEditing={editingField === 'status'}
+              onEdit={() => setEditingField('status')}
+              onChange={handleStatusChange}
+              iconColor="text-purple-500"
+              loading={profileLoading}
             />
           )}
         </div>

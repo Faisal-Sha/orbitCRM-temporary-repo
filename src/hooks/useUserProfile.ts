@@ -770,6 +770,31 @@ export const useUserProfile = (personId?: string) => {
     }
   }, [personId]);
 
+  const updateStatus = useCallback(async (status: string) => {
+    if (!personId) return false;
+    
+    try {
+      const { data: result, error } = await supabase
+        .rpc('update_people_status', {
+          p_person_id: personId,
+          p_status: status
+        });
+
+      if (error) throw error;
+      
+      if (result && typeof result === 'object' && 'success' in result && result.success) {
+        toast.success('Status updated successfully');
+        await fetchProfile(personId);
+        return true;
+      } else {
+        throw new Error((result as any)?.message || 'Update failed');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update status');
+      return false;
+    }
+  }, [personId]);
+
   return {
     data,          // normalized display-ready data
     raw,           // original payload if needed elsewhere
@@ -796,5 +821,6 @@ export const useUserProfile = (personId?: string) => {
     // User role and staff type management functions
     updateUserRole,
     updateStaffType,
+    updateStatus,
   };
 };

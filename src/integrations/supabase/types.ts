@@ -2152,6 +2152,10 @@ export type Database = {
         Args: { p_person_id: string; p_staff_type: string }
         Returns: Json
       }
+      update_people_status: {
+        Args: { p_person_id: string; p_status: string }
+        Returns: Json
+      }
       update_people_user_role: {
         Args: { p_person_id: string; p_role_name: string }
         Returns: Json
