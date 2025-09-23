@@ -5,7 +5,6 @@ import { Mail, Phone } from "lucide-react";
 import MilestonesIcon from "@/components/MilestonesIcon";
 import FilterSearchBar from "./FilterSearchBar";
 import { generateReferralsData, milestoneSetsReferrals, filterByOptions } from "./data";
-import { useReferrals } from "@/hooks/useReferrals";
 
 interface ReferralsProps {
   useSimplifiedView: boolean;
@@ -14,47 +13,15 @@ interface ReferralsProps {
 const Referrals = ({ useSimplifiedView }: ReferralsProps) => {
   const [filterByReferrals, setFilterByReferrals] = useState(filterByOptions[0].value);
   const [searchTermReferrals, setSearchTermReferrals] = useState("");
-  
-  const { data: referralsQuery, isLoading, error } = useReferrals();
 
-  // Transform data for the table
+  // Referrals data
   const referralsData = useMemo(() => {
-    if (!referralsQuery || referralsQuery.length === 0) {
-      // Show dummy data if no real data exists
-      return generateReferralsData().sort((a, b) => {
-        const dateA = new Date(a.entryDate);
-        const dateB = new Date(b.entryDate);
-        return dateB.getTime() - dateA.getTime();
-      });
-    }
-    
-    return referralsQuery.map(record => ({
-      id: record.lead_id,
-      entryDate: new Date(record.created_at).toLocaleDateString(),
-      name: `${record.first_name} ${record.last_name}`,
-      interest: "69%", // Default interest for referrals
-      person: {
-        first_name: record.first_name,
-        last_name: record.last_name,
-        email: record.email,
-        phone: record.phone,
-      },
-      status: record.status,
-    }));
-  }, [referralsQuery]);
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-muted-foreground">Loading referrals...</div>
-      </div>
-    );
-  }
-
-  if (error) {
-    console.error("Referrals error:", error);
-    // Fallback to dummy data on error
-  }
+    return generateReferralsData().sort((a, b) => {
+      const dateA = new Date(a.entryDate);
+      const dateB = new Date(b.entryDate);
+      return dateB.getTime() - dateA.getTime();
+    });
+  }, []);
 
   // Referrals columns
   const referralsColumns: TableColumn[] = useMemo(() => [
