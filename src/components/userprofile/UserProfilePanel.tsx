@@ -4,7 +4,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { StatusLabel } from "@/components/ui/status-label";
 import { User, Brain, BarChart3, FileText, MessageSquare, Activity as ActivityIcon } from "lucide-react";
-import { useUserProfile } from "@/hooks/useUserProfile";
 import GeneralTab from "./GeneralTab";
 import PerformanceTab from "./PerformanceTab";
 import RecordsTab from "./RecordsTab";
@@ -44,12 +43,6 @@ const tabsConfig = [
 
 const UserProfilePanel: React.FC<UserProfilePanelProps> = ({ open, onClose, user }) => {
   const [activeTab, setActiveTab] = React.useState(tabsConfig[0].key);
-  
-  // Use useUserProfile hook to get dynamic status updates
-  const { data: profileData } = useUserProfile(user?.person_id);
-  
-  // Get current status from profile data, fallback to user prop
-  const currentStatus = profileData?.personalInfo?.status || user?.status;
 
   React.useEffect(() => {
     if (!open) setActiveTab(tabsConfig[0].key);
@@ -82,7 +75,7 @@ const UserProfilePanel: React.FC<UserProfilePanelProps> = ({ open, onClose, user
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
               <span className="font-semibold text-lg">{user.name}</span>
-              <StatusLabel status={currentStatus} />
+              <StatusLabel status={user.status} />
             </div>
             <span className="text-xs text-muted-foreground">{user.inquiryDate && `Inquiry: ${user.inquiryDate}`}</span>
           </div>
