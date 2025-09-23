@@ -4,7 +4,8 @@ import UserProfilePage, { TableColumn } from "@/components/UserProfilePage";
 import { Mail, Phone } from "lucide-react";
 import MilestonesIcon from "@/components/MilestonesIcon";
 import FilterSearchBar from "./FilterSearchBar";
-import { generateReferralsData, milestoneSetsReferrals, filterByOptions } from "./data";
+import { milestoneSetsReferrals, filterByOptions } from "./data";
+import { useReferrals } from "@/hooks/useReferrals";
 
 interface ReferralsProps {
   useSimplifiedView: boolean;
@@ -13,15 +14,27 @@ interface ReferralsProps {
 const Referrals = ({ useSimplifiedView }: ReferralsProps) => {
   const [filterByReferrals, setFilterByReferrals] = useState(filterByOptions[0].value);
   const [searchTermReferrals, setSearchTermReferrals] = useState("");
+  
+  const { data: referralsQuery, isLoading } = useReferrals();
 
-  // Referrals data
+  // Transform data for the table
   const referralsData = useMemo(() => {
-    return generateReferralsData().sort((a, b) => {
-      const dateA = new Date(a.entryDate);
-      const dateB = new Date(b.entryDate);
-      return dateB.getTime() - dateA.getTime();
-    });
-  }, []);
+    if (!referralsQuery) return [];
+    
+    return referralsQuery.map(record => ({
+      id: record.lead_id,
+      entryDate: new Date(record.created_at).toLocaleDateString(),
+      name: `${record.first_name} ${record.last_name}`,
+      interest: "69%", // Default interest for referrals
+      person: {
+        first_name: record.first_name,
+        last_name: record.last_name,
+        email: record.email,
+        phone: record.phone,
+      },
+      status: record.status,
+    }));
+  }, [referralsQuery]);
 
   // Referrals columns
   const referralsColumns: TableColumn[] = useMemo(() => [
