@@ -9,6 +9,7 @@ interface ActiveClientRecord {
   last_name: string;
   email: string | null;
   phone: string | null;
+  status: string;
   created_at: string;
 }
 
@@ -57,6 +58,7 @@ export const useActiveClients = () => {
           email: client.email || '',
           phone: client.phone || '',
           growthStage: generateDummyGrowthStage(index),
+          status: client.status,
         }));
 
         setData(transformedData);

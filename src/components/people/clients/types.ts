@@ -9,6 +9,7 @@ export interface ClientData {
   email: string;
   phone: string;
   growthStage: string;
+  status?: string;
 }
 
 export interface FilterByOption {
