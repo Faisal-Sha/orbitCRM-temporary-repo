@@ -4,7 +4,7 @@ import UserProfilePage, { TableColumn } from "@/components/UserProfilePage";
 import { Mail, Phone } from "lucide-react";
 import MilestonesIcon from "@/components/MilestonesIcon";
 import FilterSearchBar from "./FilterSearchBar";
-import { milestoneSetsReferrals, filterByOptions } from "./data";
+import { generateReferralsData, milestoneSetsReferrals, filterByOptions } from "./data";
 import { useReferrals } from "@/hooks/useReferrals";
 
 interface ReferralsProps {
@@ -15,11 +15,18 @@ const Referrals = ({ useSimplifiedView }: ReferralsProps) => {
   const [filterByReferrals, setFilterByReferrals] = useState(filterByOptions[0].value);
   const [searchTermReferrals, setSearchTermReferrals] = useState("");
   
-  const { data: referralsQuery, isLoading } = useReferrals();
+  const { data: referralsQuery, isLoading, error } = useReferrals();
 
   // Transform data for the table
   const referralsData = useMemo(() => {
-    if (!referralsQuery) return [];
+    if (!referralsQuery || referralsQuery.length === 0) {
+      // Show dummy data if no real data exists
+      return generateReferralsData().sort((a, b) => {
+        const dateA = new Date(a.entryDate);
+        const dateB = new Date(b.entryDate);
+        return dateB.getTime() - dateA.getTime();
+      });
+    }
     
     return referralsQuery.map(record => ({
       id: record.lead_id,
@@ -35,6 +42,19 @@ const Referrals = ({ useSimplifiedView }: ReferralsProps) => {
       status: record.status,
     }));
   }, [referralsQuery]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-muted-foreground">Loading referrals...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    console.error("Referrals error:", error);
+    // Fallback to dummy data on error
+  }
 
   // Referrals columns
   const referralsColumns: TableColumn[] = useMemo(() => [

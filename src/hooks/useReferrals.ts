@@ -47,15 +47,42 @@ export const useReferrals = () => {
   return useQuery({
     queryKey: ["referrals"],
     queryFn: async (): Promise<ReferralRecord[]> => {
-      const { data, error } = await supabase.rpc("get_leads_data");
+      // Get people who have referral records
+      const { data, error } = await supabase
+        .from('people')
+        .select(`
+          id,
+          first_name,
+          last_name,
+          status,
+          created_at,
+          people_contacts(email, phone),
+          people_referrals(referred_by_name)
+        `)
+        .not('people_referrals', 'is', null)
+        .eq('is_deleted', false)
+        .order('created_at', { ascending: false });
       
       if (error) {
         console.error("Failed to fetch referrals:", error);
         throw new Error(`Failed to fetch referrals: ${error.message}`);
       }
       
-      // Filter for referrals only
-      const referralData = (data as ReferralRecord[])?.filter(record => record.status === 'Referral') || [];
+      // Transform data to match expected format
+      const referralData = (data || []).map(person => ({
+        lead_id: person.id,
+        person_id: person.id,
+        first_name: person.first_name,
+        last_name: person.last_name,
+        email: person.people_contacts?.[0]?.email || null,
+        phone: person.people_contacts?.[0]?.phone || null,
+        created_at: person.created_at,
+        lead_goals: null,
+        preferences: null,
+        expectation: null,
+        note: null,
+        status: person.status
+      })) as ReferralRecord[];
       
       return referralData;
     },
