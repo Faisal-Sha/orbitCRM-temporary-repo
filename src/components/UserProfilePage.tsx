@@ -269,19 +269,19 @@ const UserProfilePage = (props: UserProfilePageProps) => {
                             .map((n: string) => n[0])
                             .join("")}
                         </div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-medium text-lg">{selectedItemData.name}</h3>
-                          <button
-                            className="ml-1 text-muted-foreground hover:text-primary"
-                            title="Open full profile"
-                            onClick={() => openUserProfilePanel(selectedItemData)}
-                            aria-label="Open profile panel"
-                            type="button"
-                          >
-                            <UserRound className="h-5 w-5" />
-                          </button>
-                        </div>
-                        <StatusLabel status={selectedItemData.status} />
+                         <div className="flex items-center gap-2">
+                           <h3 className="font-medium text-lg">{selectedItemData.name}</h3>
+                           <StatusLabel status={selectedItemData.status} />
+                           <button
+                             className="ml-1 text-muted-foreground hover:text-primary"
+                             title="Open full profile"
+                             onClick={() => openUserProfilePanel(selectedItemData)}
+                             aria-label="Open profile panel"
+                             type="button"
+                           >
+                             <UserRound className="h-5 w-5" />
+                           </button>
+                         </div>
                       </div>
 
                       {/* --- Upcoming Appointments section --- */}
