@@ -94,14 +94,13 @@ export const UserDataSection: React.FC<UserDataSectionProps> = ({ personId }) =>
       const success = await updateStatus(value);
       if (success) {
         setEditingField(null);
-        // Notify other components (e.g., header) to refresh profile data
-        window.dispatchEvent(new CustomEvent('userprofile:status-updated', { detail: { personId } }));
       }
     } catch (error) {
       console.error('Failed to update status:', error);
       // Don't close edit mode if update failed
     }
   };
+
   // Determine if staff type should be shown (only if user role is "staff")
   const shouldShowStaffType = assignedRole?.toLowerCase() === 'staff';
   // Status should be shown if a user role is assigned

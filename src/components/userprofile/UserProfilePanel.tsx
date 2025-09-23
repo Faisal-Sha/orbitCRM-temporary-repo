@@ -10,7 +10,6 @@ import RecordsTab from "./RecordsTab";
 import CommentsTab from "./CommentsTab";
 import ActivityTab from "./ActivityTab";
 import CompanionedAIChat from "../CompanionedAIChat";
-import { useUserProfile } from "@/hooks/useUserProfile";
 
 const panelStyle: React.CSSProperties = {
   width: "50vw",
@@ -44,29 +43,12 @@ const tabsConfig = [
 
 const UserProfilePanel: React.FC<UserProfilePanelProps> = ({ open, onClose, user }) => {
   const [activeTab, setActiveTab] = React.useState(tabsConfig[0].key);
-  
-  // Get the latest profile data to ensure status updates are reflected
-  const { data: profileData, refetch } = useUserProfile(user?.person_id);
 
   React.useEffect(() => {
     if (!open) setActiveTab(tabsConfig[0].key);
   }, [open]);
 
-  // Listen for status updates and refresh header instantly
-  React.useEffect(() => {
-    const handler = (event: Event) => {
-      const custom = event as CustomEvent<{ personId?: string }>;
-      if (custom.detail?.personId === user?.person_id) {
-        refetch?.();
-      }
-    };
-    window.addEventListener('userprofile:status-updated', handler as EventListener);
-    return () => window.removeEventListener('userprofile:status-updated', handler as EventListener);
-  }, [user?.person_id, refetch]);
   if (!user) return null;
-  
-  // Use the latest status from profile data if available, otherwise fallback to user prop
-  const currentStatus = profileData?.personalInfo?.status || user.status;
 
   const getInitials = (name?: string) => {
     if (!name) return "U";
@@ -93,7 +75,7 @@ const UserProfilePanel: React.FC<UserProfilePanelProps> = ({ open, onClose, user
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
               <span className="font-semibold text-lg">{user.name}</span>
-              <StatusLabel status={currentStatus} />
+              <StatusLabel status={user.status} />
             </div>
             <span className="text-xs text-muted-foreground">{user.inquiryDate && `Inquiry: ${user.inquiryDate}`}</span>
           </div>
