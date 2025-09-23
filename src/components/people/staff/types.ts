@@ -1,11 +1,14 @@
 
 export interface StaffMember {
+  person_id: string;
   name: string;
   joinDate: string;
   contribution: string;
-  email: string;
-  phone: string;
+  email?: string;
+  phone?: string;
   growthStage: "foundation" | "developing" | "established";
+  status?: string;
+  created_at?: string;
 }
 
 export interface Column {

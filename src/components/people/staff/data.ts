@@ -3,6 +3,7 @@ import { StaffMember, FilterOption } from "./types";
 
 export const generateActiveStaffData = (): StaffMember[] => [
   {
+    person_id: "dummy-1",
     name: "Amanda Lee",
     joinDate: "May 12, 2021",
     contribution: "84%",
@@ -11,6 +12,7 @@ export const generateActiveStaffData = (): StaffMember[] => [
     growthStage: "established",
   },
   {
+    person_id: "dummy-2",
     name: "Carlos Diaz",
     joinDate: "Sep 9, 2022",
     contribution: "72%",
@@ -19,6 +21,7 @@ export const generateActiveStaffData = (): StaffMember[] => [
     growthStage: "developing",
   },
   {
+    person_id: "dummy-3",
     name: "Sandy Brooks",
     joinDate: "Feb 18, 2023",
     contribution: "65%",
@@ -27,6 +30,7 @@ export const generateActiveStaffData = (): StaffMember[] => [
     growthStage: "foundation",
   },
   {
+    person_id: "dummy-4",
     name: "Priya Shah",
     joinDate: "Mar 01, 2022",
     contribution: "90%",
@@ -35,6 +39,7 @@ export const generateActiveStaffData = (): StaffMember[] => [
     growthStage: "established",
   },
   {
+    person_id: "dummy-5",
     name: "Tom Garner",
     joinDate: "Aug 15, 2021",
     contribution: "59%",
@@ -46,6 +51,7 @@ export const generateActiveStaffData = (): StaffMember[] => [
 
 export const generateInactiveStaffData = (): StaffMember[] => [
   {
+    person_id: "dummy-inactive-1",
     name: "Jordan King",
     joinDate: "Jun 21, 2020",
     contribution: "43%",
@@ -54,6 +60,7 @@ export const generateInactiveStaffData = (): StaffMember[] => [
     growthStage: "foundation",
   },
   {
+    person_id: "dummy-inactive-2",
     name: "Eva Tran",
     joinDate: "Nov 7, 2019",
     contribution: "62%",
@@ -62,6 +69,7 @@ export const generateInactiveStaffData = (): StaffMember[] => [
     growthStage: "developing",
   },
   {
+    person_id: "dummy-inactive-3",
     name: "Lisa Brown",
     joinDate: "Jan 15, 2018",
     contribution: "76%",
@@ -70,6 +78,7 @@ export const generateInactiveStaffData = (): StaffMember[] => [
     growthStage: "established",
   },
   {
+    person_id: "dummy-inactive-4",
     name: "Robert Neil",
     joinDate: "Mar 11, 2020",
     contribution: "53%",
@@ -78,6 +87,7 @@ export const generateInactiveStaffData = (): StaffMember[] => [
     growthStage: "developing",
   },
   {
+    person_id: "dummy-inactive-5",
     name: "Fatima Noor",
     joinDate: "Dec 31, 2017",
     contribution: "47%",

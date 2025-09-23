@@ -1804,6 +1804,19 @@ export type Database = {
           last_name: string
           person_id: string
           phone: string
+          status: string
+        }[]
+      }
+      get_active_staff_data: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          created_at: string
+          email: string
+          first_name: string
+          last_name: string
+          person_id: string
+          phone: string
+          status: string
         }[]
       }
       get_agencies_with_admins: {
