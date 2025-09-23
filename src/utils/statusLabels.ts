@@ -7,8 +7,8 @@ export interface StatusLabelConfig {
 export const getStatusLabelConfig = (status: string): StatusLabelConfig => {
   const normalizedStatus = status?.toLowerCase().trim();
 
-  // Yellow Labels
-  if (['applied', 'on hold', 'onboarding', 'on leave', 'doubtful'].includes(normalizedStatus)) {
+  // Yellow Labels - Applied, On Hold statuses
+  if (['applied', 'on hold'].includes(normalizedStatus)) {
     return {
       backgroundColor: 'hsl(var(--yellow) / 0.1)',
       textColor: 'hsl(var(--yellow-foreground))',
@@ -16,8 +16,8 @@ export const getStatusLabelConfig = (status: string): StatusLabelConfig => {
     };
   }
 
-  // Green Labels  
-  if (['active', 'qualified', 'scheduled', 'rescheduled'].includes(normalizedStatus)) {
+  // Green Labels - Active, Qualified statuses
+  if (['active', 'qualified'].includes(normalizedStatus)) {
     return {
       backgroundColor: 'hsl(var(--green) / 0.1)',
       textColor: 'hsl(var(--green-foreground))',
@@ -25,8 +25,8 @@ export const getStatusLabelConfig = (status: string): StatusLabelConfig => {
     };
   }
 
-  // Red Labels
-  if (['inactive', 'unqualified', 'unsubscribed', 'discharged', 'deceased', 'terminated', 'canceled', 'no show'].includes(normalizedStatus)) {
+  // Red Labels - Inactive/negative statuses
+  if (['inactive', 'terminated', 'canceled', 'discharged', 'deceased'].includes(normalizedStatus)) {
     return {
       backgroundColor: 'hsl(var(--destructive) / 0.1)',
       textColor: 'hsl(var(--destructive-foreground))',
