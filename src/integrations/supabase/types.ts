@@ -1846,6 +1846,7 @@ export type Database = {
           person_id: string
           phone: string
           preferences: string
+          status: string
         }[]
       }
       get_organization_settings: {
