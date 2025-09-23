@@ -4,7 +4,8 @@ import UserProfilePage, { TableColumn } from "@/components/UserProfilePage";
 import { Mail, Phone } from "lucide-react";
 import MilestonesIcon from "@/components/MilestonesIcon";
 import FilterSearchBar from "./FilterSearchBar";
-import { generateNoShowsData, milestoneSetsNoShows, filterByOptions } from "./data";
+import { milestoneSetsNoShows, filterByOptions } from "./data";
+import { useNoShows } from "@/hooks/useNoShows";
 
 interface NoShowsProps {
   useSimplifiedView: boolean;
@@ -13,15 +14,9 @@ interface NoShowsProps {
 const NoShows = ({ useSimplifiedView }: NoShowsProps) => {
   const [filterByNoShows, setFilterByNoShows] = useState(filterByOptions[0].value);
   const [searchTermNoShows, setSearchTermNoShows] = useState("");
-
-  // No Shows data
-  const noShowsData = useMemo(() => {
-    return generateNoShowsData().sort((a, b) => {
-      const dateA = new Date(a.inquiryDate);
-      const dateB = new Date(b.inquiryDate);
-      return dateB.getTime() - dateA.getTime();
-    });
-  }, []);
+  
+  // Use the custom hook to fetch data and listen for updates
+  const { data: noShowsData, loading, error } = useNoShows();
 
   // No Shows columns
   const noShowsColumns: TableColumn[] = useMemo(() => [

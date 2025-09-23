@@ -127,6 +127,8 @@ export const generateNoShowsData = (): NoShowData[] => {
       interest: "90%",
       email: "l.gomez@email.com",
       phone: "999-999-9999",
+      status: "Active",
+      person_id: "05791fc3-3277-4978-a5eb-674934e81047",
     },
     {
       name: "Steven Clark",
@@ -134,6 +136,8 @@ export const generateNoShowsData = (): NoShowData[] => {
       interest: "60%",
       email: "s.clark@email.com",
       phone: "101-202-3030",
+      status: "Not Set",
+      person_id: "05791fc3-3277-4978-a5eb-674934e81048",
     },
     {
       name: "Tina Adams",
@@ -141,6 +145,8 @@ export const generateNoShowsData = (): NoShowData[] => {
       interest: "80%",
       email: "t.adams@email.com",
       phone: "404-505-6060",
+      status: "On Hold",
+      person_id: "05791fc3-3277-4978-a5eb-674934e81049",
     },
     {
       name: "Gregory Lee",
@@ -148,6 +154,8 @@ export const generateNoShowsData = (): NoShowData[] => {
       interest: "45%",
       email: "g.lee@email.com",
       phone: "707-808-9090",
+      status: "Inactive",
+      person_id: "05791fc3-3277-4978-a5eb-674934e81050",
     },
   ];
 };

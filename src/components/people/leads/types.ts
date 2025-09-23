@@ -17,6 +17,8 @@ export interface NoShowData {
   interest: string;
   email: string;
   phone: string;
+  status?: string;
+  person_id?: string;
 }
 
 export interface ReferralData {
