@@ -2,6 +2,7 @@ import React from "react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { StatusLabel } from "@/components/ui/status-label";
 import { User, Brain, BarChart3, FileText, MessageSquare, Activity as ActivityIcon } from "lucide-react";
 import GeneralTab from "./GeneralTab";
 import PerformanceTab from "./PerformanceTab";
@@ -24,6 +25,7 @@ interface UserProfilePanelProps {
     person_id: string;
     name: string;
     interest?: string;
+    status?: string;
     inquiryDate?: string;
     email?: string;
     phone?: string;
@@ -73,7 +75,7 @@ const UserProfilePanel: React.FC<UserProfilePanelProps> = ({ open, onClose, user
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
               <span className="font-semibold text-lg">{user.name}</span>
-              <Badge variant="secondary">{user.interest || "Lead"}</Badge>
+              <StatusLabel status={user.status} />
             </div>
             <span className="text-xs text-muted-foreground">{user.inquiryDate && `Inquiry: ${user.inquiryDate}`}</span>
           </div>
