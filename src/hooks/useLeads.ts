@@ -13,6 +13,7 @@ export interface LeadRecord {
   preferences: string | null;
   expectation: string | null;
   note: string | null;
+  status: string;
 }
 
 export const useLeads = () => {

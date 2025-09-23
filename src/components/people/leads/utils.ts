@@ -21,5 +21,6 @@ export const transformLeadData = (leadRecords: LeadRecord[]): LeadData[] => {
     interest: interestOptions[Math.floor(Math.random() * interestOptions.length)],
     email: record.email || "No email available",
     phone: record.phone || "No phone available",
+    status: record.status || "active",
   }));
 };

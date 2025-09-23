@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { User, X, Mail, Phone } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { StatusLabel } from "@/components/ui/status-label";
 import { 
   Table,
   TableBody,
@@ -280,7 +281,7 @@ const UserProfilePage = (props: UserProfilePageProps) => {
                             <UserRound className="h-5 w-5" />
                           </button>
                         </div>
-                        <Badge variant="secondary">{selectedItemData.interest || "New"}</Badge>
+                        <StatusLabel status={selectedItemData.status} />
                       </div>
 
                       {/* --- Upcoming Appointments section --- */}

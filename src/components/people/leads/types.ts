@@ -8,6 +8,7 @@ export interface LeadData {
   interest: string;
   email: string;
   phone: string;
+  status?: string;
 }
 
 export interface NoShowData {
