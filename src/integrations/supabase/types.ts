@@ -1126,60 +1126,6 @@ export type Database = {
           },
         ]
       }
-      people_clients: {
-        Row: {
-          agency_id: string
-          created_at: string
-          created_by: string | null
-          deleted_at: string | null
-          deleted_by: string | null
-          id: string
-          is_deleted: boolean
-          person_id: string
-          updated_at: string
-          updated_by: string | null
-        }
-        Insert: {
-          agency_id: string
-          created_at?: string
-          created_by?: string | null
-          deleted_at?: string | null
-          deleted_by?: string | null
-          id?: string
-          is_deleted?: boolean
-          person_id: string
-          updated_at?: string
-          updated_by?: string | null
-        }
-        Update: {
-          agency_id?: string
-          created_at?: string
-          created_by?: string | null
-          deleted_at?: string | null
-          deleted_by?: string | null
-          id?: string
-          is_deleted?: boolean
-          person_id?: string
-          updated_at?: string
-          updated_by?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "people_clients_agency_id_fkey"
-            columns: ["agency_id"]
-            isOneToOne: false
-            referencedRelation: "app_agencies"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "people_clients_person_id_fkey"
-            columns: ["person_id"]
-            isOneToOne: false
-            referencedRelation: "people"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       people_contacts: {
         Row: {
           address_line_1: string | null
