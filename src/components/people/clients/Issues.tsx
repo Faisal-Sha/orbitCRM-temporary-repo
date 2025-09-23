@@ -3,8 +3,8 @@ import { useMemo, useState } from "react";
 import UserProfilePage, { TableColumn } from "@/components/UserProfilePage";
 import GrowthStatusIndicator from "@/components/Growthstatus";
 import FilterSearchBar from "./FilterSearchBar";
-import { generateIssuesData } from "./data";
 import { FilterByOption } from "./types";
+import { useIssuesClients } from "@/hooks/useIssuesClients";
 
 const filterByOptions: FilterByOption[] = [
   { value: "provider", label: "Provider" },
@@ -15,6 +15,9 @@ const filterByOptions: FilterByOption[] = [
 const Issues = () => {
   const [filterBy, setFilterBy] = useState(filterByOptions[0].value);
   const [searchTerm, setSearchTerm] = useState("");
+  
+  // Use the custom hook to fetch data and listen for updates
+  const { data: issuesData, loading, error } = useIssuesClients();
 
   const issuesColumns: TableColumn[] = useMemo(() => [
     {
@@ -67,7 +70,7 @@ const Issues = () => {
         searchId="search-issues"
       />
       <UserProfilePage
-        data={generateIssuesData()}
+        data={issuesData}
         columns={issuesColumns}
         tableTitle="Clients With Issues"
         detailsTitle="Issue Details"

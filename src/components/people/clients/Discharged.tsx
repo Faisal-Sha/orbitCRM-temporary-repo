@@ -3,8 +3,8 @@ import { useMemo, useState } from "react";
 import UserProfilePage, { TableColumn } from "@/components/UserProfilePage";
 import GrowthStatusIndicator from "@/components/Growthstatus";
 import FilterSearchBar from "./FilterSearchBar";
-import { generateDischargedData } from "./data";
 import { FilterByOption } from "./types";
+import { useDischargedClients } from "@/hooks/useDischargedClients";
 
 const filterByOptions: FilterByOption[] = [
   { value: "provider", label: "Provider" },
@@ -15,6 +15,9 @@ const filterByOptions: FilterByOption[] = [
 const Discharged = () => {
   const [filterBy, setFilterBy] = useState(filterByOptions[0].value);
   const [searchTerm, setSearchTerm] = useState("");
+  
+  // Use the custom hook to fetch data and listen for updates
+  const { data: dischargedData, loading, error } = useDischargedClients();
 
   const dischargedColumns: TableColumn[] = useMemo(() => [
     {
@@ -67,7 +70,7 @@ const Discharged = () => {
         searchId="search-discharged"
       />
       <UserProfilePage
-        data={generateDischargedData()}
+        data={dischargedData}
         columns={dischargedColumns}
         tableTitle="Discharged Clients"
         detailsTitle="Discharged Client Details"
