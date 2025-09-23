@@ -1894,49 +1894,7 @@ export type Database = {
       }
       get_user_profile_data: {
         Args: { p_person_id: string }
-        Returns: {
-          address_line_1: string
-          address_line_2: string
-          city: string
-          country: string
-          created_at: string
-          date_of_birth: string
-          email: string
-          emergency_email: string
-          emergency_first_name: string
-          emergency_last_name: string
-          emergency_phone_number: string
-          emergency_relationship: string
-          ethnicity_identity: string
-          first_name: string
-          gender_identity: string
-          insurance_expiration_date: string
-          insurance_number: string
-          insurance_provider: string
-          last_name: string
-          living_situation: string
-          marital_status: string
-          middle_name: string
-          npi_number: string
-          person_id: string
-          phone: string
-          phone_home: string
-          referred_by_name: string
-          ssn_number: string
-          staff_type: string
-          state: string
-          status: string
-          updated_at: string
-          url_facebook: string
-          url_instagram: string
-          url_linkedin: string
-          url_tiktok: string
-          user_profile_bio: string
-          user_profile_pic: string
-          user_role: string
-          work_email: string
-          zip_code: string
-        }[]
+        Returns: Json
       }
       get_user_roles_with_counts: {
         Args: Record<PropertyKey, never>
