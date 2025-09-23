@@ -126,38 +126,36 @@ const Referrals = ({ useSimplifiedView }: ReferralsProps) => {
           title: "Referral Overview",
           showHeader: true,
           className: "bg-white",
-          renderType: useSimplifiedView ? "summary" : "default",
-          summaryConfig: useSimplifiedView
-            ? {
-                layout: "vertical",
-                fields: [
-                  {
-                    key: "email",
-                    label: "Email",
-                    render: (value, item) => (
-                      <>
-                        <Mail className="h-4 w-4 text-blue-500" />
-                        <span className="text-sm">
-                          {item.person?.email || "email@example.com"}
-                        </span>
-                      </>
-                    ),
-                  },
-                  {
-                    key: "phone",
-                    label: "Phone",
-                    render: (value, item) => (
-                      <>
-                        <Phone className="h-4 w-4 text-green-500" />
-                        <span className="text-sm">
-                          {item.person?.phone || "000-000-0000"}
-                        </span>
-                      </>
-                    ),
-                  },
-                ],
-              }
-            : undefined,
+          renderType: "summary",
+          summaryConfig: {
+            layout: "vertical",
+            fields: [
+              {
+                key: "email",
+                label: "Email",
+                render: (value, item) => (
+                  <>
+                    <Mail className="h-4 w-4 text-blue-500" />
+                    <span className="text-sm">
+                      {item.person?.email || "email@example.com"}
+                    </span>
+                  </>
+                ),
+              },
+              {
+                key: "phone",
+                label: "Phone",
+                render: (value, item) => (
+                  <>
+                    <Phone className="h-4 w-4 text-green-500" />
+                    <span className="text-sm">
+                      {item.person?.phone || "000-000-0000"}
+                    </span>
+                  </>
+                ),
+              },
+            ],
+          },
         }}
       />
     </div>
