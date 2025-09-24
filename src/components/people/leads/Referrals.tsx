@@ -16,11 +16,20 @@ const Referrals = ({ useSimplifiedView }: ReferralsProps) => {
 
   // Referrals data
   const referralsData = useMemo(() => {
-    return generateReferralsData().sort((a, b) => {
-      const dateA = new Date(a.entryDate);
-      const dateB = new Date(b.entryDate);
-      return dateB.getTime() - dateA.getTime();
-    });
+    return generateReferralsData()
+      .map(item => ({
+        ...item,
+        name: item.person ? `${item.person.first_name} ${item.person.last_name}` : 'Unknown',
+        email: item.person?.email || '',
+        phone: item.person?.phone || '',
+        inquiryDate: item.entryDate,
+        status: 'referral'
+      }))
+      .sort((a, b) => {
+        const dateA = new Date(a.entryDate);
+        const dateB = new Date(b.entryDate);
+        return dateB.getTime() - dateA.getTime();
+      });
   }, []);
 
   // Referrals columns
