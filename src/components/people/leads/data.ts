@@ -196,7 +196,7 @@ export const generateReferralsData = (): ReferralData[] => {
   return [
     {
       id: nanoid(),
-      person_id: nanoid(),
+      person_id: "05791fc3-3277-4978-a5eb-674934e81051",
       entryDate: "May 14, 2025",
       interest: "88%",
       person: {
@@ -208,7 +208,7 @@ export const generateReferralsData = (): ReferralData[] => {
     },
     {
       id: nanoid(),
-      person_id: nanoid(),
+      person_id: "05791fc3-3277-4978-a5eb-674934e81052",
       entryDate: "May 11, 2025",
       interest: "77%",
       person: {
@@ -220,7 +220,7 @@ export const generateReferralsData = (): ReferralData[] => {
     },
     {
       id: nanoid(),
-      person_id: nanoid(),
+      person_id: "05791fc3-3277-4978-a5eb-674934e81053",
       entryDate: "May 08, 2025",
       interest: "69%",
       person: {
@@ -232,7 +232,7 @@ export const generateReferralsData = (): ReferralData[] => {
     },
     {
       id: nanoid(),
-      person_id: nanoid(),
+      person_id: "05791fc3-3277-4978-a5eb-674934e81054",
       entryDate: "May 03, 2025",
       interest: "82%",
       person: {
