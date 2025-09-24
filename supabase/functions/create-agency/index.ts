@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.56.0";
-import { Resend } from "npm:resend@2.0.0";
+import { Resend } from "https://esm.sh/resend@2.0.0";
 
 
 const corsHeaders = {
@@ -34,6 +34,13 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error("SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing");
+      return new Response(JSON.stringify({ ok: false, error: "Database configuration missing" }),
+        { status: 500, headers: { "Content-Type": "application/json" } });
+    }
+    
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const resend = new Resend(key);
 

@@ -110,14 +110,21 @@ serve(async (req) => {
         const createData = requestBody;
         const webhookSecret = createData.webhook_api_secret || crypto.randomUUID();
         
+        // Generate the webhook endpoint URL before creation
+        const baseUrl = Deno.env.get('SUPABASE_URL')!.replace('/rest/v1', '');
+        const tempId = crypto.randomUUID();
+        const webhookUrl = `${baseUrl}/functions/v1/webhook-form-submission/${tempId}`;
+        
         console.log('Creating webhook with data:', { ...createData, webhook_api_secret: '[HIDDEN]' });
         
         const { data: newWebhook, error: createError } = await supabase
           .from('settings_integrations_webhooks')
           .insert({
+            id: tempId,
             agency_id: agencyId,
             webhook_name: createData.webhook_name,
             webhook_api_secret: webhookSecret,
+            webhook_api_endpoint: webhookUrl,
             status: createData.status || 'active',
             created_by: user.id,
             updated_by: user.id
@@ -135,26 +142,7 @@ serve(async (req) => {
           });
         }
 
-        // Generate the webhook endpoint URL
-        const baseUrl = Deno.env.get('SUPABASE_URL')!.replace('/rest/v1', '');
-        const webhookUrl = `${baseUrl}/functions/v1/webhook-form-submission/${newWebhook.id}`;
-        
-        // Update with the generated endpoint
-        const { data: updatedWebhook, error: updateError } = await supabase
-          .from('settings_integrations_webhooks')
-          .update({ webhook_api_endpoint: webhookUrl })
-          .eq('id', newWebhook.id)
-          .select()
-          .single();
-
-        if (updateError) {
-          return new Response(JSON.stringify({ error: updateError.message }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
-
-        return new Response(JSON.stringify(updatedWebhook), {
+        return new Response(JSON.stringify(newWebhook), {
           status: 201,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -224,13 +212,13 @@ serve(async (req) => {
         });
     }
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Webhook management error:', error);
-    console.error('Error stack:', error.stack);
+    console.error('Error stack:', error?.stack);
     return new Response(JSON.stringify({ 
       error: 'Internal server error',
-      details: error.message,
-      stack: error.stack 
+      details: error?.message,
+      stack: error?.stack 
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

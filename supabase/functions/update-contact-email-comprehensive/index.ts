@@ -224,7 +224,7 @@ Deno.serve(async (req) => {
       // Update auth.users
       console.log('Updating auth.users table...');
       const { data: updatedAuthUser, error: authError } = await supabaseAdmin.auth.admin.updateUserById(
-        personData.app_users.user_id,
+        personData.app_users[0].user_id,
         { email: new_email }
       );
 
@@ -260,7 +260,7 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: false, 
-        message: error.message || 'Internal server error' 
+        message: (error as any)?.message || 'Internal server error' 
       }),
       { 
         status: 500, 
