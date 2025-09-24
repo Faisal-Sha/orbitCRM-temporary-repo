@@ -57,9 +57,10 @@ const Settings = () => {
     { value: "system-security", label: "System & Security", content: <SystemAndSecurity /> },
   ];
 
-  // Define limited tabs for agency admins (only Services & Billing)
+  // Define limited tabs for agency admins (Services & Billing and Integrations)
   const adminTabs = [
     { value: "billing-rcm", label: "Services & Billing", content: <BillingAndRCM /> },
+    { value: "integrations", label: "Integrations", content: <Integrations /> },
   ];
 
   // Use appropriate tabs based on user role
