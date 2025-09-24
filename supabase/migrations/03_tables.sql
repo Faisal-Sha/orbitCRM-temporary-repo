@@ -657,3 +657,9 @@ CREATE TABLE public.people_assign_provider (
   CONSTRAINT people_assign_provider_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES auth.users(id) ON DELETE SET NULL,
   CONSTRAINT people_assign_provider_deleted_by_fkey FOREIGN KEY (deleted_by) REFERENCES auth.users(id) ON DELETE SET NULL
 );
+
+
+-- Drop people_leads table if it exists (cleanup)
+DROP TABLE IF EXISTS public.people_leads CASCADE;
+-- Drop people_clients table if it exists (cleanup)
+DROP TABLE IF EXISTS public.people_clients CASCADE;

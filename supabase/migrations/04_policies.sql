@@ -934,3 +934,11 @@ CREATE POLICY "Users can delete services in their agency"
 ON public.settings_services_and_fees 
 FOR DELETE 
 USING (user_can_access_agency(agency_id));
+
+
+
+-- Step 3: Drop all RLS policies on people_clients table
+DROP POLICY IF EXISTS "Users can create clients in their agency" ON public.people_clients;
+DROP POLICY IF EXISTS "Users can delete clients in their agency" ON public.people_clients;
+DROP POLICY IF EXISTS "Users can update clients in their agency" ON public.people_clients;
+DROP POLICY IF EXISTS "Users can view clients in their agency" ON public.people_clients;

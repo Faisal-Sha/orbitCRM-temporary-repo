@@ -2188,10 +2188,7 @@ BEGIN
     'referral_info',
       COALESCE((
         SELECT jsonb_build_object(
-          'referral_type', pr.referral_type,
-          'referral_relationship', pr.referral_relationship,
-          'referred_by_name', pr.referred_by_name,
-          'referral_note', pr.referral_note
+          'referred_by_name', pr.referred_by_name
         )
         FROM public.people_referrals pr
         WHERE pr.person_id = p.id
@@ -2200,45 +2197,39 @@ BEGIN
         LIMIT 1
       ), '{}'::jsonb),
 
-    'lead_info',
-      COALESCE((
-        SELECT jsonb_build_object()
-        FROM public.people_leads pl
-        WHERE pl.person_id = p.id
-          AND pl.is_deleted = false
-        ORDER BY pl.updated_at DESC NULLS LAST, pl.created_at DESC NULLS LAST
-        LIMIT 1
-      ), '{}'::jsonb),
-
     'user_roles',
-      COALESCE((
-        SELECT jsonb_agg(
-          jsonb_build_object(
-            'role_id', paur.user_role_id,
-            'role_name', aur.role_name
-          )
-        )
-        FROM public.people_assign_user_role paur
-        JOIN public.app_user_roles aur ON paur.user_role_id = aur.id
-        WHERE paur.person_id = p.id
-          AND paur.is_deleted = false
-          AND aur.is_deleted = false
-      ), '[]'::jsonb),
+      CASE 
+        WHEN p.user_role_id IS NOT NULL THEN
+          COALESCE((
+            SELECT jsonb_build_array(
+              jsonb_build_object(
+                'role_id', p.user_role_id,
+                'role_name', aur.role_name
+              )
+            )
+            FROM public.app_user_roles aur 
+            WHERE aur.id = p.user_role_id
+              AND aur.is_deleted = false
+          ), '[]'::jsonb)
+        ELSE '[]'::jsonb
+      END,
 
     'staff_types',
-      COALESCE((
-        SELECT jsonb_agg(
-          jsonb_build_object(
-            'staff_type_id', past.staff_type_id,
-            'staff_type', aust.staff_type
-          )
-        )
-        FROM public.people_assign_staff_type past
-        JOIN public.app_user_staff_types aust ON past.staff_type_id = aust.id
-        WHERE past.person_id = p.id
-          AND past.is_deleted = false
-          AND aust.is_deleted = false
-      ), '[]'::jsonb)
+      CASE 
+        WHEN p.staff_type_id IS NOT NULL THEN
+          COALESCE((
+            SELECT jsonb_build_array(
+              jsonb_build_object(
+                'staff_type_id', p.staff_type_id,
+                'staff_type', aust.staff_type
+              )
+            )
+            FROM public.app_user_staff_types aust 
+            WHERE aust.id = p.staff_type_id
+              AND aust.is_deleted = false
+          ), '[]'::jsonb)
+        ELSE '[]'::jsonb
+      END
   )
   INTO profile_data
   FROM public.people p
@@ -2247,14 +2238,13 @@ BEGIN
 
   RETURN COALESCE(profile_data, '{}'::jsonb);
 END;
-$function$;
+$function$
 
 -- Allow authenticated clients to execute (RLS-hardening to follow in Step 6)
 GRANT EXECUTE ON FUNCTION public.get_user_profile_data(uuid) TO authenticated;
 
--- Update get_leads_data function to properly filter cold leads
 CREATE OR REPLACE FUNCTION public.get_leads_data()
- RETURNS TABLE(lead_id uuid, person_id uuid, first_name text, last_name text, email text, phone text, created_at timestamp with time zone)
+ RETURNS TABLE(lead_id uuid, person_id uuid, first_name text, last_name text, email text, phone text, created_at timestamp with time zone, lead_goals text, preferences text, expectation text, note text, status text)
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO 'public'
@@ -2272,31 +2262,34 @@ BEGIN
 
   RETURN QUERY
   SELECT 
-    pl.id AS lead_id,
+    p.id AS lead_id,
     p.id AS person_id,
     p.first_name,
     p.last_name, 
     pc.email,
     pc.phone,
-    pl.created_at
-  FROM public.people_leads pl
-  JOIN public.people p ON pl.person_id = p.id
+    p.created_at,
+    NULL::text AS lead_goals,
+    NULL::text AS preferences,
+    NULL::text AS expectation,
+    NULL::text AS note,
+    p.status
+  FROM public.people p
   JOIN public.people_assign_user_role paur ON p.id = paur.person_id
   JOIN public.app_user_roles aur ON paur.user_role_id = aur.id
   JOIN public.app_agencies_people ap ON p.id = ap.person_id
   LEFT JOIN public.people_contacts pc ON p.id = pc.person_id AND pc.is_deleted = false
   LEFT JOIN public.people_referrals pr ON p.id = pr.person_id AND pr.is_deleted = false
-  WHERE pl.is_deleted = false 
-    AND p.is_deleted = false
+  WHERE p.is_deleted = false 
     AND paur.is_deleted = false
     AND aur.is_deleted = false
     AND aur.role_name = 'lead'
     AND ap.is_deleted = false
     AND ap.agency_id = current_agency_id
     AND pr.id IS NULL  -- Exclude people who exist in people_referrals (not referrals)
-  ORDER BY pl.created_at DESC;
+  ORDER BY p.created_at DESC;
 END;
-$function$
+$function$;
 
 
 
@@ -2497,18 +2490,16 @@ BEGIN
 END;
 $$;
 
+-- Recreate update_people_leads_field function to return error since leads table no longer exists
 CREATE OR REPLACE FUNCTION public.update_people_leads_field(p_person_id uuid, p_field_name text, p_field_value text)
  RETURNS json
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
-DECLARE
-  current_user_id UUID := auth.uid();
-  result JSON;
 BEGIN
-  -- All lead-specific fields have been removed, so return error for any field name
-  RETURN json_build_object('success', false, 'message', 'Lead field updates are no longer supported');
+  -- Leads functionality has been removed - return error for any field name
+  RETURN json_build_object('success', false, 'message', 'Lead field updates are no longer supported - leads table has been removed');
 END;
 $function$;
 
@@ -2850,7 +2841,6 @@ BEGIN
 END;
 $function$;
 
--- Update update_people_user_role function to handle staff role transitions
 CREATE OR REPLACE FUNCTION public.update_people_user_role(p_person_id uuid, p_role_name text)
  RETURNS json
  LANGUAGE plpgsql
@@ -3064,5 +3054,102 @@ BEGIN
   ) INTO result;
 
   RETURN result;
+END;
+$function$;
+
+-- Create function to get active clients data
+CREATE OR REPLACE FUNCTION public.get_active_clients_data()
+RETURNS TABLE(
+  person_id uuid,
+  first_name text,
+  last_name text,
+  email text,
+  phone text,
+  status text,
+  created_at timestamp with time zone
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+DECLARE
+  current_agency_id uuid;
+BEGIN
+  -- Get current user's agency ID
+  current_agency_id := public.current_user_agency_id();
+  
+  IF current_agency_id IS NULL THEN
+    RETURN;
+  END IF;
+
+  RETURN QUERY
+  SELECT 
+    p.id as person_id,
+    p.first_name,
+    p.last_name,
+    pc.email,
+    pc.phone,
+    p.status,
+    p.created_at
+  FROM public.people p
+  JOIN public.app_agencies_people ap ON p.id = ap.person_id
+  JOIN public.app_user_roles aur ON p.user_role_id = aur.id
+  LEFT JOIN public.people_contacts pc ON p.id = pc.person_id AND pc.is_deleted = false
+  WHERE p.is_deleted = false
+    AND ap.is_deleted = false
+    AND ap.agency_id = current_agency_id
+    AND aur.role_name = 'client'::user_roles_enum
+    AND LOWER(p.status) IN ('active', 'on hold', 'inactive', 'qualified', 'unqualified', 'not set', 'discharged')
+  ORDER BY p.created_at DESC;
+END;
+$$;
+
+
+-- Create function to get active staff data with agency filtering
+CREATE OR REPLACE FUNCTION public.get_active_staff_data()
+RETURNS TABLE(
+  person_id uuid,
+  first_name text,
+  last_name text,
+  email text,
+  phone text,
+  status text,
+  created_at timestamp with time zone
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $function$
+DECLARE
+  current_agency_id uuid;
+BEGIN
+  -- Get the current user's agency ID
+  SELECT public.current_user_agency_id() INTO current_agency_id;
+  
+  IF current_agency_id IS NULL THEN
+    -- Return empty result if user has no agency access
+    RETURN;
+  END IF;
+
+  RETURN QUERY
+  SELECT 
+    p.id as person_id,
+    p.first_name,
+    p.last_name,
+    pc.email,
+    pc.phone,
+    p.status,
+    p.created_at
+  FROM public.people p
+  JOIN public.app_agencies_people ap ON p.id = ap.person_id
+  JOIN public.app_user_roles aur ON p.user_role_id = aur.id
+  LEFT JOIN public.people_contacts pc ON p.id = pc.person_id AND pc.is_deleted = false
+  WHERE p.is_deleted = false
+    AND ap.is_deleted = false
+    AND ap.agency_id = current_agency_id
+    AND aur.role_name = 'staff'::user_roles_enum
+    AND aur.is_deleted = false
+    AND LOWER(p.status) IN ('active', 'on leave')
+  ORDER BY p.created_at DESC;
 END;
 $function$;
