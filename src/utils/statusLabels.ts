@@ -10,8 +10,8 @@ export const getStatusLabelConfig = (status: string): StatusLabelConfig => {
   // Yellow Labels - Applied, On Hold statuses
   if (['applied', 'on hold'].includes(normalizedStatus)) {
     return {
-      backgroundColor: 'hsl(var(--yellow) / 0.1)',
-      textColor: 'hsl(var(--yellow-foreground))',
+      backgroundColor: '#fef9c3',
+      textColor: 'black',
       fontWeight: '500'
     };
   }
@@ -19,8 +19,8 @@ export const getStatusLabelConfig = (status: string): StatusLabelConfig => {
   // Green Labels - Active, Qualified statuses
   if (['active', 'qualified'].includes(normalizedStatus)) {
     return {
-      backgroundColor: 'hsl(var(--green) / 0.1)',
-      textColor: 'hsl(var(--green-foreground))',
+      backgroundColor: '#dcfce7',
+      textColor: 'black',
       fontWeight: '500'
     };
   }
@@ -28,16 +28,16 @@ export const getStatusLabelConfig = (status: string): StatusLabelConfig => {
   // Red Labels - Inactive/negative statuses
   if (['inactive', 'terminated', 'canceled', 'discharged', 'deceased'].includes(normalizedStatus)) {
     return {
-      backgroundColor: 'hsl(var(--destructive) / 0.1)',
-      textColor: 'hsl(var(--destructive-foreground))',
+      backgroundColor: '#fdd3eb',
+      textColor: 'black',
       fontWeight: '500'
     };
   }
 
   // Default gray for unmapped statuses
   return {
-    backgroundColor: 'hsl(var(--muted))',
-    textColor: 'hsl(var(--muted-foreground))',
-    fontWeight: '500'
+    backgroundColor: '#ededed',
+    textColor: 'black',
+    fontWeight: 'normal'
   };
 };
