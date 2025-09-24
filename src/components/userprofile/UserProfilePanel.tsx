@@ -10,6 +10,7 @@ import RecordsTab from "./RecordsTab";
 import CommentsTab from "./CommentsTab";
 import ActivityTab from "./ActivityTab";
 import CompanionedAIChat from "../CompanionedAIChat";
+import { useUserProfile } from "@/hooks/useUserProfile";
 
 const panelStyle: React.CSSProperties = {
   width: "50vw",
@@ -43,12 +44,21 @@ const tabsConfig = [
 
 const UserProfilePanel: React.FC<UserProfilePanelProps> = ({ open, onClose, user }) => {
   const [activeTab, setActiveTab] = React.useState(tabsConfig[0].key);
+  
+  // Use useUserProfile hook to get live data for header
+  const { data: liveUserData } = useUserProfile(user?.person_id);
 
   React.useEffect(() => {
     if (!open) setActiveTab(tabsConfig[0].key);
   }, [open]);
 
   if (!user) return null;
+  
+  // Use live data for status if available, fallback to prop data
+  const displayUser = {
+    ...user,
+    status: liveUserData?.personalInfo?.status || user.status
+  };
 
   const getInitials = (name?: string) => {
     if (!name) return "U";
@@ -74,10 +84,10 @@ const UserProfilePanel: React.FC<UserProfilePanelProps> = ({ open, onClose, user
           </div>
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-lg">{user.name}</span>
-              <StatusLabel status={user.status} />
+              <span className="font-semibold text-lg">{displayUser.name}</span>
+              <StatusLabel status={displayUser.status} />
             </div>
-            <span className="text-xs text-muted-foreground">{user.inquiryDate && `Inquiry: ${user.inquiryDate}`}</span>
+            <span className="text-xs text-muted-foreground">{displayUser.inquiryDate && `Inquiry: ${displayUser.inquiryDate}`}</span>
           </div>
         </div>
 
