@@ -235,10 +235,6 @@ const Webhooks: React.FC<WebhooksProps> = ({ onBack }) => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="form_submission">Form Submission</SelectItem>
-                  <SelectItem value="crm_data">CRM Data</SelectItem>
-                  <SelectItem value="payment_notification">Payment Notification</SelectItem>
-                  <SelectItem value="lead_capture">Lead Capture</SelectItem>
-                  <SelectItem value="custom">Custom</SelectItem>
                 </SelectContent>
               </Select>
             </div>

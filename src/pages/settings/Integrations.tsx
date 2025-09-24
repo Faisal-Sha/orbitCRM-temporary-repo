@@ -2,18 +2,22 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Link, Webhook, Key, Zap, Target } from "lucide-react";
+import { Link, Webhook, Key, Zap, Target, Loader2 } from "lucide-react";
 import { useState } from "react";
 import External from "@/components/settings/integrations/External";
 import AdAccounts from "@/components/settings/integrations/AdAccounts";
 import Webhooks from "@/components/settings/integrations/Webhooks";  
 import APIAccess from "@/components/settings/integrations/APIAccess";
+import { useWebhooks } from "@/hooks/useWebhooks";
 
 const Integrations = () => {
   const [showExternal, setShowExternal] = useState(false);
   const [showAdAccounts, setShowAdAccounts] = useState(false);
   const [showWebhooks, setShowWebhooks] = useState(false);
   const [showAPIAccess, setShowAPIAccess] = useState(false);
+
+  // Get webhook data for display
+  const { webhooks, isLoading: webhooksLoading } = useWebhooks();
 
   const integrations = [
     { name: "Mailgun", type: "Communication", status: "Connected", description: "Email delivery service" },
@@ -28,14 +32,6 @@ const Integrations = () => {
     { name: "Meta", status: "Connected", description: "Facebook and Instagram advertising" },
     { name: "Google", status: "Disconnected", description: "Google Ads platform" },
     { name: "TikTok", status: "Not Configured", description: "TikTok advertising platform" },
-  ];
-
-  const webhooks = [
-    { name: "Appointment Created", url: "https://api.example.com/webhooks/appointment", status: "Active" },
-    { name: "Payment Processed", url: "https://api.example.com/webhooks/payment", status: "Active" },
-    { name: "Client Updated", url: "https://api.example.com/webhooks/client", status: "Inactive" },
-    { name: "User Registration", url: "https://api.example.com/webhooks/user", status: "Active" },
-    { name: "Document Upload", url: "https://api.example.com/webhooks/document", status: "Inactive" },
   ];
 
   const apiKeys = [
@@ -124,28 +120,50 @@ const Integrations = () => {
 
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Webhook className="h-5 w-5" />
-              Webhooks
-            </CardTitle>
-            <Button onClick={() => setShowWebhooks(true)}>Manage</Button>
-          </div>
+          <CardTitle className="flex items-center gap-2">
+            <Webhook className="h-5 w-5" />
+            Webhooks ({webhooksLoading ? '...' : webhooks.length})
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {webhooks.map((webhook, index) => (
-              <div key={index} className="flex items-center justify-between p-3 border rounded">
-                <div>
-                  <p className="font-medium">{webhook.name}</p>
-                  <p className="text-sm text-muted-foreground">{webhook.url}</p>
+          {webhooksLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              Loading webhooks...
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {webhooks.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Webhook className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No webhooks configured yet</p>
+                  <p className="text-sm">Click "View All Webhooks" to get started</p>
                 </div>
-                <Badge variant={webhook.status === 'Active' ? 'default' : 'secondary'}>
-                  {webhook.status}
-                </Badge>
-              </div>
-            ))}
-          </div>
+              ) : (
+                <>
+                  {webhooks.slice(0, 3).map((webhook) => (
+                    <div key={webhook.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div>
+                        <p className="font-medium">{webhook.webhook_name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {webhook.webhook_type?.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())} • 
+                          {webhook.webhook_description || 'No description'}
+                        </p>
+                      </div>
+                      <Badge variant="outline">
+                        {webhook.status === 'active' ? 'Active' : 'Inactive'}
+                      </Badge>
+                    </div>
+                  ))}
+                  <div className="text-center pt-4">
+                    <Button variant="outline" onClick={() => setShowWebhooks(true)}>
+                      View All Webhooks
+                    </Button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 
