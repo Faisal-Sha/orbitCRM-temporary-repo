@@ -733,6 +733,88 @@ export type Database = {
         }
         Relationships: []
       }
+      forms_submissions: {
+        Row: {
+          agency_id: string
+          archived_at: string | null
+          archived_by_user_id: string | null
+          created_at: string | null
+          created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          deleted_by_user_id: string | null
+          form_id: string | null
+          id: string
+          is_deleted: boolean
+          sub_track_id: string | null
+          submission_data: Json
+          submission_status: string
+          submitted_by_id: string
+          updated_at: string | null
+          updated_by_id: string | null
+        }
+        Insert: {
+          agency_id: string
+          archived_at?: string | null
+          archived_by_user_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deleted_by_user_id?: string | null
+          form_id?: string | null
+          id?: string
+          is_deleted?: boolean
+          sub_track_id?: string | null
+          submission_data: Json
+          submission_status?: string
+          submitted_by_id: string
+          updated_at?: string | null
+          updated_by_id?: string | null
+        }
+        Update: {
+          agency_id?: string
+          archived_at?: string | null
+          archived_by_user_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deleted_by_user_id?: string | null
+          form_id?: string | null
+          id?: string
+          is_deleted?: boolean
+          sub_track_id?: string | null
+          submission_data?: Json
+          submission_status?: string
+          submitted_by_id?: string
+          updated_at?: string | null
+          updated_by_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "forms_submissions_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "app_agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "forms_submissions_submitted_by_id_fkey"
+            columns: ["submitted_by_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "forms_submissions_updated_by_id_fkey"
+            columns: ["updated_by_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       people: {
         Row: {
           created_at: string
@@ -1425,6 +1507,53 @@ export type Database = {
             columns: ["person_id"]
             isOneToOne: false
             referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      settings_integrations_webhooks: {
+        Row: {
+          agency_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+          webhook_api_endpoint: string
+          webhook_api_secret: string
+          webhook_name: string
+        }
+        Insert: {
+          agency_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          webhook_api_endpoint: string
+          webhook_api_secret: string
+          webhook_name: string
+        }
+        Update: {
+          agency_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          webhook_api_endpoint?: string
+          webhook_api_secret?: string
+          webhook_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "settings_integrations_webhooks_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "app_agencies"
             referencedColumns: ["id"]
           },
         ]
