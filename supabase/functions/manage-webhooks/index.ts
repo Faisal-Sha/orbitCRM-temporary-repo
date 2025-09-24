@@ -109,11 +109,12 @@ serve(async (req) => {
       case 'POST':
         const createData = requestBody;
         const webhookSecret = createData.webhook_api_secret || crypto.randomUUID();
+        const webhookType = createData.webhook_type || 'form_submission';
         
         // Generate the webhook endpoint URL before creation
         const baseUrl = Deno.env.get('SUPABASE_URL')!.replace('/rest/v1', '');
         const tempId = crypto.randomUUID();
-        const webhookUrl = `${baseUrl}/functions/v1/webhook-form-submission/${tempId}`;
+        const webhookUrl = `${baseUrl}/functions/v1/webhook-handler/${tempId}`;
         
         console.log('Creating webhook with data:', { ...createData, webhook_api_secret: '[HIDDEN]' });
         
@@ -123,6 +124,8 @@ serve(async (req) => {
             id: tempId,
             agency_id: agencyId,
             webhook_name: createData.webhook_name,
+            webhook_type: webhookType,
+            webhook_description: createData.webhook_description,
             webhook_api_secret: webhookSecret,
             webhook_api_endpoint: webhookUrl,
             status: createData.status || 'active',
@@ -160,6 +163,8 @@ serve(async (req) => {
           .from('settings_integrations_webhooks')
           .update({
             webhook_name: updateData.webhook_name,
+            webhook_type: updateData.webhook_type,
+            webhook_description: updateData.webhook_description,
             webhook_api_secret: updateData.webhook_api_secret,
             status: updateData.status,
             updated_by: user.id

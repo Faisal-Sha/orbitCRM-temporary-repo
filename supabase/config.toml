@@ -6,5 +6,8 @@ verify_jwt = true
 [functions.webhook-form-submission]
 verify_jwt = false
 
+[functions.webhook-handler]
+verify_jwt = false
+
 [functions.manage-webhooks]
 verify_jwt = true

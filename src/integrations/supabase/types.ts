@@ -1516,7 +1516,9 @@ export type Database = {
           updated_by: string | null
           webhook_api_endpoint: string
           webhook_api_secret: string
+          webhook_description: string | null
           webhook_name: string
+          webhook_type: string
         }
         Insert: {
           agency_id: string
@@ -1528,7 +1530,9 @@ export type Database = {
           updated_by?: string | null
           webhook_api_endpoint: string
           webhook_api_secret: string
+          webhook_description?: string | null
           webhook_name: string
+          webhook_type?: string
         }
         Update: {
           agency_id?: string
@@ -1540,7 +1544,9 @@ export type Database = {
           updated_by?: string | null
           webhook_api_endpoint?: string
           webhook_api_secret?: string
+          webhook_description?: string | null
           webhook_name?: string
+          webhook_type?: string
         }
         Relationships: [
           {

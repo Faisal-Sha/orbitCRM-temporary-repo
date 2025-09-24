@@ -33,6 +33,8 @@ const Webhooks: React.FC<WebhooksProps> = ({ onBack }) => {
   const [selectedWebhook, setSelectedWebhook] = useState<WebhookItem | null>(null);
   const [formData, setFormData] = useState({
     webhook_name: "",
+    webhook_type: "form_submission",
+    webhook_description: "",
     webhook_api_secret: "",
     status: "active"
   });
@@ -41,6 +43,8 @@ const Webhooks: React.FC<WebhooksProps> = ({ onBack }) => {
     setSelectedWebhook(null);
     setFormData({
       webhook_name: "",
+      webhook_type: "form_submission",
+      webhook_description: "",
       webhook_api_secret: "",
       status: "active"
     });
@@ -51,6 +55,8 @@ const Webhooks: React.FC<WebhooksProps> = ({ onBack }) => {
     setSelectedWebhook(webhook);
     setFormData({
       webhook_name: webhook.webhook_name,
+      webhook_type: webhook.webhook_type,
+      webhook_description: webhook.webhook_description || "",
       webhook_api_secret: webhook.webhook_api_secret,
       status: webhook.status
     });
@@ -142,10 +148,18 @@ const Webhooks: React.FC<WebhooksProps> = ({ onBack }) => {
                   <div className="flex-1">
                     <div className="flex items-center gap-3">
                       <h4 className="font-medium">{webhook.webhook_name}</h4>
+                      <Badge variant="outline" className="text-xs">
+                        {webhook.webhook_type.replace('_', ' ')}
+                      </Badge>
                       <Badge variant={webhook.status === "active" ? "default" : "secondary"}>
                         {webhook.status}
                       </Badge>
                     </div>
+                    {webhook.webhook_description && (
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {webhook.webhook_description}
+                      </p>
+                    )}
                     <div className="flex items-center gap-2 mt-1">
                       <p className="text-sm text-muted-foreground truncate max-w-md">
                         {webhook.webhook_api_endpoint}
@@ -204,6 +218,40 @@ const Webhooks: React.FC<WebhooksProps> = ({ onBack }) => {
                 onChange={(e) => setFormData({ ...formData, webhook_name: e.target.value })}
                 className="col-span-3"
                 placeholder="Enter webhook name"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="webhook_type" className="text-right">
+                Type
+              </Label>
+              <Select
+                value={formData.webhook_type}
+                onValueChange={(value) => 
+                  setFormData({ ...formData, webhook_type: value })
+                }
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="form_submission">Form Submission</SelectItem>
+                  <SelectItem value="crm_data">CRM Data</SelectItem>
+                  <SelectItem value="payment_notification">Payment Notification</SelectItem>
+                  <SelectItem value="lead_capture">Lead Capture</SelectItem>
+                  <SelectItem value="custom">Custom</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="webhook_description" className="text-right">
+                Description
+              </Label>
+              <Input
+                id="webhook_description"
+                value={formData.webhook_description}
+                onChange={(e) => setFormData({ ...formData, webhook_description: e.target.value })}
+                className="col-span-3"
+                placeholder="Optional description"
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">

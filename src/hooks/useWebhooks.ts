@@ -5,6 +5,8 @@ import { toast } from 'sonner';
 export interface WebhookItem {
   id: string;
   webhook_name: string;
+  webhook_type: string;
+  webhook_description?: string;
   webhook_api_endpoint: string;
   webhook_api_secret: string;
   status: string;
@@ -17,12 +19,16 @@ export interface WebhookItem {
 
 export interface CreateWebhookData {
   webhook_name: string;
+  webhook_type: string;
+  webhook_description?: string;
   webhook_api_secret?: string;
   status?: string;
 }
 
 export interface UpdateWebhookData {
   webhook_name?: string;
+  webhook_type?: string;
+  webhook_description?: string;
   webhook_api_secret?: string;
   status?: string;
 }
