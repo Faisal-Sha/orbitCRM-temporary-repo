@@ -40,7 +40,7 @@ export const useWebhooks = () => {
     queryKey: ['webhooks'],
     queryFn: async (): Promise<WebhookItem[]> => {
       const { data, error } = await supabase.functions.invoke('manage-webhooks', {
-        method: 'GET',
+        body: { action: 'GET' },
       });
 
       if (error) throw error;
@@ -52,8 +52,7 @@ export const useWebhooks = () => {
   const createWebhook = useMutation({
     mutationFn: async (webhookData: CreateWebhookData): Promise<WebhookItem> => {
       const { data, error } = await supabase.functions.invoke('manage-webhooks', {
-        method: 'POST',
-        body: webhookData,
+        body: { action: 'POST', ...webhookData },
       });
 
       if (error) throw error;
@@ -71,9 +70,8 @@ export const useWebhooks = () => {
   // Update webhook mutation
   const updateWebhook = useMutation({
     mutationFn: async ({ id, ...data }: UpdateWebhookData & { id: string }): Promise<WebhookItem> => {
-      const { data: result, error } = await supabase.functions.invoke(`manage-webhooks/${id}`, {
-        method: 'PUT',
-        body: data,
+      const { data: result, error } = await supabase.functions.invoke('manage-webhooks', {
+        body: { action: 'PUT', id, ...data },
       });
 
       if (error) throw error;
@@ -91,8 +89,8 @@ export const useWebhooks = () => {
   // Delete webhook mutation
   const deleteWebhook = useMutation({
     mutationFn: async (id: string): Promise<void> => {
-      const { error } = await supabase.functions.invoke(`manage-webhooks/${id}`, {
-        method: 'DELETE',
+      const { error } = await supabase.functions.invoke('manage-webhooks', {
+        body: { action: 'DELETE', id },
       });
 
       if (error) throw error;

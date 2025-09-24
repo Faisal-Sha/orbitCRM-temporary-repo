@@ -210,13 +210,24 @@ const Webhooks: React.FC<WebhooksProps> = ({ onBack }) => {
               <Label htmlFor="webhook_api_secret" className="text-right">
                 Secret
               </Label>
-              <Input
-                id="webhook_api_secret"
-                value={formData.webhook_api_secret}
-                onChange={(e) => setFormData({ ...formData, webhook_api_secret: e.target.value })}
-                className="col-span-3"
-                placeholder="Webhook secret (leave empty to auto-generate)"
-              />
+              <div className="col-span-3 flex gap-2">
+                <Input
+                  id="webhook_api_secret"
+                  type={formData.webhook_api_secret ? "password" : "text"}
+                  value={formData.webhook_api_secret}
+                  onChange={(e) => setFormData({ ...formData, webhook_api_secret: e.target.value })}
+                  className="flex-1"
+                  placeholder="Auto-generated (optional)"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setFormData({ ...formData, webhook_api_secret: crypto.randomUUID() })}
+                >
+                  Generate
+                </Button>
+              </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="status" className="text-right">

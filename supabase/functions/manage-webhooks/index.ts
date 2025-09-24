@@ -33,9 +33,14 @@ serve(async (req) => {
     }
 
     // Get user's agency ID
-    const { data: agencyData } = await supabase.rpc('current_user_agency_id');
+    const { data: agencyData, error: rpcError } = await supabase.rpc('current_user_agency_id');
+    
+    console.log('User ID:', user.id);
+    console.log('Agency data:', agencyData);
+    console.log('RPC Error:', rpcError);
     
     if (!agencyData) {
+      console.log('No agency access for user:', user.id);
       return new Response(JSON.stringify({ error: 'No agency access' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -43,13 +48,26 @@ serve(async (req) => {
     }
 
     const agencyId = agencyData;
-    const url = new URL(req.url);
-    const pathParts = url.pathname.split('/');
-    const webhookId = pathParts[pathParts.length - 1];
+    
+    // Get request body for action-based routing
+    let requestBody: any = {};
+    try {
+      requestBody = await req.json();
+    } catch {
+      // No body or invalid JSON, use default
+      requestBody = {};
+    }
+    
+    const action = requestBody.action || req.method;
+    const webhookId = requestBody.id;
+    
+    console.log('Action:', action);
+    console.log('Request body:', requestBody);
+    console.log('Webhook ID:', webhookId);
 
-    switch (req.method) {
+    switch (action) {
       case 'GET':
-        if (webhookId && webhookId !== 'manage-webhooks') {
+        if (webhookId) {
           // Get single webhook
           const { data: webhook, error } = await supabase
             .from('settings_integrations_webhooks')
@@ -89,8 +107,10 @@ serve(async (req) => {
         }
 
       case 'POST':
-        const createData = await req.json();
+        const createData = requestBody;
         const webhookSecret = createData.webhook_api_secret || crypto.randomUUID();
+        
+        console.log('Creating webhook with data:', { ...createData, webhook_api_secret: '[HIDDEN]' });
         
         const { data: newWebhook, error: createError } = await supabase
           .from('settings_integrations_webhooks')
@@ -104,6 +124,9 @@ serve(async (req) => {
           })
           .select()
           .single();
+
+        console.log('Create result:', newWebhook ? 'Success' : 'Failed');
+        console.log('Create error:', createError);
 
         if (createError) {
           return new Response(JSON.stringify({ error: createError.message }), {
@@ -137,14 +160,14 @@ serve(async (req) => {
         });
 
       case 'PUT':
-        if (!webhookId || webhookId === 'manage-webhooks') {
+        if (!webhookId) {
           return new Response(JSON.stringify({ error: 'Webhook ID required' }), {
             status: 400,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
 
-        const updateData = await req.json();
+        const updateData = requestBody;
         const { data: updatedWebhookPut, error: putError } = await supabase
           .from('settings_integrations_webhooks')
           .update({
@@ -170,7 +193,7 @@ serve(async (req) => {
         });
 
       case 'DELETE':
-        if (!webhookId || webhookId === 'manage-webhooks') {
+        if (!webhookId) {
           return new Response(JSON.stringify({ error: 'Webhook ID required' }), {
             status: 400,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -203,7 +226,12 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Webhook management error:', error);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+    console.error('Error stack:', error.stack);
+    return new Response(JSON.stringify({ 
+      error: 'Internal server error',
+      details: error.message,
+      stack: error.stack 
+    }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
