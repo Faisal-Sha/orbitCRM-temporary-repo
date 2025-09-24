@@ -1,94 +1,60 @@
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Webhook, Plus, Edit, Trash2 } from "lucide-react";
+import { Trash2, Edit2, ArrowLeft, Plus, Copy } from "lucide-react";
 import DeleteConfirmationDialog from "@/components/settings/usersandroles/DeleteConfirmationDialog";
-
-interface WebhookItem {
-  id: string;
-  name: string;
-  url: string;
-  status: string;
-  secret: string;
-}
+import { useWebhooks, WebhookItem, CreateWebhookData, UpdateWebhookData } from "@/hooks/useWebhooks";
+import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
 
 interface WebhooksProps {
   onBack: () => void;
 }
 
-const Webhooks = ({ onBack }: WebhooksProps) => {
-  const [webhooks, setWebhooks] = useState<WebhookItem[]>([
-    { 
-      id: "1", 
-      name: "Appointment Created", 
-      url: "https://api.example.com/webhooks/appointment", 
-      status: "Active",
-      secret: "whsec_abc123"
-    },
-    { 
-      id: "2", 
-      name: "Payment Processed", 
-      url: "https://api.example.com/webhooks/payment", 
-      status: "Active",
-      secret: "whsec_def456"
-    },
-    { 
-      id: "3", 
-      name: "Client Updated", 
-      url: "https://api.example.com/webhooks/client", 
-      status: "Inactive",
-      secret: "whsec_ghi789"
-    },
-    { 
-      id: "4", 
-      name: "User Registration", 
-      url: "https://api.example.com/webhooks/user", 
-      status: "Active",
-      secret: "whsec_jkl012"
-    },
-    { 
-      id: "5", 
-      name: "Document Upload", 
-      url: "https://api.example.com/webhooks/document", 
-      status: "Inactive",
-      secret: "whsec_mno345"
-    },
-    { 
-      id: "6", 
-      name: "Session Completed", 
-      url: "https://api.example.com/webhooks/session", 
-      status: "Active",
-      secret: "whsec_pqr678"
-    },
-    { 
-      id: "7", 
-      name: "Report Generated", 
-      url: "https://api.example.com/webhooks/report", 
-      status: "Inactive",
-      secret: "whsec_stu901"
-    },
-  ]);
+const Webhooks: React.FC<WebhooksProps> = ({ onBack }) => {
+  const {
+    webhooks,
+    isLoading,
+    createWebhook,
+    updateWebhook,
+    deleteWebhook,
+    isCreating,
+    isUpdating,
+    isDeleting
+  } = useWebhooks();
 
-  const [showAddDialog, setShowAddDialog] = useState(false);
-  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showDialog, setShowDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedWebhook, setSelectedWebhook] = useState<WebhookItem | null>(null);
-  const [formData, setFormData] = useState<Partial<WebhookItem>>({});
+  const [formData, setFormData] = useState({
+    webhook_name: "",
+    webhook_api_secret: "",
+    status: "active"
+  });
 
   const handleAdd = () => {
-    setFormData({ name: "", url: "", status: "Active", secret: "" });
-    setShowAddDialog(true);
+    setSelectedWebhook(null);
+    setFormData({
+      webhook_name: "",
+      webhook_api_secret: "",
+      status: "active"
+    });
+    setShowDialog(true);
   };
 
   const handleEdit = (webhook: WebhookItem) => {
     setSelectedWebhook(webhook);
-    setFormData(webhook);
-    setShowEditDialog(true);
+    setFormData({
+      webhook_name: webhook.webhook_name,
+      webhook_api_secret: webhook.webhook_api_secret,
+      status: webhook.status
+    });
+    setShowDialog(true);
   };
 
   const handleDelete = (webhook: WebhookItem) => {
@@ -97,34 +63,36 @@ const Webhooks = ({ onBack }: WebhooksProps) => {
   };
 
   const handleSave = () => {
-    if (!formData.name || !formData.url) return;
-
-    const newWebhook: WebhookItem = {
-      id: selectedWebhook?.id || Date.now().toString(),
-      name: formData.name!,
-      url: formData.url!,
-      status: formData.status || "Active",
-      secret: formData.secret || `whsec_${Math.random().toString(36).substr(2, 9)}`,
-    };
-
-    if (selectedWebhook) {
-      setWebhooks(webhooks.map(w => w.id === selectedWebhook.id ? newWebhook : w));
-    } else {
-      setWebhooks([...webhooks, newWebhook]);
+    if (!formData.webhook_name.trim()) {
+      toast.error("Please enter a webhook name");
+      return;
     }
 
-    setShowAddDialog(false);
-    setShowEditDialog(false);
+    const data: CreateWebhookData | (UpdateWebhookData & { id: string }) = selectedWebhook
+      ? { id: selectedWebhook.id, ...formData }
+      : formData;
+
+    if (selectedWebhook) {
+      updateWebhook(data as UpdateWebhookData & { id: string });
+    } else {
+      createWebhook(data as CreateWebhookData);
+    }
+
+    setShowDialog(false);
     setSelectedWebhook(null);
-    setFormData({});
   };
 
   const handleDeleteConfirm = () => {
     if (selectedWebhook) {
-      setWebhooks(webhooks.filter(w => w.id !== selectedWebhook.id));
+      deleteWebhook(selectedWebhook.id);
     }
     setShowDeleteDialog(false);
     setSelectedWebhook(null);
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success("Copied to clipboard");
   };
 
   return (
@@ -132,6 +100,7 @@ const Webhooks = ({ onBack }: WebhooksProps) => {
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-semibold">Webhooks Management</h2>
         <Button variant="outline" onClick={onBack}>
+          <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Settings
         </Button>
       </div>
@@ -139,115 +108,167 @@ const Webhooks = ({ onBack }: WebhooksProps) => {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Webhook className="h-5 w-5" />
-              Webhooks
-            </CardTitle>
-            <Button onClick={handleAdd}>
+            <CardTitle>Webhook Integrations</CardTitle>
+            <Button onClick={handleAdd} disabled={isCreating}>
               <Plus className="h-4 w-4 mr-2" />
               Add Webhook
             </Button>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {webhooks.map((webhook) => (
-              <div key={webhook.id} className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h4 className="font-medium">{webhook.name}</h4>
-                    <Badge variant={webhook.status === 'Active' ? 'default' : 'secondary'}>
-                      {webhook.status}
-                    </Badge>
+          {isLoading ? (
+            <div className="space-y-4">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-48" />
+                    <Skeleton className="h-3 w-64" />
                   </div>
-                  <p className="text-sm text-muted-foreground">{webhook.url}</p>
+                  <div className="flex gap-2">
+                    <Skeleton className="h-8 w-8" />
+                    <Skeleton className="h-8 w-8" />
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button variant="ghost" size="sm" onClick={() => handleEdit(webhook)}>
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => handleDelete(webhook)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+              ))}
+            </div>
+          ) : webhooks.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No webhooks configured yet. Create your first webhook to get started.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {webhooks.map((webhook) => (
+                <div key={webhook.id} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3">
+                      <h4 className="font-medium">{webhook.webhook_name}</h4>
+                      <Badge variant={webhook.status === "active" ? "default" : "secondary"}>
+                        {webhook.status}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <p className="text-sm text-muted-foreground truncate max-w-md">
+                        {webhook.webhook_api_endpoint}
+                      </p>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => copyToClipboard(webhook.webhook_api_endpoint)}
+                        className="h-6 w-6 p-0"
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEdit(webhook)}
+                      disabled={isUpdating}
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDelete(webhook)}
+                      disabled={isDeleting}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
       {/* Add/Edit Dialog */}
-      <Dialog open={showAddDialog || showEditDialog} onOpenChange={(open) => {
-        if (!open) {
-          setShowAddDialog(false);
-          setShowEditDialog(false);
-          setSelectedWebhook(null);
-          setFormData({});
-        }
-      }}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-auto">
+      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {selectedWebhook ? "Edit Webhook" : "Add Webhook"}
+              {selectedWebhook ? "Edit Webhook" : "Create Webhook"}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Webhook Name</Label>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="webhook_name" className="text-right">
+                Name
+              </Label>
               <Input
-                id="name"
-                value={formData.name || ""}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                id="webhook_name"
+                value={formData.webhook_name}
+                onChange={(e) => setFormData({ ...formData, webhook_name: e.target.value })}
+                className="col-span-3"
                 placeholder="Enter webhook name"
               />
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="url">API Endpoint</Label>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="webhook_api_secret" className="text-right">
+                Secret
+              </Label>
               <Input
-                id="url"
-                value={formData.url || ""}
-                onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-                placeholder="https://api.example.com/webhooks/endpoint"
+                id="webhook_api_secret"
+                value={formData.webhook_api_secret}
+                onChange={(e) => setFormData({ ...formData, webhook_api_secret: e.target.value })}
+                className="col-span-3"
+                placeholder="Webhook secret (leave empty to auto-generate)"
               />
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="secret">Webhook Secret</Label>
-              <Input
-                id="secret"
-                value={formData.secret || ""}
-                onChange={(e) => setFormData({ ...formData, secret: e.target.value })}
-                placeholder="whsec_your_secret_here"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
-              <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select status" />
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="status" className="text-right">
+                Status
+              </Label>
+              <Select
+                value={formData.status}
+                onValueChange={(value) => 
+                  setFormData({ ...formData, status: value })
+                }
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Active">Active</SelectItem>
-                  <SelectItem value="Inactive">Inactive</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-
-            <div className="flex justify-end gap-2 pt-4">
-              <Button variant="outline" onClick={() => {
-                setShowAddDialog(false);
-                setShowEditDialog(false);
-                setSelectedWebhook(null);
-                setFormData({});
-              }}>
-                Cancel
-              </Button>
-              <Button onClick={handleSave}>
-                {selectedWebhook ? "Update" : "Add"} Webhook
-              </Button>
-            </div>
+            {selectedWebhook?.webhook_api_endpoint && (
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right">
+                  Endpoint URL
+                </Label>
+                <div className="col-span-3 flex items-center gap-2">
+                  <Input
+                    value={selectedWebhook.webhook_api_endpoint}
+                    readOnly
+                    className="flex-1"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => copyToClipboard(selectedWebhook.webhook_api_endpoint)}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setShowDialog(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSave}
+              disabled={isCreating || isUpdating}
+            >
+              {selectedWebhook ? "Update" : "Create"} Webhook
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -258,7 +279,7 @@ const Webhooks = ({ onBack }: WebhooksProps) => {
         onOpenChange={setShowDeleteDialog}
         onConfirm={handleDeleteConfirm}
         title="Delete Webhook"
-        description={`Are you sure you want to delete the ${selectedWebhook?.name} webhook? This action cannot be undone.`}
+        description={`Are you sure you want to delete "${selectedWebhook?.webhook_name}"? This action cannot be undone.`}
       />
     </div>
   );

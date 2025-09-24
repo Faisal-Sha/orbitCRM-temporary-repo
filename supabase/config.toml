@@ -2,3 +2,9 @@ project_id = "nmgtsstkoqepxoadulzu"
 
 [functions.update-contact-email-comprehensive]
 verify_jwt = true
+
+[functions.webhook-form-submission]
+verify_jwt = false
+
+[functions.manage-webhooks]
+verify_jwt = true
