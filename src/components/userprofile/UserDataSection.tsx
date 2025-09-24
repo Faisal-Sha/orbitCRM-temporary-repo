@@ -10,8 +10,16 @@ interface UserDataSectionProps {
   personId?: string;
 }
 
+// Helper function to validate if a string is a valid UUID
+const isValidUUID = (uuid: string): boolean => {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(uuid);
+};
+
 export const UserDataSection: React.FC<UserDataSectionProps> = ({ personId }) => {
-  const { data, loading: profileLoading, updateUserRole, updateStaffType, updateStatus } = useUserProfile(personId);
+  // Only call useUserProfile if personId is a valid UUID
+  const shouldFetchProfile = personId && isValidUUID(personId);
+  const { data, loading: profileLoading, updateUserRole, updateStaffType, updateStatus } = useUserProfile(shouldFetchProfile ? personId : undefined);
   const { roles, loading: rolesLoading } = useUserRoles();
   const { staffTypes, loading: staffTypesLoading } = useStaffTypes();
   const [editingField, setEditingField] = useState<string | null>(null);
@@ -66,6 +74,7 @@ export const UserDataSection: React.FC<UserDataSectionProps> = ({ personId }) =>
   }, [editingField]);
 
   const handleRoleChange = async (value: string) => {
+    if (!shouldFetchProfile) return; // Don't attempt updates for dummy data
     try {
       const success = await updateUserRole(value);
       if (success) {
@@ -78,6 +87,7 @@ export const UserDataSection: React.FC<UserDataSectionProps> = ({ personId }) =>
   };
 
   const handleStaffTypeChange = async (value: string) => {
+    if (!shouldFetchProfile) return; // Don't attempt updates for dummy data
     try {
       const success = await updateStaffType(value);
       if (success) {
@@ -90,6 +100,7 @@ export const UserDataSection: React.FC<UserDataSectionProps> = ({ personId }) =>
   };
 
   const handleStatusChange = async (value: string) => {
+    if (!shouldFetchProfile) return; // Don't attempt updates for dummy data
     try {
       const success = await updateStatus(value);
       if (success) {
@@ -105,6 +116,35 @@ export const UserDataSection: React.FC<UserDataSectionProps> = ({ personId }) =>
   const shouldShowStaffType = assignedRole?.toLowerCase() === 'staff';
   // Status should be shown if a user role is assigned
   const shouldShowStatus = !!assignedRole;
+
+  // Handle dummy data or invalid UUID
+  if (!shouldFetchProfile) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold">User Data</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+            <div className="flex items-center space-x-3 p-3 bg-muted/50 rounded-lg">
+              <ShieldCheck className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">User Role</p>
+                <p className="text-sm text-muted-foreground">Preview mode - no data available</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-3 p-3 bg-muted/50 rounded-lg">
+              <UserCheck className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Status</p>
+                <p className="text-sm text-muted-foreground">Preview mode - no data available</p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (profileLoading && !data) {
     return (
