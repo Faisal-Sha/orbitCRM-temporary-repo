@@ -164,70 +164,150 @@ function getDefaultStatusForRole(roleName: string): string {
 function extractPersonData(submissionData: any) {
   console.log('Extracting person data from:', submissionData);
   
-  // Extract first name
+  // Extract person table fields
   const firstName = submissionData.first_name || 
                    submissionData.firstName || 
+                   submissionData['First Name'] ||
                    submissionData.name?.split(' ')[0] || 
                    submissionData.Name?.split(' ')[0] ||
                    'Unknown';
 
-  // Extract last name  
+  const middleName = submissionData.middle_name || 
+                    submissionData.middleName || 
+                    submissionData['Middle Name'] ||
+                    submissionData.middle ||
+                    null;
+
   const lastName = submissionData.last_name || 
                   submissionData.lastName || 
+                  submissionData['Last Name'] ||
                   submissionData.name?.split(' ').slice(1).join(' ') ||
                   submissionData.Name?.split(' ').slice(1).join(' ') ||
-                  firstName; // Fallback to first name if no last name
+                  firstName;
 
-  // Extract email
+  const userProfileBio = submissionData.user_profile_bio || 
+                        submissionData.bio || 
+                        submissionData.Bio ||
+                        submissionData.profile_bio ||
+                        submissionData.about ||
+                        submissionData.About ||
+                        null;
+
+  // Extract contact table fields
   const email = submissionData.email || 
                submissionData.Email || 
                submissionData.user_email ||
-               submissionData.emailAddress;
+               submissionData.emailAddress ||
+               submissionData['Email Address'];
 
-  // Extract phone
+  const workEmail = submissionData.work_email || 
+                   submissionData.workEmail || 
+                   submissionData['Work Email'] ||
+                   submissionData.business_email ||
+                   submissionData.businessEmail;
+
   const phone = submissionData.phone || 
                submissionData.Phone || 
                submissionData.mobile ||
-               submissionData.phoneNumber;
+               submissionData.Mobile ||
+               submissionData.phoneNumber ||
+               submissionData.phone_number ||
+               submissionData['Phone Number'];
 
-  // Extract additional contact info
-  const workEmail = submissionData.work_email || submissionData.workEmail;
-  const phoneHome = submissionData.phone_home || submissionData.homePhone;
-  const addressLine1 = submissionData.address || submissionData.address_line_1 || submissionData.street;
-  const addressLine2 = submissionData.address_line_2 || submissionData.apt || submissionData.unit;
-  const city = submissionData.city;
-  const state = submissionData.state || submissionData.province;
-  const zipCode = submissionData.zip || submissionData.zip_code || submissionData.postal_code;
+  const phoneHome = submissionData.phone_home || 
+                   submissionData.phoneHome || 
+                   submissionData['Home Phone'] ||
+                   submissionData.home_phone ||
+                   submissionData.homePhone;
+
+  const addressLine1 = submissionData.address || 
+                      submissionData.address_line_1 || 
+                      submissionData.addressLine1 ||
+                      submissionData['Address Line 1'] ||
+                      submissionData.street ||
+                      submissionData.Street;
+
+  const addressLine2 = submissionData.address_line_2 || 
+                      submissionData.addressLine2 ||
+                      submissionData['Address Line 2'] ||
+                      submissionData.apt || 
+                      submissionData.apartment ||
+                      submissionData.unit ||
+                      submissionData.suite ||
+                      submissionData.Suite;
+
+  const city = submissionData.city || submissionData.City;
+  
+  const state = submissionData.state || 
+               submissionData.State || 
+               submissionData.province || 
+               submissionData.Province;
+  
+  const zipCode = submissionData.zip || 
+                 submissionData.zip_code || 
+                 submissionData.zipCode ||
+                 submissionData['Zip Code'] ||
+                 submissionData.postal_code || 
+                 submissionData.postalCode;
+
+  const country = submissionData.country || 
+                 submissionData.Country || 
+                 'USA';
 
   // Extract social media URLs
-  const facebookUrl = submissionData.facebook || submissionData.facebook_url || submissionData.url_facebook;
-  const instagramUrl = submissionData.instagram || submissionData.instagram_url || submissionData.url_instagram;
-  const linkedinUrl = submissionData.linkedin || submissionData.linkedin_url || submissionData.url_linkedin;
-  const tiktokUrl = submissionData.tiktok || submissionData.tiktok_url || submissionData.url_tiktok;
+  const facebookUrl = submissionData.facebook || 
+                     submissionData.Facebook ||
+                     submissionData.facebook_url || 
+                     submissionData.facebookUrl ||
+                     submissionData.url_facebook;
 
-  // Extract user role - default to "general" instead of "lead"
+  const instagramUrl = submissionData.instagram || 
+                      submissionData.Instagram ||
+                      submissionData.instagram_url || 
+                      submissionData.instagramUrl ||
+                      submissionData.url_instagram;
+
+  const linkedinUrl = submissionData.linkedin || 
+                     submissionData.LinkedIn ||
+                     submissionData.linkedin_url || 
+                     submissionData.linkedinUrl ||
+                     submissionData.url_linkedin;
+
+  const tiktokUrl = submissionData.tiktok || 
+                   submissionData.TikTok ||
+                   submissionData.tiktok_url || 
+                   submissionData.tiktokUrl ||
+                   submissionData.url_tiktok;
+
+  // Extract user role - default to "general"
   const userRoleField = submissionData.user_role || 
                        submissionData.role || 
                        submissionData['User Role'] ||
                        submissionData.userRole ||
-                       'general'; // Default to general
+                       'general';
 
   return {
+    // Person table fields
     firstName,
+    middleName,
     lastName, 
+    userProfileBio,
+    // Contact table fields
     email,
-    phone,
     workEmail,
+    phone,
     phoneHome,
     addressLine1,
     addressLine2,
     city,
     state,
     zipCode,
+    country,
     facebookUrl,
     instagramUrl,
     linkedinUrl,
     tiktokUrl,
+    // Role field
     userRoleField
   };
 }
@@ -323,7 +403,7 @@ async function updateExistingPerson(supabase: any, existingPerson: any, personDa
   console.log('Updating existing person:', existingPerson.id);
 
   try {
-    const { firstName, lastName, userRoleField, email, phone } = personData;
+    const { firstName, middleName, lastName, userProfileBio, userRoleField, email, phone } = personData;
     
     // Determine if role changed
     let userRoleId = existingPerson.user_role_id;
@@ -347,12 +427,14 @@ async function updateExistingPerson(supabase: any, existingPerson: any, personDa
     // Get appropriate status for role
     const defaultStatus = getDefaultStatusForRole(roleName || 'general');
     
-    // Update person record
+    // Update person record with all available data
     const { error: personError } = await supabase
       .from('people')
       .update({
         first_name: firstName,
+        middle_name: middleName,
         last_name: lastName,
+        user_profile_bio: userProfileBio,
         user_role_id: userRoleId,
         status: defaultStatus
       })
@@ -415,7 +497,7 @@ async function updateExistingPerson(supabase: any, existingPerson: any, personDa
 async function updatePersonContact(supabase: any, personId: string, personData: any) {
   const { 
     email, phone, workEmail, phoneHome, 
-    addressLine1, addressLine2, city, state, zipCode,
+    addressLine1, addressLine2, city, state, zipCode, country,
     facebookUrl, instagramUrl, linkedinUrl, tiktokUrl
   } = personData;
 
@@ -427,20 +509,22 @@ async function updatePersonContact(supabase: any, personId: string, personData: 
     .eq('is_deleted', false)
     .single();
 
+  // Use nullish coalescing (??) to prioritize new form data over existing data
   const contactData = {
-    email: email || existingContact?.email,
-    phone: phone || existingContact?.phone,
-    work_email: workEmail || existingContact?.work_email,
-    phone_home: phoneHome || existingContact?.phone_home,
-    address_line_1: addressLine1 || existingContact?.address_line_1,
-    address_line_2: addressLine2 || existingContact?.address_line_2,
-    city: city || existingContact?.city,
-    state: state || existingContact?.state,
-    zip_code: zipCode || existingContact?.zip_code,
-    url_facebook: facebookUrl || existingContact?.url_facebook,
-    url_instagram: instagramUrl || existingContact?.url_instagram,
-    url_linkedin: linkedinUrl || existingContact?.url_linkedin,
-    url_tiktok: tiktokUrl || existingContact?.url_tiktok
+    email: email ?? existingContact?.email,
+    phone: phone ?? existingContact?.phone,
+    work_email: workEmail ?? existingContact?.work_email,
+    phone_home: phoneHome ?? existingContact?.phone_home,
+    address_line_1: addressLine1 ?? existingContact?.address_line_1,
+    address_line_2: addressLine2 ?? existingContact?.address_line_2,
+    city: city ?? existingContact?.city,
+    state: state ?? existingContact?.state,
+    zip_code: zipCode ?? existingContact?.zip_code,
+    country: country ?? existingContact?.country,
+    url_facebook: facebookUrl ?? existingContact?.url_facebook,
+    url_instagram: instagramUrl ?? existingContact?.url_instagram,
+    url_linkedin: linkedinUrl ?? existingContact?.url_linkedin,
+    url_tiktok: tiktokUrl ?? existingContact?.url_tiktok
   };
 
   if (existingContact) {
@@ -476,7 +560,7 @@ async function createNewPerson(supabase: any, personData: any, agencyId: string)
   console.log('Creating new person record for:', personData.email || personData.phone);
   
   try {
-    const { firstName, lastName, userRoleField } = personData;
+    const { firstName, middleName, lastName, userProfileBio, userRoleField } = personData;
     
     // 1. Determine user role ID - default to 'general'
     let userRoleId = null;
@@ -514,12 +598,14 @@ async function createNewPerson(supabase: any, personData: any, agencyId: string)
     // Get appropriate status for role
     const defaultStatus = getDefaultStatusForRole(roleName);
 
-    // 2. Create person record
+    // 2. Create person record with all available data
     const { data: newPerson, error: personError } = await supabase
       .from('people')
       .insert({
         first_name: firstName,
+        middle_name: middleName,
         last_name: lastName,
+        user_profile_bio: userProfileBio,
         user_role_id: userRoleId,
         status: defaultStatus
       })
