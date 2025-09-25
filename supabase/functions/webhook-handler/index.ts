@@ -146,9 +146,17 @@ async function processFormSubmission(supabase: any, webhook: any, data: any) {
   const formId = data.form_id || data.formId || 'unknown';
   const subTrackId = data.sub_track_id || data.subTrackId || crypto.randomUUID();
 
+  // Extract person data from form submission
+  const email = data.email || data.Email || data.user_email;
+  const firstName = data.first_name || data.firstName || data.name?.split(' ')[0] || 'Unknown';
+  const lastName = data.last_name || data.lastName || data.name?.split(' ')?.slice(1)?.join(' ') || 'User';
+  const phone = data.phone || data.Phone || data.mobile;
+  const userRoleField = data.user_role || data.role || data['User Role'] || data['user role'];
+
+  console.log('Processing form submission with data:', { email, firstName, lastName, userRoleField });
+
   // Find or create a person based on email if available
   let submittedById = null;
-  const email = data.email || data.Email || data.user_email;
   
   if (email) {
     const { data: existingContact } = await supabase
@@ -167,7 +175,121 @@ async function processFormSubmission(supabase: any, webhook: any, data: any) {
 
     if (existingContact?.person_id) {
       submittedById = existingContact.person_id;
+      console.log('Found existing person:', submittedById);
+    } else {
+      // Create new person record since none exists
+      console.log('Creating new person record for email:', email);
+      
+      try {
+        // 1. Determine user role ID
+        let userRoleId = null;
+        if (userRoleField) {
+          const { data: roleData } = await supabase
+            .from('app_user_roles')
+            .select('id')
+            .eq('role_name', userRoleField.toLowerCase())
+            .eq('is_deleted', false)
+            .single();
+          userRoleId = roleData?.id;
+        }
+        
+        // Default to 'lead' role if no role found or specified
+        if (!userRoleId) {
+          const { data: defaultRole } = await supabase
+            .from('app_user_roles')
+            .select('id')
+            .eq('role_name', 'lead')
+            .eq('is_deleted', false)
+            .single();
+          userRoleId = defaultRole?.id;
+        }
+
+        if (!userRoleId) {
+          throw new Error('No valid user role found');
+        }
+
+        // 2. Create person record
+        const { data: newPerson, error: personError } = await supabase
+          .from('people')
+          .insert({
+            first_name: firstName,
+            last_name: lastName,
+            user_role_id: userRoleId,
+            status: 'active'
+          })
+          .select()
+          .single();
+
+        if (personError) {
+          console.error('Error creating person:', personError);
+          throw personError;
+        }
+
+        submittedById = newPerson.id;
+        console.log('Created new person with ID:', submittedById);
+
+        // 3. Create contact record
+        const { error: contactError } = await supabase
+          .from('people_contacts')
+          .insert({
+            person_id: submittedById,
+            email: email,
+            phone: phone || null
+          });
+
+        if (contactError) {
+          console.error('Error creating contact:', contactError);
+          // Don't throw here, person is created successfully
+        } else {
+          console.log('Created contact record for person');
+        }
+
+        // 4. Create agency association
+        const { error: agencyError } = await supabase
+          .from('app_agencies_people')
+          .insert({
+            person_id: submittedById,
+            agency_id: webhook.agency_id,
+            user_role_id: userRoleId
+          });
+
+        if (agencyError) {
+          console.error('Error creating agency association:', agencyError);
+          // Don't throw here, person is created successfully
+        } else {
+          console.log('Created agency association');
+        }
+
+        // 5. Create role assignment
+        const { error: roleAssignError } = await supabase
+          .from('people_assign_user_role')
+          .insert({
+            person_id: submittedById,
+            user_role_id: userRoleId
+          });
+
+        if (roleAssignError) {
+          console.error('Error creating role assignment:', roleAssignError);
+          // Don't throw here, person is created successfully
+        } else {
+          console.log('Created role assignment');
+        }
+
+      } catch (createError) {
+        console.error('Error creating new person record:', createError);
+        // If person creation fails completely, we need a fallback
+        // This should not happen, but as a last resort, we'll still try to save the form
+        submittedById = null;
+      }
     }
+  }
+
+  // Ensure submittedById is never null - this is critical for the database constraint
+  if (!submittedById) {
+    console.warn('No submitted_by_id found, form submission may fail due to database constraint');
+    // If we still don't have a person ID, the form submission will fail
+    // This should be extremely rare given our creation logic above
+    throw new Error('Unable to determine or create submitted_by_id for form submission');
   }
 
   // Store form submission
@@ -184,7 +306,12 @@ async function processFormSubmission(supabase: any, webhook: any, data: any) {
     .select()
     .single();
 
-  if (error) throw error;
+  if (error) {
+    console.error('Error storing form submission:', error);
+    throw error;
+  }
+
+  console.log('Form submission stored successfully with ID:', submission.id);
   return { id: submission.id, type: 'form_submission' };
 }
 
