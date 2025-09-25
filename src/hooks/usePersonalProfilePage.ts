@@ -11,7 +11,9 @@ interface ProfileData {
   bio: string;
   profilePic: string;
   email: string;
+  workEmail: string;
   phone: string;
+  phoneHome: string;
   addressLine1: string;
   addressLine2: string;
   city: string;
@@ -62,7 +64,9 @@ export const usePersonalProfilePage = (): UsePersonalProfilePageReturn => {
     bio: "",
     profilePic: "",
     email: "",
+    workEmail: "",
     phone: "",
+    phoneHome: "",
     addressLine1: "",
     addressLine2: "",
     city: "",
@@ -154,7 +158,9 @@ export const usePersonalProfilePage = (): UsePersonalProfilePageReturn => {
           bio: profileRecord.bio || "",
           profilePic: profileRecord.profile_pic || "",
           email: profileRecord.email || "",
+          workEmail: profileRecord.work_email || "",
           phone: profileRecord.phone || "",
+          phoneHome: profileRecord.phone_home || "",
           addressLine1: profileRecord.address_line_1 || "",
           addressLine2: profileRecord.address_line_2 || "",
           city: profileRecord.city || "",
@@ -203,7 +209,9 @@ export const usePersonalProfilePage = (): UsePersonalProfilePageReturn => {
           profilePic: formData.profilePic,
           oldProfilePic: originalData?.profilePic,
           email: formData.email,
+          workEmail: formData.workEmail,
           phone: formData.phone,
+          phoneHome: formData.phoneHome,
           addressLine1: formData.addressLine1,
           addressLine2: formData.addressLine2,
           city: formData.city,

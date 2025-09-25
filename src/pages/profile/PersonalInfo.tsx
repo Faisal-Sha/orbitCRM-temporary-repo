@@ -182,6 +182,16 @@ const PersonalInfo = forwardRef<PersonalInfoRef>((_, ref) => {
                 />
               </div>
               <div className="space-y-2">
+                <Label htmlFor="workEmail">Work Email</Label>
+                <Input 
+                  id="workEmail" 
+                  type="email" 
+                  placeholder="john.doe@work.com"
+                  value={formData.workEmail}
+                  onChange={(e) => handleInputChange('workEmail', e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="personalPhone">Personal Phone</Label>
                 <Input 
                   id="personalPhone" 
@@ -189,6 +199,16 @@ const PersonalInfo = forwardRef<PersonalInfoRef>((_, ref) => {
                   placeholder="(555) 123-4567"
                   value={formData.phone}
                   onChange={(e) => handleInputChange('phone', e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phoneHome">Home Phone</Label>
+                <Input 
+                  id="phoneHome" 
+                  type="tel" 
+                  placeholder="(555) 987-6543"
+                  value={formData.phoneHome}
+                  onChange={(e) => handleInputChange('phoneHome', e.target.value)}
                 />
               </div>
             </div>
