@@ -2231,10 +2231,12 @@ export type Database = {
           p_linkedin: string
           p_middle_name: string
           p_phone: string
+          p_phone_home: string
           p_profile_pic: string
           p_state: string
           p_tiktok: string
           p_updated_by: string
+          p_work_email: string
           p_zip_code: string
         }
         Returns: Json
