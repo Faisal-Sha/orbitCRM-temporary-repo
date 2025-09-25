@@ -142,153 +142,157 @@ async function verifySignature(body: string, secret: string, signature: string):
   return signature === expectedHex;
 }
 
+// Helper function to get default status based on user role
+function getDefaultStatusForRole(roleName: string): string {
+  switch (roleName.toLowerCase()) {
+    case 'owner':
+    case 'admin':
+    case 'general':
+      return 'Active';
+    case 'lead':
+      return 'Applied';
+    case 'client':
+      return 'Active';
+    case 'staff':
+      return 'Onboarding';
+    default:
+      return 'Active';
+  }
+}
+
+// Helper function to extract person data from submission
+function extractPersonData(submissionData: any) {
+  console.log('Extracting person data from:', submissionData);
+  
+  // Extract first name
+  const firstName = submissionData.first_name || 
+                   submissionData.firstName || 
+                   submissionData.name?.split(' ')[0] || 
+                   submissionData.Name?.split(' ')[0] ||
+                   'Unknown';
+
+  // Extract last name  
+  const lastName = submissionData.last_name || 
+                  submissionData.lastName || 
+                  submissionData.name?.split(' ').slice(1).join(' ') ||
+                  submissionData.Name?.split(' ').slice(1).join(' ') ||
+                  firstName; // Fallback to first name if no last name
+
+  // Extract email
+  const email = submissionData.email || 
+               submissionData.Email || 
+               submissionData.user_email ||
+               submissionData.emailAddress;
+
+  // Extract phone
+  const phone = submissionData.phone || 
+               submissionData.Phone || 
+               submissionData.mobile ||
+               submissionData.phoneNumber;
+
+  // Extract additional contact info
+  const workEmail = submissionData.work_email || submissionData.workEmail;
+  const phoneHome = submissionData.phone_home || submissionData.homePhone;
+  const addressLine1 = submissionData.address || submissionData.address_line_1 || submissionData.street;
+  const addressLine2 = submissionData.address_line_2 || submissionData.apt || submissionData.unit;
+  const city = submissionData.city;
+  const state = submissionData.state || submissionData.province;
+  const zipCode = submissionData.zip || submissionData.zip_code || submissionData.postal_code;
+
+  // Extract social media URLs
+  const facebookUrl = submissionData.facebook || submissionData.facebook_url || submissionData.url_facebook;
+  const instagramUrl = submissionData.instagram || submissionData.instagram_url || submissionData.url_instagram;
+  const linkedinUrl = submissionData.linkedin || submissionData.linkedin_url || submissionData.url_linkedin;
+  const tiktokUrl = submissionData.tiktok || submissionData.tiktok_url || submissionData.url_tiktok;
+
+  // Extract user role - default to "general" instead of "lead"
+  const userRoleField = submissionData.user_role || 
+                       submissionData.role || 
+                       submissionData['User Role'] ||
+                       submissionData.userRole ||
+                       'general'; // Default to general
+
+  return {
+    firstName,
+    lastName, 
+    email,
+    phone,
+    workEmail,
+    phoneHome,
+    addressLine1,
+    addressLine2,
+    city,
+    state,
+    zipCode,
+    facebookUrl,
+    instagramUrl,
+    linkedinUrl,
+    tiktokUrl,
+    userRoleField
+  };
+}
+
 async function processFormSubmission(supabase: any, webhook: any, data: any) {
   const formId = data.form_id || data.formId || 'unknown';
   const subTrackId = data.sub_track_id || data.subTrackId || crypto.randomUUID();
 
-  // Extract person data from form submission
-  const email = data.email || data.Email || data.user_email;
-  const firstName = data.first_name || data.firstName || data.name?.split(' ')[0] || 'Unknown';
-  const lastName = data.last_name || data.lastName || data.name?.split(' ')?.slice(1)?.join(' ') || 'User';
-  const phone = data.phone || data.Phone || data.mobile;
-  const userRoleField = data.user_role || data.role || data['User Role'] || data['user role'];
+  // Extract person data from form submission using enhanced extraction
+  const personData = extractPersonData(data);
+  const { email, phone, firstName, lastName, userRoleField } = personData;
 
-  console.log('Processing form submission with data:', { email, firstName, lastName, userRoleField });
+  console.log('Processing form submission with data:', { email, phone, firstName, lastName, userRoleField });
 
-  // Find or create a person based on email if available
+  // Enhanced person lookup - search by email OR phone in the same agency
   let submittedById = null;
+  let existingPerson = null;
   
-  if (email) {
-    const { data: existingContact } = await supabase
+  if (email || phone) {
+    let query = supabase
       .from('people_contacts')
       .select(`
         person_id,
         people!inner(
           id,
-          app_agencies_people!inner(agency_id)
+          first_name,
+          last_name,
+          user_role_id,
+          status,
+          app_agencies_people!inner(agency_id),
+          app_user_roles(role_name)
         )
       `)
-      .eq('email', email)
       .eq('people.app_agencies_people.agency_id', webhook.agency_id)
-      .eq('is_deleted', false)
-      .single();
+      .eq('is_deleted', false);
+
+    // Build OR condition for email and phone
+    if (email && phone) {
+      query = query.or(`email.eq.${email},phone.eq.${phone}`);
+    } else if (email) {
+      query = query.eq('email', email);
+    } else if (phone) {
+      query = query.eq('phone', phone);
+    }
+
+    const { data: existingContact } = await query.single();
 
     if (existingContact?.person_id) {
       submittedById = existingContact.person_id;
+      existingPerson = existingContact.people;
       console.log('Found existing person:', submittedById);
+
+      // Update existing person with new form data
+      await updateExistingPerson(supabase, existingPerson, personData, webhook.agency_id);
     } else {
       // Create new person record since none exists
-      console.log('Creating new person record for email:', email);
-      
-      try {
-        // 1. Determine user role ID
-        let userRoleId = null;
-        if (userRoleField) {
-          const { data: roleData } = await supabase
-            .from('app_user_roles')
-            .select('id')
-            .eq('role_name', userRoleField.toLowerCase())
-            .eq('is_deleted', false)
-            .single();
-          userRoleId = roleData?.id;
-        }
-        
-        // Default to 'lead' role if no role found or specified
-        if (!userRoleId) {
-          const { data: defaultRole } = await supabase
-            .from('app_user_roles')
-            .select('id')
-            .eq('role_name', 'lead')
-            .eq('is_deleted', false)
-            .single();
-          userRoleId = defaultRole?.id;
-        }
-
-        if (!userRoleId) {
-          throw new Error('No valid user role found');
-        }
-
-        // 2. Create person record
-        const { data: newPerson, error: personError } = await supabase
-          .from('people')
-          .insert({
-            first_name: firstName,
-            last_name: lastName,
-            user_role_id: userRoleId,
-            status: 'active'
-          })
-          .select()
-          .single();
-
-        if (personError) {
-          console.error('Error creating person:', personError);
-          throw personError;
-        }
-
-        submittedById = newPerson.id;
-        console.log('Created new person with ID:', submittedById);
-
-        // 3. Create contact record
-        const { error: contactError } = await supabase
-          .from('people_contacts')
-          .insert({
-            person_id: submittedById,
-            email: email,
-            phone: phone || null
-          });
-
-        if (contactError) {
-          console.error('Error creating contact:', contactError);
-          // Don't throw here, person is created successfully
-        } else {
-          console.log('Created contact record for person');
-        }
-
-        // 4. Create agency association
-        const { error: agencyError } = await supabase
-          .from('app_agencies_people')
-          .insert({
-            person_id: submittedById,
-            agency_id: webhook.agency_id,
-            user_role_id: userRoleId
-          });
-
-        if (agencyError) {
-          console.error('Error creating agency association:', agencyError);
-          // Don't throw here, person is created successfully
-        } else {
-          console.log('Created agency association');
-        }
-
-        // 5. Create role assignment
-        const { error: roleAssignError } = await supabase
-          .from('people_assign_user_role')
-          .insert({
-            person_id: submittedById,
-            user_role_id: userRoleId
-          });
-
-        if (roleAssignError) {
-          console.error('Error creating role assignment:', roleAssignError);
-          // Don't throw here, person is created successfully
-        } else {
-          console.log('Created role assignment');
-        }
-
-      } catch (createError) {
-        console.error('Error creating new person record:', createError);
-        // If person creation fails completely, we need a fallback
-        // This should not happen, but as a last resort, we'll still try to save the form
-        submittedById = null;
-      }
+      submittedById = await createNewPerson(supabase, personData, webhook.agency_id);
     }
+  } else {
+    // No email or phone provided - create new person anyway
+    submittedById = await createNewPerson(supabase, personData, webhook.agency_id);
   }
 
-  // Ensure submittedById is never null - this is critical for the database constraint
+  // Ensure submittedById is never null
   if (!submittedById) {
-    console.warn('No submitted_by_id found, form submission may fail due to database constraint');
-    // If we still don't have a person ID, the form submission will fail
-    // This should be extremely rare given our creation logic above
     throw new Error('Unable to determine or create submitted_by_id for form submission');
   }
 
@@ -313,6 +317,276 @@ async function processFormSubmission(supabase: any, webhook: any, data: any) {
 
   console.log('Form submission stored successfully with ID:', submission.id);
   return { id: submission.id, type: 'form_submission' };
+}
+
+async function updateExistingPerson(supabase: any, existingPerson: any, personData: any, agencyId: string) {
+  console.log('Updating existing person:', existingPerson.id);
+
+  try {
+    const { firstName, lastName, userRoleField, email, phone } = personData;
+    
+    // Determine if role changed
+    let userRoleId = existingPerson.user_role_id;
+    let roleName = existingPerson.app_user_roles?.role_name;
+    
+    if (userRoleField && userRoleField !== 'general') {
+      const { data: roleData } = await supabase
+        .from('app_user_roles')
+        .select('id, role_name')
+        .eq('role_name', userRoleField.toLowerCase())
+        .eq('is_deleted', false)
+        .single();
+      
+      if (roleData?.id && roleData.id !== userRoleId) {
+        userRoleId = roleData.id;
+        roleName = roleData.role_name;
+        console.log('Role changed from', existingPerson.app_user_roles?.role_name, 'to', roleName);
+      }
+    }
+
+    // Get appropriate status for role
+    const defaultStatus = getDefaultStatusForRole(roleName || 'general');
+    
+    // Update person record
+    const { error: personError } = await supabase
+      .from('people')
+      .update({
+        first_name: firstName,
+        last_name: lastName,
+        user_role_id: userRoleId,
+        status: defaultStatus
+      })
+      .eq('id', existingPerson.id);
+
+    if (personError) {
+      console.error('Error updating person:', personError);
+    } else {
+      console.log('Updated person record');
+    }
+
+    // Update or create contact record
+    await updatePersonContact(supabase, existingPerson.id, personData);
+
+    // Update agency association if role changed
+    if (userRoleId !== existingPerson.user_role_id) {
+      const { error: agencyError } = await supabase
+        .from('app_agencies_people')
+        .update({ user_role_id: userRoleId })
+        .eq('person_id', existingPerson.id)
+        .eq('agency_id', agencyId);
+
+      if (agencyError) {
+        console.error('Error updating agency association:', agencyError);
+      }
+
+      // Create new role assignment
+      const { error: roleAssignError } = await supabase
+        .from('people_assign_user_role')
+        .update({ is_deleted: true })
+        .eq('person_id', existingPerson.id)
+        .eq('is_deleted', false);
+
+      if (!roleAssignError) {
+        await supabase
+          .from('people_assign_user_role')
+          .insert({
+            person_id: existingPerson.id,
+            user_role_id: userRoleId
+          });
+      }
+    }
+
+    // Create status record if status changed
+    if (defaultStatus !== existingPerson.status) {
+      await supabase
+        .from('people_assign_status')
+        .insert({
+          person_id: existingPerson.id,
+          new_status: defaultStatus,
+          old_status: existingPerson.status
+        });
+    }
+
+  } catch (updateError) {
+    console.error('Error updating existing person:', updateError);
+  }
+}
+
+async function updatePersonContact(supabase: any, personId: string, personData: any) {
+  const { 
+    email, phone, workEmail, phoneHome, 
+    addressLine1, addressLine2, city, state, zipCode,
+    facebookUrl, instagramUrl, linkedinUrl, tiktokUrl
+  } = personData;
+
+  // Get existing contact record
+  const { data: existingContact } = await supabase
+    .from('people_contacts')
+    .select('*')
+    .eq('person_id', personId)
+    .eq('is_deleted', false)
+    .single();
+
+  const contactData = {
+    email: email || existingContact?.email,
+    phone: phone || existingContact?.phone,
+    work_email: workEmail || existingContact?.work_email,
+    phone_home: phoneHome || existingContact?.phone_home,
+    address_line_1: addressLine1 || existingContact?.address_line_1,
+    address_line_2: addressLine2 || existingContact?.address_line_2,
+    city: city || existingContact?.city,
+    state: state || existingContact?.state,
+    zip_code: zipCode || existingContact?.zip_code,
+    url_facebook: facebookUrl || existingContact?.url_facebook,
+    url_instagram: instagramUrl || existingContact?.url_instagram,
+    url_linkedin: linkedinUrl || existingContact?.url_linkedin,
+    url_tiktok: tiktokUrl || existingContact?.url_tiktok
+  };
+
+  if (existingContact) {
+    // Update existing contact
+    const { error: contactError } = await supabase
+      .from('people_contacts')
+      .update(contactData)
+      .eq('id', existingContact.id);
+
+    if (contactError) {
+      console.error('Error updating contact:', contactError);
+    } else {
+      console.log('Updated contact record');
+    }
+  } else {
+    // Create new contact record
+    const { error: contactError } = await supabase
+      .from('people_contacts')
+      .insert({
+        person_id: personId,
+        ...contactData
+      });
+
+    if (contactError) {
+      console.error('Error creating contact:', contactError);
+    } else {
+      console.log('Created new contact record');
+    }
+  }
+}
+
+async function createNewPerson(supabase: any, personData: any, agencyId: string) {
+  console.log('Creating new person record for:', personData.email || personData.phone);
+  
+  try {
+    const { firstName, lastName, userRoleField } = personData;
+    
+    // 1. Determine user role ID - default to 'general'
+    let userRoleId = null;
+    let roleName = 'general';
+    
+    if (userRoleField && userRoleField !== 'general') {
+      const { data: roleData } = await supabase
+        .from('app_user_roles')
+        .select('id, role_name')
+        .eq('role_name', userRoleField.toLowerCase())
+        .eq('is_deleted', false)
+        .single();
+      
+      if (roleData?.id) {
+        userRoleId = roleData.id;
+        roleName = roleData.role_name;
+      }
+    }
+    
+    // Default to 'general' role if no role found
+    if (!userRoleId) {
+      const { data: defaultRole } = await supabase
+        .from('app_user_roles')
+        .select('id')
+        .eq('role_name', 'general')
+        .eq('is_deleted', false)
+        .single();
+      userRoleId = defaultRole?.id;
+    }
+
+    if (!userRoleId) {
+      throw new Error('No valid user role found');
+    }
+
+    // Get appropriate status for role
+    const defaultStatus = getDefaultStatusForRole(roleName);
+
+    // 2. Create person record
+    const { data: newPerson, error: personError } = await supabase
+      .from('people')
+      .insert({
+        first_name: firstName,
+        last_name: lastName,
+        user_role_id: userRoleId,
+        status: defaultStatus
+      })
+      .select()
+      .single();
+
+    if (personError) {
+      console.error('Error creating person:', personError);
+      throw personError;
+    }
+
+    const personId = newPerson.id;
+    console.log('Created new person with ID:', personId);
+
+    // 3. Create contact record
+    await updatePersonContact(supabase, personId, personData);
+
+    // 4. Create agency association
+    const { error: agencyError } = await supabase
+      .from('app_agencies_people')
+      .insert({
+        person_id: personId,
+        agency_id: agencyId,
+        user_role_id: userRoleId
+      });
+
+    if (agencyError) {
+      console.error('Error creating agency association:', agencyError);
+    } else {
+      console.log('Created agency association');
+    }
+
+    // 5. Create role assignment
+    const { error: roleAssignError } = await supabase
+      .from('people_assign_user_role')
+      .insert({
+        person_id: personId,
+        user_role_id: userRoleId
+      });
+
+    if (roleAssignError) {
+      console.error('Error creating role assignment:', roleAssignError);
+    } else {
+      console.log('Created role assignment');
+    }
+
+    // 6. Create initial status record
+    const { error: statusError } = await supabase
+      .from('people_assign_status')
+      .insert({
+        person_id: personId,
+        new_status: defaultStatus,
+        old_status: null
+      });
+
+    if (statusError) {
+      console.error('Error creating status record:', statusError);
+    } else {
+      console.log('Created status record');
+    }
+
+    return personId;
+
+  } catch (createError) {
+    console.error('Error creating new person record:', createError);
+    throw createError;
+  }
 }
 
 async function processCrmData(supabase: any, webhook: any, data: any) {
