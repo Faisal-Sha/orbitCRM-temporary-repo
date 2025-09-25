@@ -16,6 +16,16 @@ BEFORE UPDATE ON public.people_leads
 FOR EACH ROW
 EXECUTE FUNCTION public.update_updated_at_column();
 
+CREATE TRIGGER update_settings_integrations_webhooks_updated_at
+    BEFORE UPDATE ON public.settings_integrations_webhooks
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_updated_at_column();
+
+CREATE TRIGGER update_forms_submissions_updated_at
+    BEFORE UPDATE ON public.forms_submissions
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_updated_at_column();
+
 -- Create a comprehensive user registration function that handles both scenarios
 CREATE OR REPLACE FUNCTION public.handle_user_registration()
 RETURNS trigger

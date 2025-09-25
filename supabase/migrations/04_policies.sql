@@ -942,3 +942,56 @@ DROP POLICY IF EXISTS "Users can create clients in their agency" ON public.peopl
 DROP POLICY IF EXISTS "Users can delete clients in their agency" ON public.people_clients;
 DROP POLICY IF EXISTS "Users can update clients in their agency" ON public.people_clients;
 DROP POLICY IF EXISTS "Users can view clients in their agency" ON public.people_clients;
+
+
+
+
+-- Add indexes for performance
+CREATE INDEX idx_settings_integrations_webhooks_agency_id ON public.settings_integrations_webhooks(agency_id);
+CREATE INDEX idx_settings_integrations_webhooks_status ON public.settings_integrations_webhooks(status);
+
+CREATE INDEX idx_forms_submissions_agency_id ON public.forms_submissions(agency_id);
+CREATE INDEX idx_forms_submissions_submitted_by_id ON public.forms_submissions(submitted_by_id);
+CREATE INDEX idx_forms_submissions_status ON public.forms_submissions(submission_status);
+CREATE INDEX idx_forms_submissions_form_id ON public.forms_submissions(form_id);
+
+-- Enable RLS on both tables
+ALTER TABLE public.settings_integrations_webhooks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.forms_submissions ENABLE ROW LEVEL SECURITY;
+
+-- RLS policies for settings_integrations_webhooks
+CREATE POLICY "Users can view webhooks in their agency" 
+ON public.settings_integrations_webhooks 
+FOR SELECT 
+USING (user_can_access_agency(agency_id));
+
+CREATE POLICY "Users can create webhooks in their agency" 
+ON public.settings_integrations_webhooks 
+FOR INSERT 
+WITH CHECK (user_can_access_agency(agency_id));
+
+CREATE POLICY "Users can update webhooks in their agency" 
+ON public.settings_integrations_webhooks 
+FOR UPDATE 
+USING (user_can_access_agency(agency_id));
+
+CREATE POLICY "Users can delete webhooks in their agency" 
+ON public.settings_integrations_webhooks 
+FOR DELETE 
+USING (user_can_access_agency(agency_id));
+
+-- RLS policies for forms_submissions
+CREATE POLICY "Users can view submissions in their agency" 
+ON public.forms_submissions 
+FOR SELECT 
+USING (user_can_access_agency(agency_id));
+
+CREATE POLICY "Users can create submissions in their agency" 
+ON public.forms_submissions 
+FOR INSERT 
+WITH CHECK (user_can_access_agency(agency_id));
+
+CREATE POLICY "Users can update submissions in their agency" 
+ON public.forms_submissions 
+FOR UPDATE 
+USING (user_can_access_agency(agency_id));

@@ -663,3 +663,54 @@ CREATE TABLE public.people_assign_provider (
 DROP TABLE IF EXISTS public.people_leads CASCADE;
 -- Drop people_clients table if it exists (cleanup)
 DROP TABLE IF EXISTS public.people_clients CASCADE;
+
+-- Create settings_integrations_webhooks table (without audit columns as requested)
+CREATE TABLE public.settings_integrations_webhooks (
+    id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+    agency_id UUID NOT NULL REFERENCES public.app_agencies(id),
+    webhook_name TEXT NOT NULL,
+    webhook_api_endpoint TEXT NOT NULL,
+    webhook_api_secret TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active',
+    created_by UUID REFERENCES auth.users(id),
+    updated_by UUID REFERENCES auth.users(id),
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+
+-- Add webhook_type and webhook_description fields to settings_integrations_webhooks table
+ALTER TABLE public.settings_integrations_webhooks 
+ADD COLUMN webhook_type text NOT NULL DEFAULT 'form_submission',
+ADD COLUMN webhook_description text;
+
+-- Add index for webhook_type for better performance
+CREATE INDEX idx_settings_integrations_webhooks_type ON public.settings_integrations_webhooks(webhook_type);
+
+-- Add a check constraint for webhook_type to allow predefined values
+ALTER TABLE public.settings_integrations_webhooks 
+ADD CONSTRAINT webhook_type_check 
+CHECK (webhook_type IN ('form_submission', 'crm_data', 'payment_notification', 'lead_capture', 'custom'));
+
+-- Update existing webhooks to have the form_submission type
+UPDATE public.settings_integrations_webhooks 
+SET webhook_type = 'form_submission' 
+WHERE webhook_type IS NULL;
+
+-- Create forms_submissions table with audit columns
+CREATE TABLE public.forms_submissions (
+    id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+    agency_id UUID NOT NULL REFERENCES public.app_agencies(id),
+    form_id TEXT,
+    sub_track_id TEXT,
+    submitted_by_id UUID NOT NULL REFERENCES public.people(id),
+    submission_data JSONB NOT NULL,
+    submission_status TEXT NOT NULL DEFAULT 'active',
+    updated_by_id UUID REFERENCES public.people(id),
+    archived_by_user_id UUID REFERENCES auth.users(id),
+    deleted_by_user_id UUID REFERENCES auth.users(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+    archived_at TIMESTAMP WITH TIME ZONE,
+    deleted_at TIMESTAMP WITH TIME ZONE,
+    is_deleted BOOLEAN NOT NULL DEFAULT false
+);
