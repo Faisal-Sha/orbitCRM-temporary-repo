@@ -1505,6 +1505,228 @@ export type Database = {
           },
         ]
       }
+      schedule_appointment_attendees: {
+        Row: {
+          appointment_id: string
+          attendee_id: string
+          created_at: string
+          created_by: string
+          id: string
+          removed_at: string | null
+          removed_by: string | null
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          appointment_id: string
+          attendee_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          removed_at?: string | null
+          removed_by?: string | null
+          updated_at?: string
+          updated_by: string
+        }
+        Update: {
+          appointment_id?: string
+          attendee_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          removed_at?: string | null
+          removed_by?: string | null
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_appointment_attendees_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "schedule_appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_appointment_attendees_attendee_id_fkey"
+            columns: ["attendee_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_appointment_attendees_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_appointment_attendees_removed_by_fkey"
+            columns: ["removed_by"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_appointment_attendees_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      schedule_appointment_trigger_log: {
+        Row: {
+          appointment_id: string
+          created_at: string
+          event_source: string
+          id: string
+          raw_event_payload: Json
+          trigger_event: string
+          triggered_by_user_id: string | null
+        }
+        Insert: {
+          appointment_id: string
+          created_at?: string
+          event_source: string
+          id?: string
+          raw_event_payload: Json
+          trigger_event: string
+          triggered_by_user_id?: string | null
+        }
+        Update: {
+          appointment_id?: string
+          created_at?: string
+          event_source?: string
+          id?: string
+          raw_event_payload?: Json
+          trigger_event?: string
+          triggered_by_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_appointment_trigger_log_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "schedule_appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_appointment_trigger_log_triggered_by_user_id_fkey"
+            columns: ["triggered_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      schedule_appointments: {
+        Row: {
+          agency_id: string
+          appointment_status: string
+          appointment_type: string | null
+          booking_details: Json
+          cal_booking_id: string | null
+          calendar_owner_id: string
+          canceled_at: string | null
+          canceled_by: string | null
+          cancellation_reason: string | null
+          created_at: string
+          created_by: string
+          end_time: string
+          id: string
+          location: string
+          location_details: string | null
+          rejection_reason: string | null
+          reschedule_id: string | null
+          start_time: string
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          agency_id: string
+          appointment_status?: string
+          appointment_type?: string | null
+          booking_details: Json
+          cal_booking_id?: string | null
+          calendar_owner_id: string
+          canceled_at?: string | null
+          canceled_by?: string | null
+          cancellation_reason?: string | null
+          created_at?: string
+          created_by: string
+          end_time: string
+          id?: string
+          location: string
+          location_details?: string | null
+          rejection_reason?: string | null
+          reschedule_id?: string | null
+          start_time: string
+          updated_at?: string
+          updated_by: string
+        }
+        Update: {
+          agency_id?: string
+          appointment_status?: string
+          appointment_type?: string | null
+          booking_details?: Json
+          cal_booking_id?: string | null
+          calendar_owner_id?: string
+          canceled_at?: string | null
+          canceled_by?: string | null
+          cancellation_reason?: string | null
+          created_at?: string
+          created_by?: string
+          end_time?: string
+          id?: string
+          location?: string
+          location_details?: string | null
+          rejection_reason?: string | null
+          reschedule_id?: string | null
+          start_time?: string
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_appointments_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "app_agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_appointments_calendar_owner_id_fkey"
+            columns: ["calendar_owner_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_appointments_canceled_by_fkey"
+            columns: ["canceled_by"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_appointments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_appointments_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       settings_integrations_webhooks: {
         Row: {
           agency_id: string
