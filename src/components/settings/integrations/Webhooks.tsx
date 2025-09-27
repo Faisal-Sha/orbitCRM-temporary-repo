@@ -33,7 +33,7 @@ const Webhooks: React.FC<WebhooksProps> = ({ onBack }) => {
   const [selectedWebhook, setSelectedWebhook] = useState<WebhookItem | null>(null);
   const [formData, setFormData] = useState({
     webhook_name: "",
-    webhook_type: "form_submission",
+    webhook_type: "forms",
     webhook_description: "",
     webhook_api_secret: "",
     status: "active"
@@ -43,7 +43,7 @@ const Webhooks: React.FC<WebhooksProps> = ({ onBack }) => {
     setSelectedWebhook(null);
     setFormData({
       webhook_name: "",
-      webhook_type: "form_submission",
+      webhook_type: "forms",
       webhook_description: "",
       webhook_api_secret: "",
       status: "active"
@@ -234,7 +234,9 @@ const Webhooks: React.FC<WebhooksProps> = ({ onBack }) => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="form_submission">Form Submission</SelectItem>
+                  <SelectItem value="forms">Forms</SelectItem>
+                  <SelectItem value="scheduling">Scheduling</SelectItem>
+                  <SelectItem value="marketing">Marketing</SelectItem>
                 </SelectContent>
               </Select>
             </div>
