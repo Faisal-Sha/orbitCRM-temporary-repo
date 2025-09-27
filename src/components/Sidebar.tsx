@@ -59,6 +59,7 @@ const Sidebar = ({ collapsed, toggleSidebar }: SidebarProps) => {
     ]},
     { title: "Schedule", path: "/schedule", icon: <Calendar size={20} />, subItems: [
       { title: "Appointments", path: "/schedule/appointments" },
+      { title: "Calendars", path: "/schedule/appointments/calendars" },
       { title: "Calendar", path: "/schedule/calendar" },
     ]},
     { title: "People", path: "/people", icon: <Users size={20} />, subItems: [

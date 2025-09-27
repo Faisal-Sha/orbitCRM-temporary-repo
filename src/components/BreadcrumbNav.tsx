@@ -16,6 +16,7 @@ const BreadcrumbNav = () => {
     if (path === "goals") return "Goals";
     if (path === "tasks") return "Tasks";
     if (path === "notes") return "Notes";
+    if (path === "calendars") return "Calendars";
     if (path === "client-records") return "Client Records";
     if (path === "staff-records") return "Staff Records";
     if (path === "client-development") return "Clients";
@@ -153,6 +154,7 @@ const BreadcrumbNav = () => {
       return [
         { name: 'schedule', path: '/schedule' },
         { name: 'appointments', path: '/schedule/appointments' },
+        { name: 'calendars', path: '/schedule/appointments/calendars' },
         { name: 'calendar', path: '/schedule/calendar' }
       ];
     }

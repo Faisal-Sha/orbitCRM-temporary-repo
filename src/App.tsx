@@ -34,6 +34,7 @@ import Feedback from "./pages/communication/Feedback";
 import Schedule from "./pages/Schedule";
 import Appointments from "./pages/schedule/Appointments";
 import Calendar from "./pages/schedule/Calendar";
+import CAL from "./pages/schedule/CAL";
 import CalendarPreview from "./components/appointments/CalendarPreview";
 
 // People Routes
@@ -170,6 +171,7 @@ const App = () => (
               {/* Schedule Routes */}
               <Route path="schedule" element={<Schedule />} />
               <Route path="schedule/appointments" element={<Appointments />} />
+              <Route path="schedule/appointments/calendars" element={<CAL />} />
               <Route path="schedule/calendar" element={<Calendar />} />
               <Route path="schedule/calendar/preview" element={<CalendarPreview />} />
               
