@@ -74,6 +74,7 @@ serve(async (req) => {
             .select('*')
             .eq('id', webhookId)
             .eq('agency_id', agencyId)
+            .eq('is_deleted', false)
             .single();
 
           if (error) {
@@ -92,6 +93,7 @@ serve(async (req) => {
             .from('settings_integrations_webhooks')
             .select('*')
             .eq('agency_id', agencyId)
+            .eq('is_deleted', false)
             .order('created_at', { ascending: false });
 
           if (error) {
@@ -171,6 +173,7 @@ serve(async (req) => {
           })
           .eq('id', webhookId)
           .eq('agency_id', agencyId)
+          .eq('is_deleted', false)
           .select()
           .single();
 
@@ -193,11 +196,17 @@ serve(async (req) => {
           });
         }
 
+        // Soft delete: update is_deleted flag instead of hard delete
         const { error: deleteError } = await supabase
           .from('settings_integrations_webhooks')
-          .delete()
+          .update({
+            is_deleted: true,
+            deleted_by: user.id,
+            deleted_at: new Date().toISOString()
+          })
           .eq('id', webhookId)
-          .eq('agency_id', agencyId);
+          .eq('agency_id', agencyId)
+          .eq('is_deleted', false);
 
         if (deleteError) {
           return new Response(JSON.stringify({ error: deleteError.message }), {

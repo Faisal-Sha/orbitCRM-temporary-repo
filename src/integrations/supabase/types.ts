@@ -1732,7 +1732,10 @@ export type Database = {
           agency_id: string
           created_at: string
           created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           id: string
+          is_deleted: boolean
           status: string
           updated_at: string
           updated_by: string | null
@@ -1746,7 +1749,10 @@ export type Database = {
           agency_id: string
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
+          is_deleted?: boolean
           status?: string
           updated_at?: string
           updated_by?: string | null
@@ -1760,7 +1766,10 @@ export type Database = {
           agency_id?: string
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
+          is_deleted?: boolean
           status?: string
           updated_at?: string
           updated_by?: string | null
