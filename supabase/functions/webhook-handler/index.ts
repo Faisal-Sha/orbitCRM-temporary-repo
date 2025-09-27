@@ -14,7 +14,7 @@ const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const webhookProcessors = {
   forms: processFormSubmission,
   form_submission: processFormSubmission, // legacy support
-  scheduling: processCustomData,
+  scheduling: processCalSchedulingEvent,
   marketing: processCustomData,
   crm: processCrmData,
   crm_data: processCrmData, // legacy support
@@ -790,4 +790,357 @@ async function processCustomData(supabase: any, webhook: any, data: any) {
 
   if (error) throw error;
   return { id: customRecord.id, type: 'custom' };
+}
+
+// Cal.com scheduling webhook processor
+async function processCalSchedulingEvent(supabase: any, webhook: any, data: any) {
+  console.log('Processing Cal.com scheduling event:', data.triggerEvent || 'Unknown Event');
+  
+  try {
+    // Extract event information
+    const eventType = data.triggerEvent;
+    const bookingData = data;
+    const bookingDetails = JSON.stringify(bookingData);
+
+    // Log the event in schedule_appointment_trigger_log
+    const { error: logError } = await supabase
+      .from('schedule_appointment_trigger_log')
+      .insert({
+        agency_id: webhook.agency_id,
+        trigger_event: eventType,
+        trigger_source: 'Cal.com',
+        raw_event_payload: bookingDetails
+      });
+
+    if (logError) {
+      console.error('Error logging Cal.com event:', logError);
+    }
+
+    // Map event types to appointment status
+    const statusMapping: { [key: string]: string } = {
+      'BOOKING_CREATED': 'active',
+      'BOOKING_REQUESTED': 'pending', 
+      'BOOKING_CANCELLED': 'canceled',
+      'BOOKING_REJECTED': 'rejected',
+      'MEETING_ENDED': 'completed',
+      'BOOKING_RESCHEDULED': 'rescheduled'
+    };
+
+    const appointmentStatus = statusMapping[eventType] || 'pending';
+
+    // Extract booking ID from Cal.com data
+    const calBookingId = bookingData.uid || bookingData.id || bookingData.booking_id;
+    if (!calBookingId) {
+      throw new Error('Cal.com booking ID not found in payload');
+    }
+
+    // Extract calendar owner ID from booking details
+    const calendarOwnerId = bookingData.calendar_owner_id || bookingData.organizer?.id;
+    if (!calendarOwnerId) {
+      throw new Error('Calendar owner ID not found in booking details');
+    }
+
+    // Validate calendar owner exists in people table
+    const { data: calendarOwner, error: ownerError } = await supabase
+      .from('people')
+      .select('id')
+      .eq('id', calendarOwnerId)
+      .eq('is_deleted', false)
+      .single();
+
+    if (ownerError || !calendarOwner) {
+      throw new Error(`Calendar owner not found in people table: ${calendarOwnerId}`);
+    }
+
+    // Extract appointment type from booking details
+    const appointmentType = bookingData.appointment_type || bookingData.eventType?.title || 'General Meeting';
+
+    // Extract location details
+    const locationDetails = bookingData.location || 
+                           bookingData.meetingUrl || 
+                           bookingData.locationUrl ||
+                           bookingData.address ||
+                           'Not specified';
+
+    // Check if appointment already exists for updates/cancellations
+    const { data: existingAppointment } = await supabase
+      .from('schedule_appointments')
+      .select('id, appointment_status')
+      .eq('cal_booking_id', calBookingId)
+      .eq('agency_id', webhook.agency_id)
+      .eq('is_deleted', false)
+      .single();
+
+    let appointmentId;
+
+    if (existingAppointment) {
+      // Update existing appointment
+      const { data: updatedAppointment, error: updateError } = await supabase
+        .from('schedule_appointments')
+        .update({
+          appointment_status: appointmentStatus,
+          location_details: locationDetails,
+          booking_details: bookingDetails,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existingAppointment.id)
+        .select()
+        .single();
+
+      if (updateError) {
+        throw new Error(`Error updating appointment: ${updateError.message}`);
+      }
+
+      appointmentId = updatedAppointment.id;
+      console.log('Updated existing appointment:', appointmentId);
+    } else if (eventType === 'BOOKING_CREATED' || eventType === 'BOOKING_REQUESTED') {
+      // Create new appointment for booking creation/request
+      const { data: newAppointment, error: createError } = await supabase
+        .from('schedule_appointments')
+        .insert({
+          agency_id: webhook.agency_id,
+          calendar_owner_id: calendarOwnerId,
+          cal_booking_id: calBookingId,
+          appointment_type: appointmentType,
+          appointment_status: appointmentStatus,
+          location_details: locationDetails,
+          booking_details: bookingDetails
+        })
+        .select()
+        .single();
+
+      if (createError) {
+        throw new Error(`Error creating appointment: ${createError.message}`);
+      }
+
+      appointmentId = newAppointment.id;
+      console.log('Created new appointment:', appointmentId);
+
+      // Process attendees for new bookings
+      await processCalAttendees(supabase, appointmentId, bookingData, webhook.agency_id, appointmentType);
+    }
+
+    // Special handling: Don't update person status for cancellations
+    if (eventType === 'BOOKING_CANCELLED') {
+      console.log('Booking cancelled - appointment status updated but person status unchanged');
+    }
+
+    return { 
+      id: appointmentId,
+      type: 'cal_scheduling',
+      event: eventType,
+      status: appointmentStatus 
+    };
+
+  } catch (error) {
+    console.error('Error processing Cal.com event:', error);
+    throw error;
+  }
+}
+
+// Helper function to process Cal.com attendees
+async function processCalAttendees(supabase: any, appointmentId: string, bookingData: any, agencyId: string, appointmentType: string) {
+  console.log('Processing Cal.com attendees for appointment:', appointmentId);
+
+  // Extract attendees from booking data
+  const attendees = bookingData.attendees || bookingData.responses || [];
+  
+  // Also include the organizer/booker if present
+  if (bookingData.booker || bookingData.organizer) {
+    const booker = bookingData.booker || bookingData.organizer;
+    attendees.push(booker);
+  }
+
+  for (const attendee of attendees) {
+    try {
+      const email = attendee.email;
+      const phone = attendee.phone || attendee.phoneNumber;
+      const firstName = attendee.firstName || attendee.first_name || attendee.name?.split(' ')[0] || 'Unknown';
+      const lastName = attendee.lastName || attendee.last_name || attendee.name?.split(' ').slice(1).join(' ') || '';
+
+      // Skip if neither email nor phone exists
+      if (!email && !phone) {
+        console.log('Skipping attendee - no email or phone provided');
+        continue;
+      }
+
+      // Check if person exists by email OR phone in the same agency
+      let personId = null;
+      let existingPerson = null;
+
+      if (email || phone) {
+        let query = supabase
+          .from('people_contacts')
+          .select(`
+            person_id,
+            people!inner(
+              id,
+              first_name,
+              last_name,
+              user_role_id,
+              status,
+              app_agencies_people!inner(agency_id),
+              app_user_roles(role_name)
+            )
+          `)
+          .eq('people.app_agencies_people.agency_id', agencyId)
+          .eq('is_deleted', false);
+
+        if (email && phone) {
+          query = query.or(`email.eq.${email},phone.eq.${phone}`);
+        } else if (email) {
+          query = query.eq('email', email);
+        } else if (phone) {
+          query = query.eq('phone', phone);
+        }
+
+        const { data: existingContact } = await query.single();
+
+        if (existingContact?.person_id) {
+          personId = existingContact.person_id;
+          existingPerson = existingContact.people;
+          console.log('Found existing person for attendee:', personId);
+        }
+      }
+
+      // Create new person if not found
+      if (!personId) {
+        console.log('Creating new person for Cal.com attendee:', email || phone);
+        
+        // Get user role based on appointment type
+        let userRoleId = null;
+        let roleName = 'general';
+        
+        if (appointmentType) {
+          const { data: roleData } = await supabase
+            .from('app_user_roles')
+            .select('id, role_name')
+            .eq('role_name', appointmentType.toLowerCase())
+            .eq('is_deleted', false)
+            .single();
+          
+          if (roleData?.id) {
+            userRoleId = roleData.id;
+            roleName = roleData.role_name;
+          }
+        }
+        
+        // Default to 'general' role if no role found
+        if (!userRoleId) {
+          const { data: defaultRole } = await supabase
+            .from('app_user_roles')
+            .select('id')
+            .eq('role_name', 'general')
+            .eq('is_deleted', false)
+            .single();
+          userRoleId = defaultRole?.id;
+        }
+
+        if (!userRoleId) {
+          throw new Error('No valid user role found for Cal.com attendee');
+        }
+
+        // Set status based on role: "Scheduled" for leads, "Active" for others
+        const defaultStatus = roleName.toLowerCase() === 'lead' ? 'Scheduled' : 'Active';
+
+        // Create person record
+        const { data: newPerson, error: personError } = await supabase
+          .from('people')
+          .insert({
+            first_name: firstName,
+            last_name: lastName,
+            user_role_id: userRoleId,
+            status: defaultStatus
+          })
+          .select()
+          .single();
+
+        if (personError) {
+          console.error('Error creating person for Cal.com attendee:', personError);
+          continue;
+        }
+
+        personId = newPerson.id;
+        console.log('Created new person with ID:', personId);
+
+        // Create contact record
+        if (email || phone) {
+          const { error: contactError } = await supabase
+            .from('people_contacts')
+            .insert({
+              person_id: personId,
+              email: email || 'temp@example.com',
+              phone: phone
+            });
+
+          if (contactError) {
+            console.error('Error creating contact for Cal.com attendee:', contactError);
+          } else {
+            console.log('Created contact record for attendee');
+          }
+        }
+
+        // Create agency association with webhook's agency_id
+        const { error: agencyError } = await supabase
+          .from('app_agencies_people')
+          .insert({
+            person_id: personId,
+            agency_id: agencyId,
+            user_role_id: userRoleId
+          });
+
+        if (agencyError) {
+          console.error('Error creating agency association for Cal.com attendee:', agencyError);
+        } else {
+          console.log('Created agency association for attendee');
+        }
+
+        // Create role assignment
+        const { error: roleAssignError } = await supabase
+          .from('people_assign_user_role')
+          .insert({
+            person_id: personId,
+            user_role_id: userRoleId
+          });
+
+        if (roleAssignError) {
+          console.error('Error creating role assignment for Cal.com attendee:', roleAssignError);
+        }
+
+        // Create initial status record
+        const { error: statusError } = await supabase
+          .from('people_assign_status')
+          .insert({
+            person_id: personId,
+            new_status: defaultStatus,
+            old_status: null
+          });
+
+        if (statusError) {
+          console.error('Error creating status record for Cal.com attendee:', statusError);
+        }
+      }
+
+      // Link attendee to appointment
+      if (personId) {
+        const { error: attendeeError } = await supabase
+          .from('schedule_appointment_attendees')
+          .insert({
+            appointment_id: appointmentId,
+            attendee_person_id: personId,
+            agency_id: agencyId
+          });
+
+        if (attendeeError) {
+          console.error('Error linking attendee to appointment:', attendeeError);
+        } else {
+          console.log('Linked attendee to appointment:', personId);
+        }
+      }
+
+    } catch (attendeeError) {
+      console.error('Error processing Cal.com attendee:', attendeeError);
+      // Continue processing other attendees
+    }
+  }
 }
