@@ -109,7 +109,7 @@ serve(async (req) => {
       case 'POST':
         const createData = requestBody;
         const webhookSecret = createData.webhook_api_secret || crypto.randomUUID();
-        const webhookType = createData.webhook_type || 'form_submission';
+        const webhookType = createData.webhook_type || 'forms';
         
         // Generate the webhook endpoint URL before creation
         const baseUrl = Deno.env.get('SUPABASE_URL')!.replace('/rest/v1', '');

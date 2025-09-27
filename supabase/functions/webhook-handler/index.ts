@@ -12,9 +12,14 @@ const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 // Webhook processors for different types
 const webhookProcessors = {
-  form_submission: processFormSubmission,
-  crm_data: processCrmData,
-  payment_notification: processPaymentNotification,
+  forms: processFormSubmission,
+  form_submission: processFormSubmission, // legacy support
+  scheduling: processCustomData,
+  marketing: processCustomData,
+  crm: processCrmData,
+  crm_data: processCrmData, // legacy support
+  payment: processPaymentNotification,
+  payment_notification: processPaymentNotification, // legacy support
   lead_capture: processLeadCapture,
   custom: processCustomData
 };
