@@ -1018,7 +1018,6 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
         .select('id, appointment_status')
         .eq('cal_booking_id', calBookingId)
         .eq('agency_id', webhook.agency_id)
-        .eq('is_deleted', false)
         .maybeSingle();
       if (data) {
         existingAppointment = data;
@@ -1033,7 +1032,6 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
         .select('id, appointment_status')
         .eq('cal_booking_id', calUid)
         .eq('agency_id', webhook.agency_id)
-        .eq('is_deleted', false)
         .maybeSingle();
       if (data) {
         existingAppointment = data;
@@ -1048,7 +1046,6 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
         .select('id, appointment_status')
         .eq('cal_booking_id', calBookingIdStr)
         .eq('agency_id', webhook.agency_id)
-        .eq('is_deleted', false)
         .maybeSingle();
       if (data) {
         existingAppointment = data;
@@ -1063,7 +1060,6 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
         .select('id, appointment_status')
         .eq('cal_booking_id', iCalUIDStripped)
         .eq('agency_id', webhook.agency_id)
-        .eq('is_deleted', false)
         .maybeSingle();
       if (data) {
         existingAppointment = data;
@@ -1078,7 +1074,6 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
         .select('id, appointment_status')
         .filter('booking_details->>uid', 'eq', calUid)
         .eq('agency_id', webhook.agency_id)
-        .eq('is_deleted', false)
         .maybeSingle();
       if (data) {
         existingAppointment = data;
@@ -1092,7 +1087,6 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
         .select('id, appointment_status')
         .filter('booking_details->>bookingId', 'eq', calBookingIdStr)
         .eq('agency_id', webhook.agency_id)
-        .eq('is_deleted', false)
         .maybeSingle();
       if (data) {
         existingAppointment = data;
@@ -1107,7 +1101,6 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
         .select('id, appointment_status')
         .filter('booking_details->>iCalUID', 'eq', iCalUID)
         .eq('agency_id', webhook.agency_id)
-        .eq('is_deleted', false)
         .maybeSingle();
       if (data) {
         existingAppointment = data;
@@ -1121,7 +1114,6 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
         .select('id, appointment_status')
         .filter('booking_details->>iCalUID', 'eq', iCalUIDStripped)
         .eq('agency_id', webhook.agency_id)
-        .eq('is_deleted', false)
         .maybeSingle();
       if (data) {
         existingAppointment = data;
@@ -1138,7 +1130,6 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
         .eq('start_time', startTimeISO)
         .eq('end_time', endTimeISO)
         .eq('agency_id', webhook.agency_id)
-        .eq('is_deleted', false)
         .maybeSingle();
       if (data) {
         existingAppointment = data;
