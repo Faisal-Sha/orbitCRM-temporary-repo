@@ -122,8 +122,14 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Webhook processing error:', error);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500,
+    
+    // Return 200 OK to prevent retry storms for all webhooks
+    return new Response(JSON.stringify({ 
+      success: false, 
+      message: 'Webhook received but processing failed',
+      error: error instanceof Error ? error.message : String(error)
+    }), {
+      status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
@@ -794,29 +800,67 @@ async function processCustomData(supabase: any, webhook: any, data: any) {
 
 // Cal.com scheduling webhook processor
 async function processCalSchedulingEvent(supabase: any, webhook: any, data: any) {
-  console.log('Processing Cal.com scheduling event:', data.triggerEvent || 'Unknown Event');
-  
-  try {
-    // Extract event information
-    const eventType = data.triggerEvent;
-    const bookingData = data;
-    const bookingDetails = bookingData;
+  const eventType = data.triggerEvent || data.type || 'Unknown Event';
+  console.log('Processing Cal.com scheduling event:', eventType);
+  console.log('Full payload received:', JSON.stringify(data, null, 2));
 
-    // Log the event in schedule_appointment_trigger_log
+  // Always log the event first - with nullable appointment_id
+  let triggerLogId: string | null = null;
+  try {
     const { data: triggerLogRow, error: logError } = await supabase
       .from('schedule_appointment_trigger_log')
       .insert({
+        webhook_id: webhook.id,
         trigger_event: eventType,
         event_source: 'Cal.com',
-        raw_event_payload: bookingDetails
+        raw_event_payload: data,
+        appointment_id: null // Will update this later if appointment is created/found
       })
       .select('id')
       .single();
-    const triggerLogId = triggerLogRow?.id;
 
     if (logError) {
       console.error('Error logging Cal.com event:', logError);
+    } else {
+      triggerLogId = triggerLogRow?.id;
+      console.log('Logged Cal.com event with ID:', triggerLogId);
     }
+  } catch (logErr) {
+    console.error('Failed to log Cal.com event:', logErr);
+  }
+
+  // Handle PING events (Cal.com test) - return 200 OK immediately
+  if (eventType === 'PING' || eventType === 'ping' || data.type === 'Test') {
+    console.log('PING event received - returning 200 OK');
+    return { 
+      id: triggerLogId, 
+      type: 'ping', 
+      message: 'PING event logged successfully' 
+    };
+  }
+
+  try {
+    // Extract booking ID with multiple fallback patterns
+    const calBookingId = data.uid || 
+                        data.booking?.uid || 
+                        data.booking?.id || 
+                        data.bookingId || 
+                        data.booking_id || 
+                        data.id ||
+                        data.data?.booking?.uid ||
+                        data.data?.booking?.id;
+
+    if (!calBookingId) {
+      console.warn('Cal.com booking ID not found in payload - skipping appointment processing');
+      console.log('Available keys in payload:', Object.keys(data));
+      return { 
+        id: triggerLogId, 
+        type: 'cal_scheduling_no_booking_id', 
+        message: 'Event logged but no booking ID found' 
+      };
+    }
+
+    console.log('Extracted booking ID:', calBookingId);
 
     // Map event types to appointment status
     const statusMapping: { [key: string]: string } = {
@@ -830,31 +874,60 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
 
     const appointmentStatus = statusMapping[eventType] || 'pending';
 
-    // Extract booking ID from Cal.com data
-    const calBookingId = bookingData.uid || bookingData.id || bookingData.booking_id;
-    if (!calBookingId) {
-      throw new Error('Cal.com booking ID not found in payload');
-    }
+    // Extract start and end times with flexible patterns
+    const startTimeRaw = data.startTime || 
+                        data.startsAt || 
+                        data.start || 
+                        data.booking?.startTime || 
+                        data.booking?.startsAt ||
+                        data.data?.booking?.startTime;
+    
+    const endTimeRaw = data.endTime || 
+                      data.endsAt || 
+                      data.end || 
+                      data.booking?.endTime || 
+                      data.booking?.endsAt ||
+                      data.data?.booking?.endTime;
 
-    // Normalize start and end times (required by schedule_appointments)
-    const startTimeRaw = bookingData.startTime || bookingData.startsAt || bookingData.start || bookingData.event?.startTime;
-    const endTimeRaw = bookingData.endTime || bookingData.endsAt || bookingData.end || bookingData.event?.endTime;
     if (!startTimeRaw || !endTimeRaw) {
-      throw new Error('Start or end time missing in Cal.com payload');
+      console.warn('Start or end time missing in Cal.com payload - using fallback times');
     }
-    const startTimeISO = new Date(startTimeRaw).toISOString();
-    const endTimeISO = new Date(endTimeRaw).toISOString();
 
-    // Resolve calendar owner (required, NOT NULL)
-    let calendarOwnerId: string | null = bookingData.calendar_owner_id ?? null;
+    const startTimeISO = startTimeRaw ? new Date(startTimeRaw).toISOString() : new Date().toISOString();
+    const endTimeISO = endTimeRaw ? new Date(endTimeRaw).toISOString() : new Date(Date.now() + 3600000).toISOString();
+
+    // Extract calendar owner ID from payload or resolve by email
+    let calendarOwnerId: string | null = data.calendar_owner_id || 
+                                        data.booking?.calendar_owner_id ||
+                                        data.calendarOwnerId;
+
     if (!calendarOwnerId) {
-      const organizer = bookingData.organizer || bookingData.booker || bookingData.user || bookingData.owner || {};
-      const ownerEmail = organizer.email || bookingData.organizerEmail || bookingData.ownerEmail;
+      const organizer = data.organizer || 
+                       data.booker || 
+                       data.user || 
+                       data.owner || 
+                       data.booking?.organizer || 
+                       data.booking?.user ||
+                       {};
+      
+      const ownerEmail = organizer.email || 
+                        data.organizerEmail || 
+                        data.ownerEmail ||
+                        data.booking?.organizerEmail;
+
       if (ownerEmail) {
-        // Try to find an existing person in this agency by email
+        console.log('Resolving calendar owner by email:', ownerEmail);
+        
+        // Try to find existing person by email in this agency
         const { data: existingOwner } = await supabase
           .from('people_contacts')
-          .select('person_id, people!inner(id), app_agencies_people!inner(agency_id)')
+          .select(`
+            person_id,
+            people!inner(
+              id,
+              app_agencies_people!inner(agency_id)
+            )
+          `)
           .eq('email', ownerEmail)
           .eq('people.app_agencies_people.agency_id', webhook.agency_id)
           .eq('is_deleted', false)
@@ -862,113 +935,161 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
 
         if (existingOwner?.person_id) {
           calendarOwnerId = existingOwner.person_id;
+          console.log('Found existing calendar owner:', calendarOwnerId);
         } else {
-          // Create a staff person for the organizer
-          const organizerFirst = organizer.firstName || organizer.first_name || organizer.name?.split(' ')[0] || 'Unknown';
-          const organizerLast = organizer.lastName || organizer.last_name || organizer.name?.split(' ').slice(1).join(' ') || '';
-          const newOwnerId = await createNewPerson(supabase, { 
-            firstName: organizerFirst, 
-            middleName: null, 
-            lastName: organizerLast, 
-            userProfileBio: null,
-            email: ownerEmail,
-            phone: organizer.phone || organizer.phoneNumber,
-            userRoleField: 'staff'
-          }, webhook.agency_id);
-          calendarOwnerId = newOwnerId;
+          console.warn('Calendar owner not found by email - creating new staff person');
+          // Create new staff person for the organizer
+          const organizerFirst = organizer.firstName || 
+                               organizer.first_name || 
+                               organizer.name?.split(' ')[0] || 
+                               'Calendar';
+          const organizerLast = organizer.lastName || 
+                              organizer.last_name || 
+                              organizer.name?.split(' ').slice(1).join(' ') || 
+                              'Owner';
+
+          try {
+            calendarOwnerId = await createNewPerson(supabase, {
+              firstName: organizerFirst,
+              middleName: null,
+              lastName: organizerLast,
+              userProfileBio: null,
+              email: ownerEmail,
+              phone: organizer.phone || organizer.phoneNumber || null,
+              userRoleField: 'staff'
+            }, webhook.agency_id);
+            console.log('Created new calendar owner:', calendarOwnerId);
+          } catch (createError) {
+            console.error('Failed to create calendar owner:', createError);
+          }
         }
       } else {
-        throw new Error('Organizer email not found to resolve calendar owner');
+        console.warn('No organizer email found - calendar owner will be null');
       }
     }
 
-    // Extract appointment type from booking details
-    const appointmentType = bookingData.appointment_type || bookingData.eventType?.title || 'General Meeting';
+    // Extract appointment type
+    const appointmentType = data.appointment_type || 
+                           data.eventType?.title || 
+                           data.booking?.eventType?.title ||
+                           data.type || 
+                           'General Meeting';
 
     // Extract location details
-    const locationDetails = bookingData.location || 
-                           bookingData.meetingUrl || 
-                           bookingData.locationUrl ||
-                           bookingData.address ||
+    const locationDetails = data.location || 
+                           data.meetingUrl || 
+                           data.locationUrl ||
+                           data.address ||
+                           data.booking?.location ||
+                           data.booking?.meetingUrl ||
                            'Not specified';
 
-    // Check if appointment already exists for updates/cancellations
+    // Check if appointment already exists
     const { data: existingAppointment } = await supabase
       .from('schedule_appointments')
       .select('id, appointment_status')
       .eq('cal_booking_id', calBookingId)
       .eq('agency_id', webhook.agency_id)
       .eq('is_deleted', false)
-      .single();
+      .maybeSingle();
 
-    let appointmentId;
+    let appointmentId: string | null = null;
 
     if (existingAppointment) {
       // Update existing appointment
+      console.log('Updating existing appointment:', existingAppointment.id);
+      
       const { data: updatedAppointment, error: updateError } = await supabase
         .from('schedule_appointments')
         .update({
           appointment_status: appointmentStatus,
           location_details: locationDetails,
-          booking_details: bookingDetails,
+          booking_details: data,
           start_time: startTimeISO,
           end_time: endTimeISO,
           updated_at: new Date().toISOString()
         })
         .eq('id', existingAppointment.id)
-        .select()
+        .select('id')
         .single();
 
       if (updateError) {
-        throw new Error(`Error updating appointment: ${updateError.message}`);
+        console.error('Error updating appointment:', updateError);
+      } else {
+        appointmentId = updatedAppointment.id;
+        console.log('Updated appointment:', appointmentId);
       }
-
-      appointmentId = updatedAppointment.id;
-      console.log('Updated existing appointment:', appointmentId);
     } else if (eventType === 'BOOKING_CREATED' || eventType === 'BOOKING_REQUESTED') {
       // Create new appointment for booking creation/request
+      console.log('Creating new appointment');
+      
       const { data: newAppointment, error: createError } = await supabase
         .from('schedule_appointments')
         .insert({
           agency_id: webhook.agency_id,
-          calendar_owner_id: calendarOwnerId as string,
+          calendar_owner_id: calendarOwnerId,
           cal_booking_id: calBookingId,
           appointment_type: appointmentType,
           appointment_status: appointmentStatus,
           start_time: startTimeISO,
           end_time: endTimeISO,
           location_details: locationDetails,
-          booking_details: bookingDetails
+          booking_details: data
         })
-        .select()
+        .select('id')
         .single();
 
       if (createError) {
-        throw new Error(`Error creating appointment: ${createError.message}`);
+        console.error('Error creating appointment:', createError);
+      } else {
+        appointmentId = newAppointment.id;
+        console.log('Created new appointment:', appointmentId);
+
+        // Process attendees for new bookings
+        if (appointmentId) {
+          try {
+            await processCalAttendees(supabase, appointmentId, data, webhook.agency_id, appointmentType);
+          } catch (attendeeError) {
+            console.error('Error processing attendees:', attendeeError);
+          }
+        }
       }
-
-      appointmentId = newAppointment.id;
-      console.log('Created new appointment:', appointmentId);
-
-      // Process attendees for new bookings
-      await processCalAttendees(supabase, appointmentId, bookingData, webhook.agency_id, appointmentType);
+    } else {
+      console.log('Event type does not require appointment creation:', eventType);
     }
 
-    // Special handling: Don't update person status for cancellations
-    if (eventType === 'BOOKING_CANCELLED') {
-      console.log('Booking cancelled - appointment status updated but person status unchanged');
+    // Update trigger log with appointment_id if we have one
+    if (triggerLogId && appointmentId) {
+      try {
+        await supabase
+          .from('schedule_appointment_trigger_log')
+          .update({ appointment_id: appointmentId })
+          .eq('id', triggerLogId);
+        console.log('Updated trigger log with appointment_id:', appointmentId);
+      } catch (updateLogError) {
+        console.error('Failed to update trigger log with appointment_id:', updateLogError);
+      }
     }
 
+    console.log('Cal.com event processed successfully');
     return { 
-      id: appointmentId,
+      id: appointmentId || triggerLogId,
       type: 'cal_scheduling',
       event: eventType,
-      status: appointmentStatus 
+      status: appointmentStatus,
+      booking_id: calBookingId
     };
 
   } catch (error) {
     console.error('Error processing Cal.com event:', error);
-    throw error;
+    
+    // Don't throw - return 200 OK to Cal.com with error logged
+    return { 
+      id: triggerLogId, 
+      type: 'cal_scheduling_error', 
+      message: 'Event logged but processing failed',
+      error: error instanceof Error ? error.message : String(error)
+    };
   }
 }
 
@@ -1161,7 +1282,8 @@ async function processCalAttendees(supabase: any, appointmentId: string, booking
           .from('schedule_appointment_attendees')
           .insert({
             appointment_id: appointmentId,
-            attendee_id: personId
+            person_id: personId,
+            agency_id: agencyId
           });
 
         if (attendeeError) {

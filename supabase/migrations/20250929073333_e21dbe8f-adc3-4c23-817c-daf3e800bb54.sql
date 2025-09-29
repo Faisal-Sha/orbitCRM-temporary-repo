@@ -1,0 +1,2 @@
+-- Make appointment_id nullable in schedule_appointment_trigger_log to allow logging events without existing appointments
+ALTER TABLE public.schedule_appointment_trigger_log ALTER COLUMN appointment_id DROP NOT NULL;

@@ -1579,7 +1579,7 @@ export type Database = {
       }
       schedule_appointment_trigger_log: {
         Row: {
-          appointment_id: string
+          appointment_id: string | null
           created_at: string
           event_source: string
           id: string
@@ -1588,7 +1588,7 @@ export type Database = {
           triggered_by_user_id: string | null
         }
         Insert: {
-          appointment_id: string
+          appointment_id?: string | null
           created_at?: string
           event_source: string
           id?: string
@@ -1597,7 +1597,7 @@ export type Database = {
           triggered_by_user_id?: string | null
         }
         Update: {
-          appointment_id?: string
+          appointment_id?: string | null
           created_at?: string
           event_source?: string
           id?: string
