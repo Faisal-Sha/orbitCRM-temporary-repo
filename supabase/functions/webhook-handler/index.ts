@@ -1000,23 +1000,158 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
     const cancelledBy = p.cancelledBy || null;
     console.log('Cancellation data - reason:', cancellationReason, 'cancelledBy:', cancelledBy);
 
-    // Check if appointment already exists
+    // Check if appointment already exists (robust multi-identifier lookup)
     console.log('Looking for existing appointment with cal_booking_id:', calBookingId, 'in agency:', webhook.agency_id);
-    const { data: existingAppointment } = await supabase
-      .from('schedule_appointments')
-      .select('id, appointment_status')
-      .eq('cal_booking_id', calBookingId)
-      .eq('agency_id', webhook.agency_id)
-      .eq('is_deleted', false)
-      .maybeSingle();
 
-    if (existingAppointment) {
-      console.log('Found existing appointment:', existingAppointment.id, 'with status:', existingAppointment.appointment_status);
-    } else {
-      console.log('No existing appointment found with cal_booking_id:', calBookingId);
+    // Prepare multiple identifiers
+    const calUid = p.uid || p.booking?.uid || null;
+    const calBookingIdStr = (p.bookingId || p.booking?.id) ? String(p.bookingId || p.booking?.id) : null;
+    const iCalUID = p.iCalUID || p.icalUID || p.iCalUid || null;
+    const iCalUIDStripped = iCalUID ? String(iCalUID).split('@')[0] : null;
+
+    let existingAppointment: any = null;
+
+    // Attempt 1: direct cal_booking_id match with extracted calBookingId
+    {
+      const { data } = await supabase
+        .from('schedule_appointments')
+        .select('id, appointment_status')
+        .eq('cal_booking_id', calBookingId)
+        .eq('agency_id', webhook.agency_id)
+        .eq('is_deleted', false)
+        .maybeSingle();
+      if (data) {
+        existingAppointment = data;
+        console.log('Found existing appointment by cal_booking_id:', data.id);
+      }
     }
 
-    let appointmentId: string | null = null;
+    // Attempt 2: try UID specifically
+    if (!existingAppointment && calUid && calUid !== calBookingId) {
+      const { data } = await supabase
+        .from('schedule_appointments')
+        .select('id, appointment_status')
+        .eq('cal_booking_id', calUid)
+        .eq('agency_id', webhook.agency_id)
+        .eq('is_deleted', false)
+        .maybeSingle();
+      if (data) {
+        existingAppointment = data;
+        console.log('Found existing appointment by UID:', data.id);
+      }
+    }
+
+    // Attempt 3: try numeric bookingId
+    if (!existingAppointment && calBookingIdStr && calBookingIdStr !== calBookingId) {
+      const { data } = await supabase
+        .from('schedule_appointments')
+        .select('id, appointment_status')
+        .eq('cal_booking_id', calBookingIdStr)
+        .eq('agency_id', webhook.agency_id)
+        .eq('is_deleted', false)
+        .maybeSingle();
+      if (data) {
+        existingAppointment = data;
+        console.log('Found existing appointment by numeric bookingId:', data.id);
+      }
+    }
+
+    // Attempt 4: try stripped iCal UID
+    if (!existingAppointment && iCalUIDStripped) {
+      const { data } = await supabase
+        .from('schedule_appointments')
+        .select('id, appointment_status')
+        .eq('cal_booking_id', iCalUIDStripped)
+        .eq('agency_id', webhook.agency_id)
+        .eq('is_deleted', false)
+        .maybeSingle();
+      if (data) {
+        existingAppointment = data;
+        console.log('Found existing appointment by iCalUIDStripped:', data.id);
+      }
+    }
+
+    // Attempt 5: match on booking_details JSON -> uid or bookingId
+    if (!existingAppointment && calUid) {
+      const { data } = await supabase
+        .from('schedule_appointments')
+        .select('id, appointment_status')
+        .filter('booking_details->>uid', 'eq', calUid)
+        .eq('agency_id', webhook.agency_id)
+        .eq('is_deleted', false)
+        .maybeSingle();
+      if (data) {
+        existingAppointment = data;
+        console.log('Found existing appointment by booking_details.uid:', data.id);
+      }
+    }
+
+    if (!existingAppointment && calBookingIdStr) {
+      const { data } = await supabase
+        .from('schedule_appointments')
+        .select('id, appointment_status')
+        .filter('booking_details->>bookingId', 'eq', calBookingIdStr)
+        .eq('agency_id', webhook.agency_id)
+        .eq('is_deleted', false)
+        .maybeSingle();
+      if (data) {
+        existingAppointment = data;
+        console.log('Found existing appointment by booking_details.bookingId:', data.id);
+      }
+    }
+
+    // Attempt 5b: match on booking_details JSON -> iCalUID or stripped
+    if (!existingAppointment && iCalUID) {
+      const { data } = await supabase
+        .from('schedule_appointments')
+        .select('id, appointment_status')
+        .filter('booking_details->>iCalUID', 'eq', iCalUID)
+        .eq('agency_id', webhook.agency_id)
+        .eq('is_deleted', false)
+        .maybeSingle();
+      if (data) {
+        existingAppointment = data;
+        console.log('Found existing appointment by booking_details.iCalUID:', data.id);
+      }
+    }
+
+    if (!existingAppointment && iCalUIDStripped) {
+      const { data } = await supabase
+        .from('schedule_appointments')
+        .select('id, appointment_status')
+        .filter('booking_details->>iCalUID', 'eq', iCalUIDStripped)
+        .eq('agency_id', webhook.agency_id)
+        .eq('is_deleted', false)
+        .maybeSingle();
+      if (data) {
+        existingAppointment = data;
+        console.log('Found existing appointment by booking_details.iCalUID (stripped):', data.id);
+      }
+    }
+
+    // Attempt 6: match by owner + time window
+    if (!existingAppointment && calendarOwnerId) {
+      const { data } = await supabase
+        .from('schedule_appointments')
+        .select('id, appointment_status')
+        .eq('calendar_owner_id', calendarOwnerId)
+        .eq('start_time', startTimeISO)
+        .eq('end_time', endTimeISO)
+        .eq('agency_id', webhook.agency_id)
+        .eq('is_deleted', false)
+        .maybeSingle();
+      if (data) {
+        existingAppointment = data;
+        console.log('Found existing appointment by owner+time:', data.id);
+      }
+    }
+
+    if (existingAppointment) {
+      console.log('Final matched appointment:', existingAppointment.id, 'with status:', existingAppointment.appointment_status);
+    } else {
+      console.log('No existing appointment found after all strategies for booking ID/UID:', calBookingId, 'owner:', calendarOwnerId);
+    }
+
 
     if (existingAppointment) {
       // Update existing appointment
