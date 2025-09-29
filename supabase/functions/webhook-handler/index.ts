@@ -850,18 +850,21 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
 
     console.log('Extracted appointment type:', appointmentType);
 
-    // Determine appointment status based on appointment type and event type
+    // Determine appointment status based on event type
+    // CRITICAL: Check for BOOKING_CANCELLED FIRST to ensure cancellations are properly handled
     let appointmentStatus = 'active'; // default for most cases
     
-    // Special handling for Lead appointment type - always set to 'scheduled'
-    if (appointmentType && appointmentType.toLowerCase() === 'lead') {
+    if (eventType === 'BOOKING_CANCELLED') {
+      // Always set to canceled for cancellation events, regardless of appointment type
+      appointmentStatus = 'canceled';
+    } else if (appointmentType && appointmentType.toLowerCase() === 'lead') {
+      // Special handling for Lead appointment type - set to 'scheduled'
       appointmentStatus = 'scheduled';
     } else {
-      // Event-based status for non-lead appointments
+      // Event-based status for other appointments
       const statusMapping: { [key: string]: string } = {
         'BOOKING_CREATED': 'active',
         'BOOKING_REQUESTED': 'pending', 
-        'BOOKING_CANCELLED': 'canceled',
         'BOOKING_REJECTED': 'rejected',
         'MEETING_ENDED': 'completed',
         'BOOKING_RESCHEDULED': 'rescheduled'
@@ -992,7 +995,13 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
 
     console.log('Extracted values - bookingId:', calBookingId, 'start:', startTimeISO, 'end:', endTimeISO, 'owner:', calendarOwnerId, 'type:', appointmentType, 'location:', location, 'locationDetails:', locationDetails, 'rescheduleUid:', rescheduleUid);
 
+    // Extract cancellation data from payload (if applicable)
+    const cancellationReason = p.cancellationReason || null;
+    const cancelledBy = p.cancelledBy || null;
+    console.log('Cancellation data - reason:', cancellationReason, 'cancelledBy:', cancelledBy);
+
     // Check if appointment already exists
+    console.log('Looking for existing appointment with cal_booking_id:', calBookingId, 'in agency:', webhook.agency_id);
     const { data: existingAppointment } = await supabase
       .from('schedule_appointments')
       .select('id, appointment_status')
@@ -1001,25 +1010,42 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
       .eq('is_deleted', false)
       .maybeSingle();
 
+    if (existingAppointment) {
+      console.log('Found existing appointment:', existingAppointment.id, 'with status:', existingAppointment.appointment_status);
+    } else {
+      console.log('No existing appointment found with cal_booking_id:', calBookingId);
+    }
+
     let appointmentId: string | null = null;
 
     if (existingAppointment) {
       // Update existing appointment
-      console.log('Updating existing appointment:', existingAppointment.id);
+      console.log('Updating existing appointment:', existingAppointment.id, 'with status:', appointmentStatus);
+      
+      // Build update object with base fields
+      const updateData: any = {
+        appointment_status: appointmentStatus,
+        location: location,
+        location_details: locationDetails,
+        booking_details: p,
+        start_time: startTimeISO,
+        end_time: endTimeISO,
+        reschedule_id: rescheduleUid,
+        updated_by: calendarOwnerId,
+        updated_at: new Date().toISOString()
+      };
+
+      // Add cancellation-specific fields if this is a cancellation event
+      if (eventType === 'BOOKING_CANCELLED') {
+        updateData.cancellation_reason = cancellationReason;
+        updateData.canceled_by = calendarOwnerId; // Person who owns the calendar
+        updateData.canceled_at = new Date().toISOString();
+        console.log('Adding cancellation fields - reason:', cancellationReason, 'canceled_by:', calendarOwnerId);
+      }
       
       const { data: updatedAppointment, error: updateError } = await supabase
         .from('schedule_appointments')
-        .update({
-          appointment_status: appointmentStatus,
-          location: location,
-          location_details: locationDetails,
-          booking_details: p,
-          start_time: startTimeISO,
-          end_time: endTimeISO,
-          reschedule_id: rescheduleUid,
-          updated_by: calendarOwnerId,
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', existingAppointment.id)
         .select('id')
         .single();
