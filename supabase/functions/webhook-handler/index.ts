@@ -807,14 +807,35 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
   // Always log the event first - with nullable appointment_id
   let triggerLogId: string | null = null;
   try {
+    // Compute calendar owner early to satisfy NOT NULL constraint
+    let earlyCalendarOwnerId = null;
+    if (data.organizer?.email || data.booker?.email || data.user?.email) {
+      const organizerEmail = data.organizer?.email || data.booker?.email || data.user?.email;
+      const { data: calOwner } = await supabase
+        .from('people_contacts')
+        .select(`
+          person_id,
+          people!inner(
+            id,
+            app_agencies_people!inner(agency_id)
+          )
+        `)
+        .eq('email', organizerEmail)
+        .eq('people.app_agencies_people.agency_id', webhook.agency_id)
+        .eq('is_deleted', false)
+        .single();
+      
+      earlyCalendarOwnerId = calOwner?.person_id;
+    }
+
     const { data: triggerLogRow, error: logError } = await supabase
       .from('schedule_appointment_trigger_log')
       .insert({
         trigger_event: eventType,
         event_source: 'Cal.com',
         raw_event_payload: data,
-        appointment_id: null // Will update this later if appointment is created/found
-        // triggered_by_user_id will be set when we update this log later
+        appointment_id: null, // Will update this later if appointment is created/found
+        triggered_by_user_id: earlyCalendarOwnerId // Set immediately to satisfy NOT NULL
       })
       .select('id')
       .single();
@@ -1115,19 +1136,14 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
       console.log('Event type does not require appointment creation:', eventType);
     }
 
-    // Update trigger log with appointment_id and triggered_by_user_id if we have them
-    if (triggerLogId) {
+    // Update trigger log with appointment_id if we have it
+    if (triggerLogId && appointmentId) {
       try {
-        const updateData: any = {};
-        if (appointmentId) updateData.appointment_id = appointmentId;
-        // Always set triggered_by_user_id since the column is NOT NULL
-        updateData.triggered_by_user_id = calendarOwnerId;
-        
         await supabase
           .from('schedule_appointment_trigger_log')
-          .update(updateData)
+          .update({ appointment_id: appointmentId })
           .eq('id', triggerLogId);
-        console.log('Updated trigger log with appointment_id:', appointmentId, 'and triggered_by_user_id:', calendarOwnerId);
+        console.log('Updated trigger log with appointment_id:', appointmentId);
       } catch (updateLogError) {
         console.error('Failed to update trigger log:', updateLogError);
       }
@@ -1265,16 +1281,15 @@ async function processCalAttendees(supabase: any, appointmentId: string, booking
         // Set status based on role: "Scheduled" for leads, "Active" for others
         const defaultStatus = roleName.toLowerCase() === 'lead' ? 'Scheduled' : 'Active';
 
-        // Create person record
+        // Create person record (created_by/updated_by use auth.users.id, so set to NULL)
         const { data: newPerson, error: personError } = await supabase
           .from('people')
           .insert({
             first_name: firstName,
             last_name: lastName,
             user_role_id: userRoleId,
-            status: defaultStatus,
-            created_by: calendarOwnerId,
-            updated_by: calendarOwnerId
+            status: defaultStatus
+            // created_by/updated_by will be NULL since we don't have auth.users.id
           })
           .select()
           .single();
@@ -1287,16 +1302,15 @@ async function processCalAttendees(supabase: any, appointmentId: string, booking
         personId = newPerson.id;
         console.log('Created new person with ID:', personId);
 
-        // Create contact record
+        // Create contact record (created_by/updated_by use auth.users.id, so set to NULL)
         if (email || phone) {
           const { error: contactError } = await supabase
             .from('people_contacts')
             .insert({
               person_id: personId,
               email: email || 'temp@example.com',
-              phone: phone,
-              created_by: calendarOwnerId,
-              updated_by: calendarOwnerId
+              phone: phone
+              // created_by/updated_by will be NULL since we don't have auth.users.id
             });
 
           if (contactError) {
@@ -1306,15 +1320,14 @@ async function processCalAttendees(supabase: any, appointmentId: string, booking
           }
         }
 
-        // Create agency association with webhook's agency_id
+        // Create agency association with webhook's agency_id (created_by/updated_by use auth.users.id, so set to NULL)
         const { error: agencyError } = await supabase
           .from('app_agencies_people')
           .insert({
             person_id: personId,
             agency_id: agencyId,
-            user_role_id: userRoleId,
-            created_by: calendarOwnerId,
-            updated_by: calendarOwnerId
+            user_role_id: userRoleId
+            // created_by/updated_by will be NULL since we don't have auth.users.id
           });
 
         if (agencyError) {
@@ -1323,29 +1336,27 @@ async function processCalAttendees(supabase: any, appointmentId: string, booking
           console.log('Created agency association for attendee');
         }
 
-        // Create role assignment
+        // Create role assignment (created_by/updated_by use auth.users.id, so set to NULL)
         const { error: roleAssignError } = await supabase
           .from('people_assign_user_role')
           .insert({
             person_id: personId,
-            user_role_id: userRoleId,
-            created_by: calendarOwnerId,
-            updated_by: calendarOwnerId
+            user_role_id: userRoleId
+            // created_by/updated_by will be NULL since we don't have auth.users.id
           });
 
         if (roleAssignError) {
           console.error('Error creating role assignment for Cal.com attendee:', roleAssignError);
         }
 
-        // Create initial status record
+        // Create initial status record (created_by/updated_by use auth.users.id, so set to NULL)
         const { error: statusError } = await supabase
           .from('people_assign_status')
           .insert({
             person_id: personId,
             new_status: defaultStatus,
-            old_status: null,
-            created_by: calendarOwnerId,
-            updated_by: calendarOwnerId
+            old_status: null
+            // created_by/updated_by will be NULL since we don't have auth.users.id
           });
 
         if (statusError) {
