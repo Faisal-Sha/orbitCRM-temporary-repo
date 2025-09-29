@@ -1017,12 +1017,20 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
           booking_details: p,
           start_time: startTimeISO,
           end_time: endTimeISO,
-          updated_by: webhook.id,
+          updated_by: calendarOwnerId,
           updated_at: new Date().toISOString()
         })
         .eq('id', existingAppointment.id)
         .select('id')
         .single();
+
+      if (updateError) {
+        console.error('Error updating appointment:', updateError);
+        console.error('Update error details:', JSON.stringify(updateError, null, 2));
+      } else {
+        appointmentId = updatedAppointment.id;
+        console.log('Updated appointment:', appointmentId);
+      }
 
       if (updateError) {
         console.error('Error updating appointment:', updateError);
@@ -1047,14 +1055,23 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
           location: locationDetails,
           location_details: locationDetails,
           booking_details: p,
-          created_by: webhook.id,
-          updated_by: webhook.id
+          created_by: calendarOwnerId,
+          updated_by: calendarOwnerId
         })
         .select('id')
         .single();
 
       if (createError) {
         console.error('Error creating appointment:', createError);
+        console.error('Create error details:', JSON.stringify(createError, null, 2));
+        console.error('Insert data that failed:', {
+          agency_id: webhook.agency_id,
+          calendar_owner_id: calendarOwnerId,
+          cal_booking_id: calBookingId,
+          appointment_type: appointmentType,
+          appointment_status: appointmentStatus,
+          location: locationDetails
+        });
       } else {
         appointmentId = newAppointment.id;
         console.log('Created new appointment:', appointmentId);
@@ -1062,7 +1079,7 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
         // Process attendees for new bookings
         if (appointmentId) {
           try {
-            await processCalAttendees(supabase, appointmentId, p, webhook.agency_id, appointmentType, webhook);
+            await processCalAttendees(supabase, appointmentId, p, webhook.agency_id, appointmentType, webhook, calendarOwnerId);
           } catch (attendeeError) {
             console.error('Error processing attendees:', attendeeError);
           }
@@ -1108,7 +1125,7 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
 }
 
 // Helper function to process Cal.com attendees
-async function processCalAttendees(supabase: any, appointmentId: string, bookingData: any, agencyId: string, appointmentType: string, webhook: any) {
+async function processCalAttendees(supabase: any, appointmentId: string, bookingData: any, agencyId: string, appointmentType: string, webhook: any, calendarOwnerId: string | null) {
   console.log('Processing Cal.com attendees for appointment:', appointmentId);
 
   // Extract attendees from booking data
@@ -1292,17 +1309,26 @@ async function processCalAttendees(supabase: any, appointmentId: string, booking
 
       // Link attendee to appointment
       if (personId) {
+        // Use calendarOwnerId parameter for foreign key constraint
+        const calendarOwnerIdForAttendee = calendarOwnerId;
+        
         const { error: attendeeError } = await supabase
           .from('schedule_appointment_attendees')
           .insert({
             appointment_id: appointmentId,
             attendee_id: personId,
-            created_by: webhook.id,
-            updated_by: webhook.id
+            created_by: calendarOwnerIdForAttendee,
+            updated_by: calendarOwnerIdForAttendee
           });
 
         if (attendeeError) {
           console.error('Error linking attendee to appointment:', attendeeError);
+          console.error('Attendee error details:', JSON.stringify(attendeeError, null, 2));
+          console.error('Attendee insert data that failed:', {
+            appointment_id: appointmentId,
+            attendee_id: personId,
+            created_by: calendarOwnerIdForAttendee
+          });
         } else {
           console.log('Linked attendee to appointment:', personId);
         }
