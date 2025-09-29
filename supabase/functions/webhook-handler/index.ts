@@ -804,59 +804,14 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
   console.log('Processing Cal.com scheduling event:', eventType);
   console.log('Full payload received:', JSON.stringify(data, null, 2));
 
-  // Always log the event first - with nullable appointment_id
-  let triggerLogId: string | null = null;
-  try {
-    // Compute calendar owner early to satisfy NOT NULL constraint
-    let earlyCalendarOwnerId = null;
-    if (data.organizer?.email || data.booker?.email || data.user?.email) {
-      const organizerEmail = data.organizer?.email || data.booker?.email || data.user?.email;
-      const { data: calOwner } = await supabase
-        .from('people_contacts')
-        .select(`
-          person_id,
-          people!inner(
-            id,
-            app_agencies_people!inner(agency_id)
-          )
-        `)
-        .eq('email', organizerEmail)
-        .eq('people.app_agencies_people.agency_id', webhook.agency_id)
-        .eq('is_deleted', false)
-        .single();
-      
-      earlyCalendarOwnerId = calOwner?.person_id;
-    }
-
-    const { data: triggerLogRow, error: logError } = await supabase
-      .from('schedule_appointment_trigger_log')
-      .insert({
-        trigger_event: eventType,
-        event_source: 'Cal.com',
-        raw_event_payload: data,
-        appointment_id: null, // Will update this later if appointment is created/found
-        triggered_by_user_id: earlyCalendarOwnerId // Set immediately to satisfy NOT NULL
-      })
-      .select('id')
-      .single();
-
-    if (logError) {
-      console.error('Error logging Cal.com event:', logError);
-    } else {
-      triggerLogId = triggerLogRow?.id;
-      console.log('Logged Cal.com event with ID:', triggerLogId);
-    }
-  } catch (logErr) {
-    console.error('Failed to log Cal.com event:', logErr);
-  }
+  let appointmentId: string | null = null;
 
   // Handle PING events (Cal.com test) - return 200 OK immediately
   if (eventType === 'PING' || eventType === 'ping' || data.type === 'Test') {
     console.log('PING event received - returning 200 OK');
     return { 
-      id: triggerLogId, 
       type: 'ping', 
-      message: 'PING event logged successfully' 
+      message: 'PING event handled successfully' 
     };
   }
 
@@ -879,9 +834,8 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
       console.warn('Cal.com booking ID not found in payload - skipping appointment processing');
       console.log('Available keys in payload:', Object.keys(p));
       return { 
-        id: triggerLogId, 
         type: 'cal_scheduling_no_booking_id', 
-        message: 'Event logged but no booking ID found' 
+        message: 'No booking ID found' 
       };
     }
 
@@ -1136,17 +1090,35 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
       console.log('Event type does not require appointment creation:', eventType);
     }
 
-    // Update trigger log with appointment_id if we have it
-    if (triggerLogId && appointmentId) {
+    // Insert trigger log now that we have calendarOwnerId and appointmentId
+    let triggerLogId: string | null = null;
+    if (calendarOwnerId) {
       try {
-        await supabase
+        console.log('Inserting trigger log with triggered_by_user_id:', calendarOwnerId, 'appointment_id:', appointmentId);
+        
+        const { data: triggerLogRow, error: logError } = await supabase
           .from('schedule_appointment_trigger_log')
-          .update({ appointment_id: appointmentId })
-          .eq('id', triggerLogId);
-        console.log('Updated trigger log with appointment_id:', appointmentId);
-      } catch (updateLogError) {
-        console.error('Failed to update trigger log:', updateLogError);
+          .insert({
+            trigger_event: eventType,
+            event_source: 'Cal.com',
+            raw_event_payload: data,
+            appointment_id: appointmentId, // Now we have the appointment ID
+            triggered_by_user_id: calendarOwnerId // Resolved people.id
+          })
+          .select('id')
+          .single();
+
+        if (logError) {
+          console.error('Error logging Cal.com event:', logError);
+        } else {
+          triggerLogId = triggerLogRow?.id;
+          console.log('Successfully logged Cal.com event with ID:', triggerLogId);
+        }
+      } catch (logErr) {
+        console.error('Failed to log Cal.com event:', logErr);
       }
+    } else {
+      console.warn('Skipping trigger log insert - no calendarOwnerId resolved');
     }
 
     console.log('Cal.com event processed successfully');
@@ -1163,9 +1135,8 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
     
     // Don't throw - return 200 OK to Cal.com with error logged
     return { 
-      id: triggerLogId, 
       type: 'cal_scheduling_error', 
-      message: 'Event logged but processing failed',
+      message: 'Processing failed',
       error: error instanceof Error ? error.message : String(error)
     };
   }
