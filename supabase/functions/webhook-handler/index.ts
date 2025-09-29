@@ -813,8 +813,8 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
         trigger_event: eventType,
         event_source: 'Cal.com',
         raw_event_payload: data,
-        appointment_id: null, // Will update this later if appointment is created/found
-        triggered_by_user_id: null // Will be set later when we have calendar owner ID
+        appointment_id: null // Will update this later if appointment is created/found
+        // triggered_by_user_id will be set when we update this log later
       })
       .select('id')
       .single();
@@ -1116,11 +1116,12 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
     }
 
     // Update trigger log with appointment_id and triggered_by_user_id if we have them
-    if (triggerLogId && (appointmentId || calendarOwnerId)) {
+    if (triggerLogId) {
       try {
         const updateData: any = {};
         if (appointmentId) updateData.appointment_id = appointmentId;
-        if (calendarOwnerId) updateData.triggered_by_user_id = calendarOwnerId;
+        // Always set triggered_by_user_id since the column is NOT NULL
+        updateData.triggered_by_user_id = calendarOwnerId;
         
         await supabase
           .from('schedule_appointment_trigger_log')
@@ -1158,8 +1159,9 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
 async function processCalAttendees(supabase: any, appointmentId: string, bookingData: any, agencyId: string, appointmentType: string, webhook: any, calendarOwnerId: string | null) {
   console.log('Processing Cal.com attendees for appointment:', appointmentId);
 
-  // Extract attendees from booking data
-  const attendees = bookingData.attendees || bookingData.responses || [];
+  // Extract attendees from booking data - prioritize attendees array
+  const attendees = bookingData.attendees || [];
+  console.log('Found attendees:', attendees.length, attendees);
   
   // Get organizer email to exclude from attendees (since they're already the calendar owner)
   const organizer = bookingData.organizer || bookingData.booker || bookingData.user || bookingData.owner || {};
