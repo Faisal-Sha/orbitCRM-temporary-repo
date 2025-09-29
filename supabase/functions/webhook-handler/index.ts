@@ -1001,8 +1001,8 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
     console.log('Cancellation data - reason:', cancellationReason, 'cancelledBy:', cancelledBy);
 
     // Check if appointment already exists (robust multi-identifier lookup)
-    console.log('Looking for existing appointment with cal_booking_id:', calBookingId, 'in agency:', webhook.agency_id);
-
+    // For BOOKING_RESCHEDULED, prioritize lookup by rescheduleUid (original appointment)
+    
     // Prepare multiple identifiers
     const calUid = p.uid || p.booking?.uid || null;
     const calBookingIdStr = (p.bookingId || p.booking?.id) ? String(p.bookingId || p.booking?.id) : null;
@@ -1011,17 +1011,44 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
 
     let existingAppointment: any = null;
 
-    // Attempt 1: direct cal_booking_id match with extracted calBookingId
-    {
-      const { data } = await supabase
+    // Special handling for BOOKING_RESCHEDULED - lookup by rescheduleUid FIRST
+    if (eventType === 'BOOKING_RESCHEDULED' && rescheduleUid) {
+      console.log('BOOKING_RESCHEDULED: Looking for original appointment with cal_booking_id matching rescheduleUid:', rescheduleUid);
+      const { data, error } = await supabase
         .from('schedule_appointments')
         .select('id, appointment_status')
-        .eq('cal_booking_id', calBookingId)
+        .eq('cal_booking_id', rescheduleUid)
         .eq('agency_id', webhook.agency_id)
         .maybeSingle();
+      
+      if (error) {
+        console.error('Error looking up appointment by rescheduleUid:', error.message);
+      }
+      
       if (data) {
         existingAppointment = data;
-        console.log('Found existing appointment by cal_booking_id:', data.id);
+        console.log('Found original appointment for reschedule by rescheduleUid:', existingAppointment.id);
+      } else {
+        console.log('No appointment found with cal_booking_id matching rescheduleUid:', rescheduleUid);
+      }
+    }
+
+    // For non-reschedule events or if reschedule lookup failed, try standard lookups
+    if (!existingAppointment) {
+      console.log('Looking for existing appointment with cal_booking_id:', calBookingId, 'in agency:', webhook.agency_id);
+      
+      // Attempt 1: direct cal_booking_id match with extracted calBookingId
+      {
+        const { data } = await supabase
+          .from('schedule_appointments')
+          .select('id, appointment_status')
+          .eq('cal_booking_id', calBookingId)
+          .eq('agency_id', webhook.agency_id)
+          .maybeSingle();
+        if (data) {
+          existingAppointment = data;
+          console.log('Found existing appointment by cal_booking_id:', data.id);
+        }
       }
     }
 
@@ -1156,7 +1183,6 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
         booking_details: p,
         start_time: startTimeISO,
         end_time: endTimeISO,
-        reschedule_id: rescheduleUid,
         updated_by: calendarOwnerId,
         updated_at: new Date().toISOString()
       };
@@ -1167,6 +1193,13 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
         updateData.canceled_by = calendarOwnerId; // Person who owns the calendar
         updateData.canceled_at = new Date().toISOString();
         console.log('Adding cancellation fields - reason:', cancellationReason, 'canceled_by:', calendarOwnerId);
+      }
+
+      // Add reschedule-specific fields if this is a reschedule event
+      if (eventType === 'BOOKING_RESCHEDULED') {
+        updateData.cal_booking_id = calBookingId; // Update to new booking ID
+        updateData.reschedule_id = rescheduleUid; // Store original booking ID for history
+        console.log('Adding reschedule fields - new cal_booking_id:', calBookingId, 'reschedule_id:', rescheduleUid);
       }
       
       const { data: updatedAppointment, error: updateError } = await supabase
@@ -1190,6 +1223,8 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
         appointmentId = updatedAppointment.id;
         console.log('Updated appointment:', appointmentId);
       }
+    } else if (eventType === 'BOOKING_RESCHEDULED' && !existingAppointment) {
+      console.log('BOOKING_RESCHEDULED event but no existing appointment found - this should not happen');
     } else if (eventType === 'BOOKING_CREATED' || eventType === 'BOOKING_REQUESTED') {
       // Create new appointment for booking creation/request
       console.log('Creating new appointment');
