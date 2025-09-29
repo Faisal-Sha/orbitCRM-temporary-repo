@@ -4,7 +4,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-webhook-signature',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-webhook-signature, x-hub-signature-256, x-cal-signature-256',
 };
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -800,17 +800,19 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
     // Extract event information
     const eventType = data.triggerEvent;
     const bookingData = data;
-    const bookingDetails = JSON.stringify(bookingData);
+    const bookingDetails = bookingData;
 
     // Log the event in schedule_appointment_trigger_log
-    const { error: logError } = await supabase
+    const { data: triggerLogRow, error: logError } = await supabase
       .from('schedule_appointment_trigger_log')
       .insert({
-        agency_id: webhook.agency_id,
         trigger_event: eventType,
-        trigger_source: 'Cal.com',
+        event_source: 'Cal.com',
         raw_event_payload: bookingDetails
-      });
+      })
+      .select('id')
+      .single();
+    const triggerLogId = triggerLogRow?.id;
 
     if (logError) {
       console.error('Error logging Cal.com event:', logError);
@@ -834,22 +836,50 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
       throw new Error('Cal.com booking ID not found in payload');
     }
 
-    // Extract calendar owner ID from booking details
-    const calendarOwnerId = bookingData.calendar_owner_id || bookingData.organizer?.id;
-    if (!calendarOwnerId) {
-      throw new Error('Calendar owner ID not found in booking details');
+    // Normalize start and end times (required by schedule_appointments)
+    const startTimeRaw = bookingData.startTime || bookingData.startsAt || bookingData.start || bookingData.event?.startTime;
+    const endTimeRaw = bookingData.endTime || bookingData.endsAt || bookingData.end || bookingData.event?.endTime;
+    if (!startTimeRaw || !endTimeRaw) {
+      throw new Error('Start or end time missing in Cal.com payload');
     }
+    const startTimeISO = new Date(startTimeRaw).toISOString();
+    const endTimeISO = new Date(endTimeRaw).toISOString();
 
-    // Validate calendar owner exists in people table
-    const { data: calendarOwner, error: ownerError } = await supabase
-      .from('people')
-      .select('id')
-      .eq('id', calendarOwnerId)
-      .eq('is_deleted', false)
-      .single();
+    // Resolve calendar owner (required, NOT NULL)
+    let calendarOwnerId: string | null = bookingData.calendar_owner_id ?? null;
+    if (!calendarOwnerId) {
+      const organizer = bookingData.organizer || bookingData.booker || bookingData.user || bookingData.owner || {};
+      const ownerEmail = organizer.email || bookingData.organizerEmail || bookingData.ownerEmail;
+      if (ownerEmail) {
+        // Try to find an existing person in this agency by email
+        const { data: existingOwner } = await supabase
+          .from('people_contacts')
+          .select('person_id, people!inner(id), app_agencies_people!inner(agency_id)')
+          .eq('email', ownerEmail)
+          .eq('people.app_agencies_people.agency_id', webhook.agency_id)
+          .eq('is_deleted', false)
+          .single();
 
-    if (ownerError || !calendarOwner) {
-      throw new Error(`Calendar owner not found in people table: ${calendarOwnerId}`);
+        if (existingOwner?.person_id) {
+          calendarOwnerId = existingOwner.person_id;
+        } else {
+          // Create a staff person for the organizer
+          const organizerFirst = organizer.firstName || organizer.first_name || organizer.name?.split(' ')[0] || 'Unknown';
+          const organizerLast = organizer.lastName || organizer.last_name || organizer.name?.split(' ').slice(1).join(' ') || '';
+          const newOwnerId = await createNewPerson(supabase, { 
+            firstName: organizerFirst, 
+            middleName: null, 
+            lastName: organizerLast, 
+            userProfileBio: null,
+            email: ownerEmail,
+            phone: organizer.phone || organizer.phoneNumber,
+            userRoleField: 'staff'
+          }, webhook.agency_id);
+          calendarOwnerId = newOwnerId;
+        }
+      } else {
+        throw new Error('Organizer email not found to resolve calendar owner');
+      }
     }
 
     // Extract appointment type from booking details
@@ -881,6 +911,8 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
           appointment_status: appointmentStatus,
           location_details: locationDetails,
           booking_details: bookingDetails,
+          start_time: startTimeISO,
+          end_time: endTimeISO,
           updated_at: new Date().toISOString()
         })
         .eq('id', existingAppointment.id)
@@ -899,10 +931,12 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
         .from('schedule_appointments')
         .insert({
           agency_id: webhook.agency_id,
-          calendar_owner_id: calendarOwnerId,
+          calendar_owner_id: calendarOwnerId as string,
           cal_booking_id: calBookingId,
           appointment_type: appointmentType,
           appointment_status: appointmentStatus,
+          start_time: startTimeISO,
+          end_time: endTimeISO,
           location_details: locationDetails,
           booking_details: bookingDetails
         })
@@ -1127,8 +1161,7 @@ async function processCalAttendees(supabase: any, appointmentId: string, booking
           .from('schedule_appointment_attendees')
           .insert({
             appointment_id: appointmentId,
-            attendee_person_id: personId,
-            agency_id: agencyId
+            attendee_id: personId
           });
 
         if (attendeeError) {
