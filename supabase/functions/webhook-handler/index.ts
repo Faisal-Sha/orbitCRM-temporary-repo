@@ -851,12 +851,15 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
     console.log('Extracted appointment type:', appointmentType);
 
     // Determine appointment status based on event type
-    // CRITICAL: Check for BOOKING_CANCELLED FIRST to ensure cancellations are properly handled
+    // CRITICAL: Check event type FIRST before appointment type to ensure proper status
     let appointmentStatus = 'active'; // default for most cases
     
     if (eventType === 'BOOKING_CANCELLED') {
       // Always set to canceled for cancellation events, regardless of appointment type
       appointmentStatus = 'canceled';
+    } else if (eventType === 'BOOKING_RESCHEDULED') {
+      // Always set to rescheduled for reschedule events, regardless of appointment type
+      appointmentStatus = 'rescheduled';
     } else if (appointmentType && appointmentType.toLowerCase() === 'lead') {
       // Special handling for Lead appointment type - set to 'scheduled'
       appointmentStatus = 'scheduled';
@@ -866,8 +869,7 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
         'BOOKING_CREATED': 'active',
         'BOOKING_REQUESTED': 'pending', 
         'BOOKING_REJECTED': 'rejected',
-        'MEETING_ENDED': 'completed',
-        'BOOKING_RESCHEDULED': 'rescheduled'
+        'MEETING_ENDED': 'completed'
       };
       appointmentStatus = statusMapping[eventType] || 'active';
     }
@@ -1197,6 +1199,7 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
 
       // Add reschedule-specific fields if this is a reschedule event
       if (eventType === 'BOOKING_RESCHEDULED') {
+        updateData.appointment_status = 'rescheduled'; // Explicitly ensure status is rescheduled
         updateData.cal_booking_id = calBookingId; // Update to new booking ID
         updateData.reschedule_id = rescheduleUid; // Store original booking ID for history
         console.log('Adding reschedule fields - new cal_booking_id:', calBookingId, 'reschedule_id:', rescheduleUid);
