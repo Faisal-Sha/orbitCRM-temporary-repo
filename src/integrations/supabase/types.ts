@@ -1585,7 +1585,7 @@ export type Database = {
           id: string
           raw_event_payload: Json
           trigger_event: string
-          triggered_by_user_id: string | null
+          triggered_by_user_id: string
         }
         Insert: {
           appointment_id?: string | null
@@ -1594,7 +1594,7 @@ export type Database = {
           id?: string
           raw_event_payload: Json
           trigger_event: string
-          triggered_by_user_id?: string | null
+          triggered_by_user_id: string
         }
         Update: {
           appointment_id?: string | null
@@ -1603,7 +1603,7 @@ export type Database = {
           id?: string
           raw_event_payload?: Json
           trigger_event?: string
-          triggered_by_user_id?: string | null
+          triggered_by_user_id?: string
         }
         Relationships: [
           {

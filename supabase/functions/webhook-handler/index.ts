@@ -813,7 +813,8 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
         trigger_event: eventType,
         event_source: 'Cal.com',
         raw_event_payload: data,
-        appointment_id: null // Will update this later if appointment is created/found
+        appointment_id: null, // Will update this later if appointment is created/found
+        triggered_by_user_id: null // Will be set later when we have calendar owner ID
       })
       .select('id')
       .single();
@@ -865,17 +866,33 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
 
     console.log('Extracted booking ID:', calBookingId);
 
-    // Map event types to appointment status
-    const statusMapping: { [key: string]: string } = {
-      'BOOKING_CREATED': 'active',
-      'BOOKING_REQUESTED': 'pending', 
-      'BOOKING_CANCELLED': 'canceled',
-      'BOOKING_REJECTED': 'rejected',
-      'MEETING_ENDED': 'completed',
-      'BOOKING_RESCHEDULED': 'rescheduled'
-    };
+    // Extract appointment type first (needed for status determination)
+    const appointmentType = p.userFieldsResponses?.appointment_type?.value ||
+                           p.responses?.appointment_type?.value ||
+                           p.eventType?.title ||
+                           p.type || 
+                           'General Meeting';
 
-    const appointmentStatus = statusMapping[eventType] || 'pending';
+    console.log('Extracted appointment type:', appointmentType);
+
+    // Determine appointment status based on appointment type and event type
+    let appointmentStatus = 'active'; // default for most cases
+    
+    // Special handling for Lead appointment type - always set to 'scheduled'
+    if (appointmentType && appointmentType.toLowerCase() === 'lead') {
+      appointmentStatus = 'scheduled';
+    } else {
+      // Event-based status for non-lead appointments
+      const statusMapping: { [key: string]: string } = {
+        'BOOKING_CREATED': 'active',
+        'BOOKING_REQUESTED': 'pending', 
+        'BOOKING_CANCELLED': 'canceled',
+        'BOOKING_REJECTED': 'rejected',
+        'MEETING_ENDED': 'completed',
+        'BOOKING_RESCHEDULED': 'rescheduled'
+      };
+      appointmentStatus = statusMapping[eventType] || 'active';
+    }
 
     // Extract start and end times from normalized payload
     const startTimeRaw = p.startTime || 
@@ -975,23 +992,30 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
       }
     }
 
-    // Extract appointment type from userFieldsResponses
-    const appointmentType = p.userFieldsResponses?.appointment_type?.value ||
-                           p.responses?.appointment_type?.value ||
-                           p.eventType?.title ||
-                           p.type || 
-                           'General Meeting';
+    // appointmentType already extracted above
 
-    console.log('Extracted appointment type:', appointmentType);
+    // Extract reschedule UID for reschedule_id column
+    const rescheduleUid = p.rescheduleUid || null;
+    console.log('Extracted reschedule UID:', rescheduleUid);
 
-    // Extract location details (required field - cannot be null)
-    const locationDetails = p.location || 
-                           p.meetingUrl || 
-                           p.locationUrl ||
-                           p.address ||
-                           'Cal.com';
+    // Parse location data from Cal.com responses
+    let location = 'Not specified';
+    let locationDetails = 'Not specified';
+    
+    if (p.responses?.location?.value) {
+      // Location type (e.g., "Attendee Phone Number", "Google Meet", etc.)
+      location = p.responses.location.value.optionValue || p.responses.location.label || 'Phone';
+      // Actual location value (phone number, URL, address, etc.)
+      locationDetails = p.responses.location.value.value || p.location || 'Not specified';
+    } else {
+      locationDetails = p.location || 
+                       p.meetingUrl || 
+                       p.locationUrl ||
+                       p.address ||
+                       'Cal.com';
+    }
 
-    console.log('Extracted values - bookingId:', calBookingId, 'start:', startTimeISO, 'end:', endTimeISO, 'owner:', calendarOwnerId, 'type:', appointmentType, 'location:', locationDetails);
+    console.log('Extracted values - bookingId:', calBookingId, 'start:', startTimeISO, 'end:', endTimeISO, 'owner:', calendarOwnerId, 'type:', appointmentType, 'location:', location, 'locationDetails:', locationDetails, 'rescheduleUid:', rescheduleUid);
 
     // Check if appointment already exists
     const { data: existingAppointment } = await supabase
@@ -1012,11 +1036,12 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
         .from('schedule_appointments')
         .update({
           appointment_status: appointmentStatus,
-          location: locationDetails,
+          location: location,
           location_details: locationDetails,
           booking_details: p,
           start_time: startTimeISO,
           end_time: endTimeISO,
+          reschedule_id: rescheduleUid,
           updated_by: calendarOwnerId,
           updated_at: new Date().toISOString()
         })
@@ -1052,8 +1077,9 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
           appointment_status: appointmentStatus,
           start_time: startTimeISO,
           end_time: endTimeISO,
-          location: locationDetails,
+          location: location,
           location_details: locationDetails,
+          reschedule_id: rescheduleUid,
           booking_details: p,
           created_by: calendarOwnerId,
           updated_by: calendarOwnerId
@@ -1089,16 +1115,20 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
       console.log('Event type does not require appointment creation:', eventType);
     }
 
-    // Update trigger log with appointment_id if we have one
-    if (triggerLogId && appointmentId) {
+    // Update trigger log with appointment_id and triggered_by_user_id if we have them
+    if (triggerLogId && (appointmentId || calendarOwnerId)) {
       try {
+        const updateData: any = {};
+        if (appointmentId) updateData.appointment_id = appointmentId;
+        if (calendarOwnerId) updateData.triggered_by_user_id = calendarOwnerId;
+        
         await supabase
           .from('schedule_appointment_trigger_log')
-          .update({ appointment_id: appointmentId })
+          .update(updateData)
           .eq('id', triggerLogId);
-        console.log('Updated trigger log with appointment_id:', appointmentId);
+        console.log('Updated trigger log with appointment_id:', appointmentId, 'and triggered_by_user_id:', calendarOwnerId);
       } catch (updateLogError) {
-        console.error('Failed to update trigger log with appointment_id:', updateLogError);
+        console.error('Failed to update trigger log:', updateLogError);
       }
     }
 
@@ -1131,11 +1161,9 @@ async function processCalAttendees(supabase: any, appointmentId: string, booking
   // Extract attendees from booking data
   const attendees = bookingData.attendees || bookingData.responses || [];
   
-  // Also include the organizer/booker if present
-  if (bookingData.booker || bookingData.organizer) {
-    const booker = bookingData.booker || bookingData.organizer;
-    attendees.push(booker);
-  }
+  // Get organizer email to exclude from attendees (since they're already the calendar owner)
+  const organizer = bookingData.organizer || bookingData.booker || bookingData.user || bookingData.owner || {};
+  const organizerEmail = organizer.email || bookingData.organizerEmail || bookingData.ownerEmail;
 
   for (const attendee of attendees) {
     try {
@@ -1147,6 +1175,12 @@ async function processCalAttendees(supabase: any, appointmentId: string, booking
       // Skip if neither email nor phone exists
       if (!email && !phone) {
         console.log('Skipping attendee - no email or phone provided');
+        continue;
+      }
+
+      // Skip if this attendee is the organizer/calendar owner (they're already in schedule_appointments)
+      if (email && organizerEmail && email.toLowerCase() === organizerEmail.toLowerCase()) {
+        console.log('Skipping organizer/calendar owner from attendees:', email);
         continue;
       }
 
@@ -1236,7 +1270,9 @@ async function processCalAttendees(supabase: any, appointmentId: string, booking
             first_name: firstName,
             last_name: lastName,
             user_role_id: userRoleId,
-            status: defaultStatus
+            status: defaultStatus,
+            created_by: calendarOwnerId,
+            updated_by: calendarOwnerId
           })
           .select()
           .single();
@@ -1256,7 +1292,9 @@ async function processCalAttendees(supabase: any, appointmentId: string, booking
             .insert({
               person_id: personId,
               email: email || 'temp@example.com',
-              phone: phone
+              phone: phone,
+              created_by: calendarOwnerId,
+              updated_by: calendarOwnerId
             });
 
           if (contactError) {
@@ -1272,7 +1310,9 @@ async function processCalAttendees(supabase: any, appointmentId: string, booking
           .insert({
             person_id: personId,
             agency_id: agencyId,
-            user_role_id: userRoleId
+            user_role_id: userRoleId,
+            created_by: calendarOwnerId,
+            updated_by: calendarOwnerId
           });
 
         if (agencyError) {
@@ -1286,7 +1326,9 @@ async function processCalAttendees(supabase: any, appointmentId: string, booking
           .from('people_assign_user_role')
           .insert({
             person_id: personId,
-            user_role_id: userRoleId
+            user_role_id: userRoleId,
+            created_by: calendarOwnerId,
+            updated_by: calendarOwnerId
           });
 
         if (roleAssignError) {
@@ -1299,7 +1341,9 @@ async function processCalAttendees(supabase: any, appointmentId: string, booking
           .insert({
             person_id: personId,
             new_status: defaultStatus,
-            old_status: null
+            old_status: null,
+            created_by: calendarOwnerId,
+            updated_by: calendarOwnerId
           });
 
         if (statusError) {
