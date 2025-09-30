@@ -804,37 +804,14 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
   console.log('Processing Cal.com scheduling event:', eventType);
   console.log('Full payload received:', JSON.stringify(data, null, 2));
 
-  // Always log the event first - with nullable appointment_id
-  let triggerLogId: string | null = null;
-  try {
-    const { data: triggerLogRow, error: logError } = await supabase
-      .from('schedule_appointment_trigger_log')
-      .insert({
-        trigger_event: eventType,
-        event_source: 'Cal.com',
-        raw_event_payload: data,
-        appointment_id: null // Will update this later if appointment is created/found
-      })
-      .select('id')
-      .single();
-
-    if (logError) {
-      console.error('Error logging Cal.com event:', logError);
-    } else {
-      triggerLogId = triggerLogRow?.id;
-      console.log('Logged Cal.com event with ID:', triggerLogId);
-    }
-  } catch (logErr) {
-    console.error('Failed to log Cal.com event:', logErr);
-  }
+  let appointmentId: string | null = null;
 
   // Handle PING events (Cal.com test) - return 200 OK immediately
   if (eventType === 'PING' || eventType === 'ping' || data.type === 'Test') {
     console.log('PING event received - returning 200 OK');
     return { 
-      id: triggerLogId, 
       type: 'ping', 
-      message: 'PING event logged successfully' 
+      message: 'PING event handled successfully' 
     };
   }
 
@@ -857,25 +834,45 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
       console.warn('Cal.com booking ID not found in payload - skipping appointment processing');
       console.log('Available keys in payload:', Object.keys(p));
       return { 
-        id: triggerLogId, 
         type: 'cal_scheduling_no_booking_id', 
-        message: 'Event logged but no booking ID found' 
+        message: 'No booking ID found' 
       };
     }
 
     console.log('Extracted booking ID:', calBookingId);
 
-    // Map event types to appointment status
-    const statusMapping: { [key: string]: string } = {
-      'BOOKING_CREATED': 'active',
-      'BOOKING_REQUESTED': 'pending', 
-      'BOOKING_CANCELLED': 'canceled',
-      'BOOKING_REJECTED': 'rejected',
-      'MEETING_ENDED': 'completed',
-      'BOOKING_RESCHEDULED': 'rescheduled'
-    };
+    // Extract appointment type first (needed for status determination)
+    const appointmentType = p.userFieldsResponses?.appointment_type?.value ||
+                           p.responses?.appointment_type?.value ||
+                           p.eventType?.title ||
+                           p.type || 
+                           'General Meeting';
 
-    const appointmentStatus = statusMapping[eventType] || 'pending';
+    console.log('Extracted appointment type:', appointmentType);
+
+    // Determine appointment status based on event type
+    // CRITICAL: Check event type FIRST before appointment type to ensure proper status
+    let appointmentStatus = 'active'; // default for most cases
+    
+    if (eventType === 'BOOKING_CANCELLED') {
+      // Always set to canceled for cancellation events, regardless of appointment type
+      appointmentStatus = 'canceled';
+    } else if (eventType === 'BOOKING_RESCHEDULED') {
+      // Always set to rescheduled for reschedule events, regardless of appointment type
+      appointmentStatus = 'rescheduled';
+    } else if (appointmentType && appointmentType.toLowerCase() === 'lead') {
+      // Special handling for Lead appointment type - set to 'scheduled'
+      appointmentStatus = 'scheduled';
+    } else {
+      // Event-based status for other appointments
+      const statusMapping: { [key: string]: string } = {
+        'BOOKING_CREATED': 'active',
+        'BOOKING_REQUESTED': 'pending', 
+        'BOOKING_REJECTED': 'rejected',
+        'MEETING_ENDED': 'completed'
+      };
+      appointmentStatus = statusMapping[eventType] || 'active';
+    }
 
     // Extract start and end times from normalized payload
     const startTimeRaw = p.startTime || 
@@ -975,51 +972,242 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
       }
     }
 
-    // Extract appointment type from userFieldsResponses
-    const appointmentType = p.userFieldsResponses?.appointment_type?.value ||
-                           p.responses?.appointment_type?.value ||
-                           p.eventType?.title ||
-                           p.type || 
-                           'General Meeting';
+    // appointmentType already extracted above
 
-    console.log('Extracted appointment type:', appointmentType);
+    // Extract reschedule UID for reschedule_id column
+    const rescheduleUid = p.rescheduleUid || null;
+    console.log('Extracted reschedule UID:', rescheduleUid);
 
-    // Extract location details (required field - cannot be null)
-    const locationDetails = p.location || 
-                           p.meetingUrl || 
-                           p.locationUrl ||
-                           p.address ||
-                           'Cal.com';
+    // Parse location data from Cal.com responses
+    let location = 'Not specified';
+    let locationDetails = 'Not specified';
+    
+    if (p.responses?.location?.value) {
+      // Location type (e.g., "Attendee Phone Number", "Google Meet", etc.)
+      location = p.responses.location.value.optionValue || p.responses.location.label || 'Phone';
+      // Actual location value (phone number, URL, address, etc.)
+      locationDetails = p.responses.location.value.value || p.location || 'Not specified';
+    } else {
+      locationDetails = p.location || 
+                       p.meetingUrl || 
+                       p.locationUrl ||
+                       p.address ||
+                       'Cal.com';
+    }
 
-    console.log('Extracted values - bookingId:', calBookingId, 'start:', startTimeISO, 'end:', endTimeISO, 'owner:', calendarOwnerId, 'type:', appointmentType, 'location:', locationDetails);
+    console.log('Extracted values - bookingId:', calBookingId, 'start:', startTimeISO, 'end:', endTimeISO, 'owner:', calendarOwnerId, 'type:', appointmentType, 'location:', location, 'locationDetails:', locationDetails, 'rescheduleUid:', rescheduleUid);
 
-    // Check if appointment already exists
-    const { data: existingAppointment } = await supabase
-      .from('schedule_appointments')
-      .select('id, appointment_status')
-      .eq('cal_booking_id', calBookingId)
-      .eq('agency_id', webhook.agency_id)
-      .eq('is_deleted', false)
-      .maybeSingle();
+    // Extract cancellation data from payload (if applicable)
+    const cancellationReason = p.cancellationReason || null;
+    const cancelledBy = p.cancelledBy || null;
+    console.log('Cancellation data - reason:', cancellationReason, 'cancelledBy:', cancelledBy);
 
-    let appointmentId: string | null = null;
+    // Check if appointment already exists (robust multi-identifier lookup)
+    // For BOOKING_RESCHEDULED, prioritize lookup by rescheduleUid (original appointment)
+    
+    // Prepare multiple identifiers
+    const calUid = p.uid || p.booking?.uid || null;
+    const calBookingIdStr = (p.bookingId || p.booking?.id) ? String(p.bookingId || p.booking?.id) : null;
+    const iCalUID = p.iCalUID || p.icalUID || p.iCalUid || null;
+    const iCalUIDStripped = iCalUID ? String(iCalUID).split('@')[0] : null;
+
+    let existingAppointment: any = null;
+
+    // Special handling for BOOKING_RESCHEDULED - lookup by rescheduleUid FIRST
+    if (eventType === 'BOOKING_RESCHEDULED' && rescheduleUid) {
+      console.log('BOOKING_RESCHEDULED: Looking for original appointment with cal_booking_id matching rescheduleUid:', rescheduleUid);
+      const { data, error } = await supabase
+        .from('schedule_appointments')
+        .select('id, appointment_status')
+        .eq('cal_booking_id', rescheduleUid)
+        .eq('agency_id', webhook.agency_id)
+        .maybeSingle();
+      
+      if (error) {
+        console.error('Error looking up appointment by rescheduleUid:', error.message);
+      }
+      
+      if (data) {
+        existingAppointment = data;
+        console.log('Found original appointment for reschedule by rescheduleUid:', existingAppointment.id);
+      } else {
+        console.log('No appointment found with cal_booking_id matching rescheduleUid:', rescheduleUid);
+      }
+    }
+
+    // For non-reschedule events or if reschedule lookup failed, try standard lookups
+    if (!existingAppointment) {
+      console.log('Looking for existing appointment with cal_booking_id:', calBookingId, 'in agency:', webhook.agency_id);
+      
+      // Attempt 1: direct cal_booking_id match with extracted calBookingId
+      {
+        const { data } = await supabase
+          .from('schedule_appointments')
+          .select('id, appointment_status')
+          .eq('cal_booking_id', calBookingId)
+          .eq('agency_id', webhook.agency_id)
+          .maybeSingle();
+        if (data) {
+          existingAppointment = data;
+          console.log('Found existing appointment by cal_booking_id:', data.id);
+        }
+      }
+    }
+
+    // Attempt 2: try UID specifically
+    if (!existingAppointment && calUid && calUid !== calBookingId) {
+      const { data } = await supabase
+        .from('schedule_appointments')
+        .select('id, appointment_status')
+        .eq('cal_booking_id', calUid)
+        .eq('agency_id', webhook.agency_id)
+        .maybeSingle();
+      if (data) {
+        existingAppointment = data;
+        console.log('Found existing appointment by UID:', data.id);
+      }
+    }
+
+    // Attempt 3: try numeric bookingId
+    if (!existingAppointment && calBookingIdStr && calBookingIdStr !== calBookingId) {
+      const { data } = await supabase
+        .from('schedule_appointments')
+        .select('id, appointment_status')
+        .eq('cal_booking_id', calBookingIdStr)
+        .eq('agency_id', webhook.agency_id)
+        .maybeSingle();
+      if (data) {
+        existingAppointment = data;
+        console.log('Found existing appointment by numeric bookingId:', data.id);
+      }
+    }
+
+    // Attempt 4: try stripped iCal UID
+    if (!existingAppointment && iCalUIDStripped) {
+      const { data } = await supabase
+        .from('schedule_appointments')
+        .select('id, appointment_status')
+        .eq('cal_booking_id', iCalUIDStripped)
+        .eq('agency_id', webhook.agency_id)
+        .maybeSingle();
+      if (data) {
+        existingAppointment = data;
+        console.log('Found existing appointment by iCalUIDStripped:', data.id);
+      }
+    }
+
+    // Attempt 5: match on booking_details JSON -> uid or bookingId
+    if (!existingAppointment && calUid) {
+      const { data } = await supabase
+        .from('schedule_appointments')
+        .select('id, appointment_status')
+        .filter('booking_details->>uid', 'eq', calUid)
+        .eq('agency_id', webhook.agency_id)
+        .maybeSingle();
+      if (data) {
+        existingAppointment = data;
+        console.log('Found existing appointment by booking_details.uid:', data.id);
+      }
+    }
+
+    if (!existingAppointment && calBookingIdStr) {
+      const { data } = await supabase
+        .from('schedule_appointments')
+        .select('id, appointment_status')
+        .filter('booking_details->>bookingId', 'eq', calBookingIdStr)
+        .eq('agency_id', webhook.agency_id)
+        .maybeSingle();
+      if (data) {
+        existingAppointment = data;
+        console.log('Found existing appointment by booking_details.bookingId:', data.id);
+      }
+    }
+
+    // Attempt 5b: match on booking_details JSON -> iCalUID or stripped
+    if (!existingAppointment && iCalUID) {
+      const { data } = await supabase
+        .from('schedule_appointments')
+        .select('id, appointment_status')
+        .filter('booking_details->>iCalUID', 'eq', iCalUID)
+        .eq('agency_id', webhook.agency_id)
+        .maybeSingle();
+      if (data) {
+        existingAppointment = data;
+        console.log('Found existing appointment by booking_details.iCalUID:', data.id);
+      }
+    }
+
+    if (!existingAppointment && iCalUIDStripped) {
+      const { data } = await supabase
+        .from('schedule_appointments')
+        .select('id, appointment_status')
+        .filter('booking_details->>iCalUID', 'eq', iCalUIDStripped)
+        .eq('agency_id', webhook.agency_id)
+        .maybeSingle();
+      if (data) {
+        existingAppointment = data;
+        console.log('Found existing appointment by booking_details.iCalUID (stripped):', data.id);
+      }
+    }
+
+    // Attempt 6: match by owner + time window
+    if (!existingAppointment && calendarOwnerId) {
+      const { data } = await supabase
+        .from('schedule_appointments')
+        .select('id, appointment_status')
+        .eq('calendar_owner_id', calendarOwnerId)
+        .eq('start_time', startTimeISO)
+        .eq('end_time', endTimeISO)
+        .eq('agency_id', webhook.agency_id)
+        .maybeSingle();
+      if (data) {
+        existingAppointment = data;
+        console.log('Found existing appointment by owner+time:', data.id);
+      }
+    }
+
+    if (existingAppointment) {
+      console.log('Final matched appointment:', existingAppointment.id, 'with status:', existingAppointment.appointment_status);
+    } else {
+      console.log('No existing appointment found after all strategies for booking ID/UID:', calBookingId, 'owner:', calendarOwnerId);
+    }
+
 
     if (existingAppointment) {
       // Update existing appointment
-      console.log('Updating existing appointment:', existingAppointment.id);
+      console.log('Updating existing appointment:', existingAppointment.id, 'with status:', appointmentStatus);
+      
+      // Build update object with base fields
+      const updateData: any = {
+        appointment_status: appointmentStatus,
+        location: location,
+        location_details: locationDetails,
+        booking_details: p,
+        start_time: startTimeISO,
+        end_time: endTimeISO,
+        updated_by: calendarOwnerId,
+        updated_at: new Date().toISOString()
+      };
+
+      // Add cancellation-specific fields if this is a cancellation event
+      if (eventType === 'BOOKING_CANCELLED') {
+        updateData.cancellation_reason = cancellationReason;
+        updateData.canceled_by = calendarOwnerId; // Person who owns the calendar
+        updateData.canceled_at = new Date().toISOString();
+        console.log('Adding cancellation fields - reason:', cancellationReason, 'canceled_by:', calendarOwnerId);
+      }
+
+      // Add reschedule-specific fields if this is a reschedule event
+      if (eventType === 'BOOKING_RESCHEDULED') {
+        updateData.appointment_status = 'rescheduled'; // Explicitly ensure status is rescheduled
+        updateData.cal_booking_id = calBookingId; // Update to new booking ID
+        updateData.reschedule_id = rescheduleUid; // Store original booking ID for history
+        console.log('Adding reschedule fields - new cal_booking_id:', calBookingId, 'reschedule_id:', rescheduleUid);
+      }
       
       const { data: updatedAppointment, error: updateError } = await supabase
         .from('schedule_appointments')
-        .update({
-          appointment_status: appointmentStatus,
-          location: locationDetails,
-          location_details: locationDetails,
-          booking_details: p,
-          start_time: startTimeISO,
-          end_time: endTimeISO,
-          updated_by: calendarOwnerId,
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', existingAppointment.id)
         .select('id')
         .single();
@@ -1038,6 +1226,8 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
         appointmentId = updatedAppointment.id;
         console.log('Updated appointment:', appointmentId);
       }
+    } else if (eventType === 'BOOKING_RESCHEDULED' && !existingAppointment) {
+      console.log('BOOKING_RESCHEDULED event but no existing appointment found - this should not happen');
     } else if (eventType === 'BOOKING_CREATED' || eventType === 'BOOKING_REQUESTED') {
       // Create new appointment for booking creation/request
       console.log('Creating new appointment');
@@ -1052,8 +1242,9 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
           appointment_status: appointmentStatus,
           start_time: startTimeISO,
           end_time: endTimeISO,
-          location: locationDetails,
+          location: location,
           location_details: locationDetails,
+          reschedule_id: rescheduleUid,
           booking_details: p,
           created_by: calendarOwnerId,
           updated_by: calendarOwnerId
@@ -1089,17 +1280,35 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
       console.log('Event type does not require appointment creation:', eventType);
     }
 
-    // Update trigger log with appointment_id if we have one
-    if (triggerLogId && appointmentId) {
+    // Insert trigger log now that we have calendarOwnerId and appointmentId
+    let triggerLogId: string | null = null;
+    if (calendarOwnerId) {
       try {
-        await supabase
+        console.log('Inserting trigger log with triggered_by_user_id:', calendarOwnerId, 'appointment_id:', appointmentId);
+        
+        const { data: triggerLogRow, error: logError } = await supabase
           .from('schedule_appointment_trigger_log')
-          .update({ appointment_id: appointmentId })
-          .eq('id', triggerLogId);
-        console.log('Updated trigger log with appointment_id:', appointmentId);
-      } catch (updateLogError) {
-        console.error('Failed to update trigger log with appointment_id:', updateLogError);
+          .insert({
+            trigger_event: eventType,
+            event_source: 'Cal.com',
+            raw_event_payload: data,
+            appointment_id: appointmentId, // Now we have the appointment ID
+            triggered_by_user_id: calendarOwnerId // Resolved people.id
+          })
+          .select('id')
+          .single();
+
+        if (logError) {
+          console.error('Error logging Cal.com event:', logError);
+        } else {
+          triggerLogId = triggerLogRow?.id;
+          console.log('Successfully logged Cal.com event with ID:', triggerLogId);
+        }
+      } catch (logErr) {
+        console.error('Failed to log Cal.com event:', logErr);
       }
+    } else {
+      console.warn('Skipping trigger log insert - no calendarOwnerId resolved');
     }
 
     console.log('Cal.com event processed successfully');
@@ -1116,9 +1325,8 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
     
     // Don't throw - return 200 OK to Cal.com with error logged
     return { 
-      id: triggerLogId, 
       type: 'cal_scheduling_error', 
-      message: 'Event logged but processing failed',
+      message: 'Processing failed',
       error: error instanceof Error ? error.message : String(error)
     };
   }
@@ -1128,14 +1336,13 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
 async function processCalAttendees(supabase: any, appointmentId: string, bookingData: any, agencyId: string, appointmentType: string, webhook: any, calendarOwnerId: string | null) {
   console.log('Processing Cal.com attendees for appointment:', appointmentId);
 
-  // Extract attendees from booking data
-  const attendees = bookingData.attendees || bookingData.responses || [];
+  // Extract attendees from booking data - prioritize attendees array
+  const attendees = bookingData.attendees || [];
+  console.log('Found attendees:', attendees.length, attendees);
   
-  // Also include the organizer/booker if present
-  if (bookingData.booker || bookingData.organizer) {
-    const booker = bookingData.booker || bookingData.organizer;
-    attendees.push(booker);
-  }
+  // Get organizer email to exclude from attendees (since they're already the calendar owner)
+  const organizer = bookingData.organizer || bookingData.booker || bookingData.user || bookingData.owner || {};
+  const organizerEmail = organizer.email || bookingData.organizerEmail || bookingData.ownerEmail;
 
   for (const attendee of attendees) {
     try {
@@ -1147,6 +1354,12 @@ async function processCalAttendees(supabase: any, appointmentId: string, booking
       // Skip if neither email nor phone exists
       if (!email && !phone) {
         console.log('Skipping attendee - no email or phone provided');
+        continue;
+      }
+
+      // Skip if this attendee is the organizer/calendar owner (they're already in schedule_appointments)
+      if (email && organizerEmail && email.toLowerCase() === organizerEmail.toLowerCase()) {
+        console.log('Skipping organizer/calendar owner from attendees:', email);
         continue;
       }
 
@@ -1229,7 +1442,7 @@ async function processCalAttendees(supabase: any, appointmentId: string, booking
         // Set status based on role: "Scheduled" for leads, "Active" for others
         const defaultStatus = roleName.toLowerCase() === 'lead' ? 'Scheduled' : 'Active';
 
-        // Create person record
+        // Create person record (created_by/updated_by use auth.users.id, so set to NULL)
         const { data: newPerson, error: personError } = await supabase
           .from('people')
           .insert({
@@ -1237,6 +1450,7 @@ async function processCalAttendees(supabase: any, appointmentId: string, booking
             last_name: lastName,
             user_role_id: userRoleId,
             status: defaultStatus
+            // created_by/updated_by will be NULL since we don't have auth.users.id
           })
           .select()
           .single();
@@ -1249,7 +1463,7 @@ async function processCalAttendees(supabase: any, appointmentId: string, booking
         personId = newPerson.id;
         console.log('Created new person with ID:', personId);
 
-        // Create contact record
+        // Create contact record (created_by/updated_by use auth.users.id, so set to NULL)
         if (email || phone) {
           const { error: contactError } = await supabase
             .from('people_contacts')
@@ -1257,6 +1471,7 @@ async function processCalAttendees(supabase: any, appointmentId: string, booking
               person_id: personId,
               email: email || 'temp@example.com',
               phone: phone
+              // created_by/updated_by will be NULL since we don't have auth.users.id
             });
 
           if (contactError) {
@@ -1266,13 +1481,14 @@ async function processCalAttendees(supabase: any, appointmentId: string, booking
           }
         }
 
-        // Create agency association with webhook's agency_id
+        // Create agency association with webhook's agency_id (created_by/updated_by use auth.users.id, so set to NULL)
         const { error: agencyError } = await supabase
           .from('app_agencies_people')
           .insert({
             person_id: personId,
             agency_id: agencyId,
             user_role_id: userRoleId
+            // created_by/updated_by will be NULL since we don't have auth.users.id
           });
 
         if (agencyError) {
@@ -1281,25 +1497,27 @@ async function processCalAttendees(supabase: any, appointmentId: string, booking
           console.log('Created agency association for attendee');
         }
 
-        // Create role assignment
+        // Create role assignment (created_by/updated_by use auth.users.id, so set to NULL)
         const { error: roleAssignError } = await supabase
           .from('people_assign_user_role')
           .insert({
             person_id: personId,
             user_role_id: userRoleId
+            // created_by/updated_by will be NULL since we don't have auth.users.id
           });
 
         if (roleAssignError) {
           console.error('Error creating role assignment for Cal.com attendee:', roleAssignError);
         }
 
-        // Create initial status record
+        // Create initial status record (created_by/updated_by use auth.users.id, so set to NULL)
         const { error: statusError } = await supabase
           .from('people_assign_status')
           .insert({
             person_id: personId,
             new_status: defaultStatus,
             old_status: null
+            // created_by/updated_by will be NULL since we don't have auth.users.id
           });
 
         if (statusError) {
