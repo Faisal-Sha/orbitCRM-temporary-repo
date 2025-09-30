@@ -255,8 +255,8 @@ CREATE TABLE public.people_referrals (
   CONSTRAINT fk_people_referrals_created_by FOREIGN KEY (created_by) REFERENCES auth.users(id),
   CONSTRAINT fk_people_referrals_updated_by FOREIGN KEY (updated_by) REFERENCES auth.users(id),
   CONSTRAINT fk_people_referrals_deleted_by FOREIGN KEY (deleted_by) REFERENCES auth.users(id),
-  CONSTRAINT fk_people_referrals_referred_by FOREIGN KEY (referred_by_id) REFERENCES public.people(id)
-  CONSTRAINT fk_people_referrals_person_id FOREIGN KEY (person_id) REFERENCES public.people(id);
+  CONSTRAINT fk_people_referrals_referred_by FOREIGN KEY (referred_by_id) REFERENCES public.people(id),
+  CONSTRAINT fk_people_referrals_person_id FOREIGN KEY (person_id) REFERENCES public.people(id)
 );
 
 CREATE TABLE public.people_identifiers (

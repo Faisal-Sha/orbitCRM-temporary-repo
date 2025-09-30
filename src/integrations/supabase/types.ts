@@ -733,6 +733,42 @@ export type Database = {
         }
         Relationships: []
       }
+      cal_atoms_users: {
+        Row: {
+          access_token: string
+          cal_user_id: number
+          created_at: string | null
+          email: string
+          id: number
+          orbit_user_id: string | null
+          refresh_token: string
+          updated_at: string | null
+          username: string
+        }
+        Insert: {
+          access_token: string
+          cal_user_id: number
+          created_at?: string | null
+          email: string
+          id?: number
+          orbit_user_id?: string | null
+          refresh_token: string
+          updated_at?: string | null
+          username: string
+        }
+        Update: {
+          access_token?: string
+          cal_user_id?: number
+          created_at?: string | null
+          email?: string
+          id?: number
+          orbit_user_id?: string | null
+          refresh_token?: string
+          updated_at?: string | null
+          username?: string
+        }
+        Relationships: []
+      }
       forms_submissions: {
         Row: {
           agency_id: string
@@ -1585,7 +1621,7 @@ export type Database = {
           id: string
           raw_event_payload: Json
           trigger_event: string
-          triggered_by_user_id: string | null
+          triggered_by_user_id: string
         }
         Insert: {
           appointment_id?: string | null
@@ -1594,7 +1630,7 @@ export type Database = {
           id?: string
           raw_event_payload: Json
           trigger_event: string
-          triggered_by_user_id?: string | null
+          triggered_by_user_id: string
         }
         Update: {
           appointment_id?: string | null
@@ -1603,7 +1639,7 @@ export type Database = {
           id?: string
           raw_event_payload?: Json
           trigger_event?: string
-          triggered_by_user_id?: string | null
+          triggered_by_user_id?: string
         }
         Relationships: [
           {

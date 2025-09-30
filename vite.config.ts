@@ -19,4 +19,10 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  define: {
+    'process.env.NODE_ENV': JSON.stringify(mode),
+    'process.env.CAL_OAUTH_CLIENT_ID': JSON.stringify(process.env.CAL_OAUTH_CLIENT_ID),
+    'process.env.CAL_OAUTH_CLIENT_SECRET': JSON.stringify(process.env.CAL_OAUTH_CLIENT_SECRET),
+    'process.env.CAL_API_URL': JSON.stringify(process.env.CAL_API_URL),
+  },
 }));
