@@ -58,38 +58,58 @@ export const useCalendarSettings = () => {
   const saveSettings = async (newSettings: CalendarSettings) => {
     try {
       setSaving(true);
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError) {
+        console.error('Auth error:', authError);
+        throw new Error('Authentication error');
+      }
       
       if (!user) throw new Error('User not authenticated');
 
+      console.log('Saving settings for user:', user.id);
+      console.log('Settings:', newSettings);
+
       if (newSettings.id) {
         // Update existing
+        console.log('Updating existing record:', newSettings.id);
         const { error } = await supabase
           .from('cal_calendar_users')
           .update({
             calendar_owner_id: newSettings.calendar_owner_id,
             appointment_type: newSettings.appointment_type,
             calendar_url: newSettings.calendar_url,
-            updated_by: user.id
+            updated_by: user.id,
+            updated_at: new Date().toISOString()
           })
           .eq('id', newSettings.id);
 
-        if (error) throw error;
+        if (error) {
+          console.error('Update error:', error);
+          throw error;
+        }
       } else {
         // Create new
+        console.log('Creating new record');
         const { data, error } = await supabase
           .from('cal_calendar_users')
-          .insert({
+          .insert([{
             calendar_owner_id: newSettings.calendar_owner_id,
             appointment_type: newSettings.appointment_type,
             calendar_url: newSettings.calendar_url,
             created_by: user.id,
             updated_by: user.id
-          })
+          }])
           .select()
           .single();
 
-        if (error) throw error;
+        if (error) {
+          console.error('Insert error:', error);
+          throw error;
+        }
+        
+        console.log('Insert successful:', data);
+        
         if (data) {
           setSettings({ ...newSettings, id: data.id });
         }
@@ -102,11 +122,12 @@ export const useCalendarSettings = () => {
 
       await loadSettings();
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving calendar settings:', error);
+      const errorMessage = error?.message || 'Failed to save calendar settings';
       toast({
         title: 'Error',
-        description: 'Failed to save calendar settings',
+        description: errorMessage,
         variant: 'destructive'
       });
       return false;
