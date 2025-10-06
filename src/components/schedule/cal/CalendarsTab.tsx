@@ -91,7 +91,7 @@ const CalendarsTab = () => {
   const getBaseUrl = (): string => {
     const domain = orgData.domains?.[0];
     if (domain) {
-      return `${domain.protocol}://${domain.domain}/calendars/${currentUserName}`;
+      return `${domain.protocol}${domain.domain}/calendars/${currentUserName}`;
     }
     return `https://example.com/calendars/${currentUserName}`;
   };

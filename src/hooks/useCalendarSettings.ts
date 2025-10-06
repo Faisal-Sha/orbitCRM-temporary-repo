@@ -25,19 +25,10 @@ export const useCalendarSettings = () => {
       
       if (!user) throw new Error('User not authenticated');
 
-      // Get app_users.id from auth.users.id
-      const { data: appUser } = await supabase
-        .from('app_users')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (!appUser) throw new Error('User profile not found');
-
       const { data, error } = await supabase
         .from('cal_calendar_users')
         .select('*')
-        .eq('created_by', appUser.id)
+        .eq('created_by', user.id)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -76,19 +67,7 @@ export const useCalendarSettings = () => {
       
       if (!user) throw new Error('User not authenticated');
 
-      // Get app_users.id from auth.users.id
-      const { data: appUser, error: appUserError } = await supabase
-        .from('app_users')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (appUserError || !appUser) {
-        console.error('App user error:', appUserError);
-        throw new Error('Could not find user profile');
-      }
-
-      console.log('Saving settings for app_user:', appUser.id);
+      console.log('Saving settings for user:', user.id);
       console.log('Settings:', newSettings);
 
       if (newSettings.id) {
@@ -100,7 +79,7 @@ export const useCalendarSettings = () => {
             calendar_owner_id: newSettings.calendar_owner_id,
             appointment_type: newSettings.appointment_type,
             calendar_url: newSettings.calendar_url,
-            updated_by: appUser.id,
+            updated_by: user.id,
             updated_at: new Date().toISOString()
           })
           .eq('id', newSettings.id);
@@ -118,8 +97,8 @@ export const useCalendarSettings = () => {
             calendar_owner_id: newSettings.calendar_owner_id,
             appointment_type: newSettings.appointment_type,
             calendar_url: newSettings.calendar_url,
-            created_by: appUser.id,
-            updated_by: appUser.id
+            created_by: user.id,
+            updated_by: user.id
           }])
           .select()
           .single();

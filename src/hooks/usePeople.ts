@@ -25,12 +25,13 @@ export const usePeople = () => {
           first_name,
           middle_name,
           last_name,
-          people_contacts (
+          people_contacts!inner (
             email,
             phone
           )
         `)
         .eq('is_deleted', false)
+        .eq('people_contacts.is_deleted', false)
         .order('first_name', { ascending: true });
 
       if (peopleError) throw peopleError;

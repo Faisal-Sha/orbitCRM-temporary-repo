@@ -800,22 +800,7 @@ export type Database = {
           updated_at?: string
           updated_by?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "cal_calendar_users_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "app_users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "cal_calendar_users_updated_by_fkey"
-            columns: ["updated_by"]
-            isOneToOne: false
-            referencedRelation: "app_users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       forms_submissions: {
         Row: {
