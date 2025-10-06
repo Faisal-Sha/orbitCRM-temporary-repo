@@ -2295,6 +2295,17 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Json
       }
+      get_people_with_primary_contact: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          email: string
+          first_name: string
+          id: string
+          last_name: string
+          middle_name: string
+          phone: string
+        }[]
+      }
       get_permissions_with_assignments: {
         Args: { p_role_id: string }
         Returns: {
@@ -2312,6 +2323,10 @@ export type Database = {
         }[]
       }
       get_personal_profile: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      get_primary_org_domain: {
         Args: Record<PropertyKey, never>
         Returns: Json
       }

@@ -8,14 +8,15 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Edit, Copy, ExternalLink, Loader2, Check } from "lucide-react";
 import { useCalendarSettings } from "@/hooks/useCalendarSettings";
 import { usePeople } from "@/hooks/usePeople";
-import { useOrganizationSettings } from "@/hooks/useOrganizationSettings";
+import { usePrimaryDomain } from "@/hooks/usePrimaryDomain";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 const CalendarsTab = () => {
   const { settings, loading: settingsLoading, saving, saveSettings } = useCalendarSettings();
   const { people, loading: peopleLoading } = usePeople();
-  const { formData: orgData, loading: orgLoading } = useOrganizationSettings();
+  const { domain, loading: domainLoading } = usePrimaryDomain();
+  const [userLoading, setUserLoading] = useState(true);
 
   const [isEditing, setIsEditing] = useState(false);
   const [editedSettings, setEditedSettings] = useState(settings);
@@ -28,7 +29,10 @@ const CalendarsTab = () => {
   useEffect(() => {
     const loadCurrentUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        setUserLoading(false);
+        return;
+      }
 
       const { data } = await supabase
         .from('people')
@@ -49,6 +53,7 @@ const CalendarsTab = () => {
         ].filter(Boolean);
         setCurrentUserName(nameParts.join('-'));
       }
+      setUserLoading(false);
     };
     loadCurrentUser();
   }, []);
@@ -89,11 +94,10 @@ const CalendarsTab = () => {
   };
 
   const getBaseUrl = (): string => {
-    const domain = orgData.domains?.[0];
     if (domain) {
       return `${domain.protocol}${domain.domain}/calendars/${currentUserName}`;
     }
-    return `https://example.com/calendars/${currentUserName}`;
+    return '';
   };
 
   const formatPhoneForUrl = (phone: string): string => {
@@ -153,7 +157,7 @@ const CalendarsTab = () => {
     }
   };
 
-  if (settingsLoading || peopleLoading || orgLoading) {
+  if (settingsLoading || peopleLoading || domainLoading || userLoading) {
     return (
       <div className="flex items-center justify-center h-96">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -250,34 +254,43 @@ const CalendarsTab = () => {
             <CardTitle>Your Scheduling Link</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
-              <button
-                onClick={handleOpenCalUrl}
-                className="flex-1 text-left text-primary hover:underline"
-              >
-                {getBaseUrl()}
-              </button>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleCopy}
-                    >
-                      {copied ? (
-                        <Check className="h-4 w-4 text-green-600" />
-                      ) : (
-                        <Copy className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent className="bg-white text-black">
-                    <p>Copy</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
+            {getBaseUrl() ? (
+              <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
+                <button
+                  onClick={handleOpenCalUrl}
+                  className="flex-1 text-left text-primary hover:underline"
+                >
+                  {getBaseUrl()}
+                </button>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleCopy}
+                      >
+                        {copied ? (
+                          <Check className="h-4 w-4 text-green-600" />
+                        ) : (
+                          <Copy className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent className="bg-white text-black">
+                      <p>Copy</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+            ) : (
+              <div className="text-sm text-muted-foreground">
+                No domain configured. Please configure your organization domain in{' '}
+                <a href="/settings/organization" className="text-primary hover:underline">
+                  Settings → Organization
+                </a>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

@@ -19,20 +19,7 @@ export const usePeople = () => {
     try {
       setLoading(true);
       const { data: peopleData, error: peopleError } = await supabase
-        .from('people')
-        .select(`
-          id,
-          first_name,
-          middle_name,
-          last_name,
-          people_contacts!inner (
-            email,
-            phone
-          )
-        `)
-        .eq('is_deleted', false)
-        .eq('people_contacts.is_deleted', false)
-        .order('first_name', { ascending: true });
+        .rpc('get_people_with_primary_contact');
 
       if (peopleError) throw peopleError;
 
@@ -41,8 +28,8 @@ export const usePeople = () => {
         first_name: person.first_name,
         middle_name: person.middle_name,
         last_name: person.last_name,
-        email: person.people_contacts?.[0]?.email || '',
-        phone: person.people_contacts?.[0]?.phone || ''
+        email: person.email || '',
+        phone: person.phone || ''
       }));
 
       setPeople(formattedPeople);
