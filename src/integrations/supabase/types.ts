@@ -769,6 +769,51 @@ export type Database = {
         }
         Relationships: []
       }
+      cal_calendar_users: {
+        Row: {
+          appointment_type: string | null
+          calendar_owner_id: string | null
+          created_at: string
+          created_by: string
+          id: string
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          appointment_type?: string | null
+          calendar_owner_id?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          updated_at?: string
+          updated_by: string
+        }
+        Update: {
+          appointment_type?: string | null
+          calendar_owner_id?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cal_calendar_users_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cal_calendar_users_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       forms_submissions: {
         Row: {
           agency_id: string
