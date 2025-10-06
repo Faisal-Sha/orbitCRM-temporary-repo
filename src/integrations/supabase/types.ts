@@ -773,6 +773,7 @@ export type Database = {
         Row: {
           appointment_type: string | null
           calendar_owner_id: string | null
+          calendar_url: string | null
           created_at: string
           created_by: string
           id: string
@@ -782,6 +783,7 @@ export type Database = {
         Insert: {
           appointment_type?: string | null
           calendar_owner_id?: string | null
+          calendar_url?: string | null
           created_at?: string
           created_by: string
           id?: string
@@ -791,6 +793,7 @@ export type Database = {
         Update: {
           appointment_type?: string | null
           calendar_owner_id?: string | null
+          calendar_url?: string | null
           created_at?: string
           created_by?: string
           id?: string
