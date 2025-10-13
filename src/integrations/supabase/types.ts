@@ -878,6 +878,38 @@ export type Database = {
           },
         ]
       }
+      mailerlite_sync_log: {
+        Row: {
+          created_at: string | null
+          error_message: string | null
+          id: string
+          person_id: string
+          sync_status: string
+        }
+        Insert: {
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          person_id: string
+          sync_status: string
+        }
+        Update: {
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          person_id?: string
+          sync_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mailerlite_sync_log_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       people: {
         Row: {
           created_at: string
