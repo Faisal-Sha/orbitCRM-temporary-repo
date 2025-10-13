@@ -27,18 +27,23 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  let person_id: string | undefined;
+
   try {
-    const { person_id } = await req.json();
+    const body = await req.json();
+    person_id = body.person_id;
+    
+    console.log('Edge function invoked with:', { person_id, body });
     
     if (!person_id) {
-      console.error('No person_id provided');
+      console.error('No person_id provided in request');
       return new Response(
         JSON.stringify({ success: false, error: 'person_id required' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       );
     }
 
-    console.log('Syncing lead to MailerLite:', person_id);
+    console.log('Starting MailerLite sync for person:', person_id);
 
     // Initialize Supabase client with service role key
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -55,6 +60,14 @@ Deno.serve(async (req) => {
 
     if (integrationError || !integration) {
       console.error('MailerLite integration not configured:', integrationError);
+      
+      // Log failure to database
+      await supabase
+        .from('mailerlite_sync_log')
+        .update({ sync_status: 'error', error_message: 'MailerLite integration not configured' })
+        .eq('person_id', person_id)
+        .eq('sync_status', 'pending');
+      
       return new Response(
         JSON.stringify({ success: false, error: 'MailerLite not configured' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
@@ -64,12 +77,26 @@ Deno.serve(async (req) => {
     const apiKey = integration.configuration?.apiKey;
     const groupId = integration.configuration?.groupId;
 
+    console.log('MailerLite config found:', { hasApiKey: !!apiKey, hasGroupId: !!groupId, groupId });
+
     if (!apiKey) {
-      console.error('MailerLite API key not found');
+      console.error('MailerLite API key not found in configuration');
+      
+      // Log failure to database
+      await supabase
+        .from('mailerlite_sync_log')
+        .update({ sync_status: 'error', error_message: 'MailerLite API key missing from configuration' })
+        .eq('person_id', person_id)
+        .eq('sync_status', 'pending');
+      
       return new Response(
         JSON.stringify({ success: false, error: 'MailerLite API key missing' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       );
+    }
+
+    if (!groupId) {
+      console.warn('MailerLite Group ID not configured - subscriber will not be added to any group');
     }
 
     // Fetch person data with related tables
@@ -90,6 +117,14 @@ Deno.serve(async (req) => {
 
     if (personError || !personData) {
       console.error('Failed to fetch person data:', personError);
+      
+      // Log failure to database
+      await supabase
+        .from('mailerlite_sync_log')
+        .update({ sync_status: 'error', error_message: `Person not found: ${personError?.message}` })
+        .eq('person_id', person_id)
+        .eq('sync_status', 'pending');
+      
       return new Response(
         JSON.stringify({ success: false, error: 'Person not found' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
@@ -101,6 +136,14 @@ Deno.serve(async (req) => {
 
     if (!contact || !contact.email) {
       console.error('No email found for person:', person_id);
+      
+      // Log failure to database
+      await supabase
+        .from('mailerlite_sync_log')
+        .update({ sync_status: 'error', error_message: 'No email found for person' })
+        .eq('person_id', person_id)
+        .eq('sync_status', 'pending');
+      
       return new Response(
         JSON.stringify({ success: false, error: 'Email required' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
@@ -146,6 +189,17 @@ Deno.serve(async (req) => {
 
     if (!mailerLiteResponse.ok) {
       console.error('MailerLite API error:', mailerLiteResponse.status, responseData);
+      
+      // Log failure to database
+      await supabase
+        .from('mailerlite_sync_log')
+        .update({ 
+          sync_status: 'error', 
+          error_message: `MailerLite API error: ${mailerLiteResponse.status} - ${JSON.stringify(responseData)}` 
+        })
+        .eq('person_id', person_id)
+        .eq('sync_status', 'pending');
+      
       return new Response(
         JSON.stringify({ 
           success: false, 
@@ -158,6 +212,16 @@ Deno.serve(async (req) => {
 
     console.log('Successfully synced to MailerLite:', responseData);
 
+    // Log success to database
+    await supabase
+      .from('mailerlite_sync_log')
+      .update({ 
+        sync_status: 'success', 
+        error_message: `Successfully synced to MailerLite${groupId ? ` in group ${groupId}` : ''}: ${responseData.data?.id || 'subscriber created'}` 
+      })
+      .eq('person_id', person_id)
+      .eq('sync_status', 'pending');
+
     return new Response(
       JSON.stringify({ success: true, data: responseData }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
@@ -165,6 +229,27 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error('Unexpected error in sync-mailerlite-lead:', error);
+    
+    // Log failure to database if we have person_id
+    if (person_id) {
+      try {
+        const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+        const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
+        
+        await supabase
+          .from('mailerlite_sync_log')
+          .update({ 
+            sync_status: 'error', 
+            error_message: `Unexpected error: ${error instanceof Error ? error.message : 'Unknown error'}` 
+          })
+          .eq('person_id', person_id)
+          .eq('sync_status', 'pending');
+      } catch (logError) {
+        console.error('Failed to log error to database:', logError);
+      }
+    }
+    
     return new Response(
       JSON.stringify({ 
         success: false, 
