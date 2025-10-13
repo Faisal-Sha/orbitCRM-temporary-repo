@@ -99,21 +99,13 @@ Deno.serve(async (req) => {
       console.warn('MailerLite Group ID not configured - subscriber will not be added to any group');
     }
 
-    // Fetch person data with related tables
+    // Fetch person basic data
     const { data: personData, error: personError } = await supabase
       .from('people')
-      .select(`
-        id,
-        first_name,
-        last_name,
-        people_contacts!inner(email, phone, country),
-        app_agencies_people!inner(
-          agency:app_agencies(agency_name, agency_state)
-        )
-      `)
+      .select('id, first_name, last_name')
       .eq('id', person_id)
       .eq('is_deleted', false)
-      .single() as { data: PersonData | null; error: any };
+      .maybeSingle();
 
     if (personError || !personData) {
       console.error('Failed to fetch person data:', personError);
@@ -131,11 +123,19 @@ Deno.serve(async (req) => {
       );
     }
 
-    const contact = personData.people_contacts[0];
-    const agency = personData.app_agencies_people[0]?.agency;
+    // Fetch primary contact (latest)
+    const { data: contact, error: contactError } = await supabase
+      .from('people_contacts')
+      .select('email, phone, country')
+      .eq('person_id', person_id)
+      .eq('is_deleted', false)
+      .order('updated_at', { ascending: false, nullsFirst: false })
+      .order('created_at', { ascending: false, nullsFirst: false })
+      .limit(1)
+      .maybeSingle();
 
-    if (!contact || !contact.email) {
-      console.error('No email found for person:', person_id);
+    if (contactError || !contact || !contact.email) {
+      console.error('No email found for person or contact fetch error:', contactError);
       
       // Log failure to database
       await supabase
@@ -148,6 +148,27 @@ Deno.serve(async (req) => {
         JSON.stringify({ success: false, error: 'Email required' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       );
+    }
+
+    // Fetch agency info
+    const { data: apRow } = await supabase
+      .from('app_agencies_people')
+      .select('agency_id')
+      .eq('person_id', person_id)
+      .eq('is_deleted', false)
+      .limit(1)
+      .maybeSingle();
+
+    let agency: { agency_name: string | null; agency_state: string | null } | null = null;
+    if (apRow?.agency_id) {
+      const { data: agencyRow } = await supabase
+        .from('app_agencies')
+        .select('agency_name, agency_state')
+        .eq('id', apRow.agency_id)
+        .maybeSingle();
+      if (agencyRow) {
+        agency = { agency_name: agencyRow.agency_name ?? null, agency_state: agencyRow.agency_state ?? null };
+      }
     }
 
     // Prepare MailerLite subscriber data
