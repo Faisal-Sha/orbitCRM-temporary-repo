@@ -40,7 +40,7 @@ const External = ({ onBack }: ExternalProps) => {
 
   const serviceTemplates = {
     "Mailgun": { apiKey: "", sendingDomain: "" },
-    "MailerLite": { apiKey: "", sendingDomain: "" },
+    "MailerLite": { apiKey: "", sendingDomain: "", groupId: "" },
     "Zoom": { clientId: "", clientSecret: "", redirectUrl: "" },
     "Twilio": { accountSid: "", authToken: "", apiKeySid: "", apiKeySecret: "" },
     "Stripe": { apiKey: "", webhookSecret: "" },
@@ -120,17 +120,29 @@ const External = ({ onBack }: ExternalProps) => {
     const template = serviceTemplates[serviceName as keyof typeof serviceTemplates];
     if (!template) return null;
 
-    return Object.keys(template).map((key) => (
-      <div key={key} className="space-y-2">
-        <Label htmlFor={key}>{key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}</Label>
-        <Input
-          id={key}
-          value={configuration[key] || ""}
-          onChange={(e) => handleSettingChange(key, e.target.value)}
-          placeholder={`Enter ${key}`}
-        />
-      </div>
-    ));
+    return Object.keys(template).map((key) => {
+      const isMailerLiteGroupId = key === 'groupId' && serviceName === 'MailerLite';
+      const fieldLabel = isMailerLiteGroupId 
+        ? 'Group ID (Lead Application | CPST. Adults)'
+        : key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+      
+      return (
+        <div key={key} className="space-y-2">
+          <Label htmlFor={key}>{fieldLabel}</Label>
+          <Input
+            id={key}
+            value={configuration[key] || ""}
+            onChange={(e) => handleSettingChange(key, e.target.value)}
+            placeholder={`Enter ${fieldLabel}`}
+          />
+          {isMailerLiteGroupId && (
+            <p className="text-xs text-muted-foreground">
+              Find in MailerLite → Subscribers → Groups → [Group Name] → Settings
+            </p>
+          )}
+        </div>
+      );
+    });
   };
 
   const getIntegrationStatus = (configuration: Record<string, string>) => {

@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.manage-webhooks]
 verify_jwt = true
+
+[functions.sync-mailerlite-lead]
+verify_jwt = false
