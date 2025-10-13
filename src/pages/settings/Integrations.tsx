@@ -19,14 +19,8 @@ const Integrations = () => {
   // Get webhook data for display
   const { webhooks, isLoading: webhooksLoading } = useWebhooks();
 
-  const integrations = [
-    { name: "Mailgun", type: "Communication", status: "Connected", description: "Email delivery service" },
-    { name: "Zoom", type: "Communication", status: "Connected", description: "Video conferencing" },
-    { name: "Twilio", type: "Communication", status: "Not Configured", description: "SMS and voice services" },
-    { name: "Stripe", type: "Payment", status: "Connected", description: "Payment processing" },
-    { name: "Google Calendar", type: "Scheduling", status: "Connected", description: "Calendar integration" },
-    { name: "QuickBooks", type: "Accounting", status: "Disconnected", description: "Financial management" },
-  ];
+  // External integrations - will be populated from database
+  const integrations: any[] = [];
 
   const adAccounts = [
     { name: "Meta", status: "Connected", description: "Facebook and Instagram advertising" },
@@ -63,30 +57,41 @@ const Integrations = () => {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Link className="h-5 w-5" />
-              External Integrations
-            </CardTitle>
-            <Button onClick={() => setShowExternal(true)}>Manage</Button>
-          </div>
+          <CardTitle className="flex items-center gap-2">
+            <Link className="h-5 w-5" />
+            External Integrations ({integrations.length})
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {integrations.map((integration, index) => (
-              <div key={index} className="p-4 border rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-medium">{integration.name}</h4>
-                  <Badge variant={integration.status === 'Connected' ? 'default' : 'secondary'}>
-                    {integration.status}
-                  </Badge>
-                </div>
-                <p className="text-sm text-muted-foreground mb-3">{integration.description}</p>
-                <div className="flex items-center justify-between">
-                  <Badge variant="outline" className="text-xs">{integration.type}</Badge>
-                </div>
+          <div className="space-y-4">
+            {integrations.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Link className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No external integrations configured yet</p>
+                <p className="text-sm">Click "View All External Integrations" to get started</p>
               </div>
-            ))}
+            ) : (
+              <>
+                {integrations.slice(0, 3).map((integration, index) => (
+                  <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div>
+                      <p className="font-medium">{integration.name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {integration.type} • {integration.description}
+                      </p>
+                    </div>
+                    <Badge variant={integration.status === 'Connected' ? 'default' : 'secondary'}>
+                      {integration.status}
+                    </Badge>
+                  </div>
+                ))}
+                <div className="text-center pt-4">
+                  <Button variant="outline" onClick={() => setShowExternal(true)}>
+                    View All External Integrations
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         </CardContent>
       </Card>

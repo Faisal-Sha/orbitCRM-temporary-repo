@@ -22,50 +22,7 @@ interface ExternalProps {
 }
 
 const External = ({ onBack }: ExternalProps) => {
-  const [integrations, setIntegrations] = useState<Integration[]>([
-    { 
-      id: "1", 
-      name: "Mailgun", 
-      category: "Communication", 
-      status: "Connected",
-      settings: { apiKey: "key-abc123", sendingDomain: "mail.example.com" }
-    },
-    { 
-      id: "2", 
-      name: "Zoom", 
-      category: "Communication", 
-      status: "Connected",
-      settings: { clientId: "zoom123", clientSecret: "secret456", redirectUrl: "https://app.com/callback" }
-    },
-    { 
-      id: "3", 
-      name: "Twilio", 
-      category: "Communication", 
-      status: "Not Configured",
-      settings: { accountSid: "", authToken: "", apiKeySid: "", apiKeySecret: "" }
-    },
-    { 
-      id: "4", 
-      name: "Stripe", 
-      category: "Payment", 
-      status: "Connected",
-      settings: { apiKey: "sk_live_abc123", webhookSecret: "whsec_xyz789" }
-    },
-    { 
-      id: "5", 
-      name: "Google Calendar", 
-      category: "Scheduling", 
-      status: "Connected",
-      settings: { clientId: "google123", clientSecret: "secret789", redirectUrl: "https://app.com/callback" }
-    },
-    { 
-      id: "6", 
-      name: "QuickBooks", 
-      category: "Accounting", 
-      status: "Disconnected",
-      settings: { clientId: "", clientSecret: "", redirectUrl: "" }
-    },
-  ]);
+  const [integrations, setIntegrations] = useState<Integration[]>([]);
 
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -75,6 +32,7 @@ const External = ({ onBack }: ExternalProps) => {
 
   const serviceTemplates = {
     "Mailgun": { apiKey: "", sendingDomain: "" },
+    "MailerLite": { apiKey: "", sendingDomain: "" },
     "Zoom": { clientId: "", clientSecret: "", redirectUrl: "" },
     "Twilio": { accountSid: "", authToken: "", apiKeySid: "", apiKeySecret: "" },
     "Stripe": { apiKey: "", webhookSecret: "" },
