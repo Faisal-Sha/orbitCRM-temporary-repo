@@ -9,6 +9,7 @@ import AdAccounts from "@/components/settings/integrations/AdAccounts";
 import Webhooks from "@/components/settings/integrations/Webhooks";  
 import APIAccess from "@/components/settings/integrations/APIAccess";
 import { useWebhooks } from "@/hooks/useWebhooks";
+import { useExternalIntegrations } from "@/hooks/useExternalIntegrations";
 
 const Integrations = () => {
   const [showExternal, setShowExternal] = useState(false);
@@ -19,8 +20,8 @@ const Integrations = () => {
   // Get webhook data for display
   const { webhooks, isLoading: webhooksLoading } = useWebhooks();
 
-  // External integrations - will be populated from database
-  const integrations: any[] = [];
+  // Get external integrations data
+  const { integrations, isLoading: integrationsLoading } = useExternalIntegrations();
 
   const adAccounts = [
     { name: "Meta", status: "Connected", description: "Facebook and Instagram advertising" },
@@ -59,43 +60,55 @@ const Integrations = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Link className="h-5 w-5" />
-            External Integrations ({integrations.length})
+            External Integrations ({integrationsLoading ? '...' : integrations.length})
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {integrations.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Link className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No external integrations configured yet</p>
-                <p className="text-sm mb-4">Click "View All External Integrations" to get started</p>
-                <Button variant="outline" onClick={() => setShowExternal(true)}>
-                  View All External Integrations
-                </Button>
-              </div>
-            ) : (
-              <>
-                {integrations.slice(0, 3).map((integration, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div>
-                      <p className="font-medium">{integration.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {integration.type} • {integration.description}
-                      </p>
-                    </div>
-                    <Badge variant={integration.status === 'Connected' ? 'default' : 'secondary'}>
-                      {integration.status}
-                    </Badge>
-                  </div>
-                ))}
-                <div className="text-center pt-4">
+          {integrationsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              Loading integrations...
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {integrations.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Link className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No external integrations configured yet</p>
+                  <p className="text-sm mb-4">Click "View All External Integrations" to get started</p>
                   <Button variant="outline" onClick={() => setShowExternal(true)}>
                     View All External Integrations
                   </Button>
                 </div>
-              </>
-            )}
-          </div>
+              ) : (
+                <>
+                  {integrations.slice(0, 3).map((integration) => {
+                    const hasAllSettings = Object.values(integration.configuration).every(val => val && val.trim() !== "");
+                    const status = hasAllSettings ? "Connected" : "Not Configured";
+                    
+                    return (
+                      <div key={integration.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div>
+                          <p className="font-medium">{integration.service_provider}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {integration.category} • {Object.keys(integration.configuration).length} settings configured
+                          </p>
+                        </div>
+                        <Badge variant={status === 'Connected' ? 'default' : 'secondary'}>
+                          {status}
+                        </Badge>
+                      </div>
+                    );
+                  })}
+                  <div className="text-center pt-4">
+                    <Button variant="outline" onClick={() => setShowExternal(true)}>
+                      View All External Integrations
+                    </Button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 

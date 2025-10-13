@@ -6,15 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Link, Plus, Edit, Trash2 } from "lucide-react";
+import { Link, Plus, Edit, Trash2, Loader2 } from "lucide-react";
 import DeleteConfirmationDialog from "@/components/settings/usersandroles/DeleteConfirmationDialog";
+import { useExternalIntegrations, ExternalIntegration } from "@/hooks/useExternalIntegrations";
 
-interface Integration {
-  id: string;
-  name: string;
+interface FormData {
+  service_provider: string;
   category: string;
-  status: string;
-  settings: Record<string, string>;
+  configuration: Record<string, string>;
 }
 
 interface ExternalProps {
@@ -22,13 +21,22 @@ interface ExternalProps {
 }
 
 const External = ({ onBack }: ExternalProps) => {
-  const [integrations, setIntegrations] = useState<Integration[]>([]);
+  const { 
+    integrations, 
+    isLoading, 
+    createIntegration, 
+    updateIntegration, 
+    deleteIntegration,
+    isCreating,
+    isUpdating,
+    isDeleting
+  } = useExternalIntegrations();
 
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [selectedIntegration, setSelectedIntegration] = useState<Integration | null>(null);
-  const [formData, setFormData] = useState<Partial<Integration>>({});
+  const [selectedIntegration, setSelectedIntegration] = useState<ExternalIntegration | null>(null);
+  const [formData, setFormData] = useState<Partial<FormData>>({});
 
   const serviceTemplates = {
     "Mailgun": { apiKey: "", sendingDomain: "" },
@@ -41,36 +49,41 @@ const External = ({ onBack }: ExternalProps) => {
   };
 
   const handleAdd = () => {
-    setFormData({ name: "", category: "", status: "Not Configured", settings: {} });
+    setFormData({ service_provider: "", category: "", configuration: {} });
     setShowAddDialog(true);
   };
 
-  const handleEdit = (integration: Integration) => {
+  const handleEdit = (integration: ExternalIntegration) => {
     setSelectedIntegration(integration);
-    setFormData(integration);
+    setFormData({
+      service_provider: integration.service_provider,
+      category: integration.category,
+      configuration: integration.configuration,
+    });
     setShowEditDialog(true);
   };
 
-  const handleDelete = (integration: Integration) => {
+  const handleDelete = (integration: ExternalIntegration) => {
     setSelectedIntegration(integration);
     setShowDeleteDialog(true);
   };
 
   const handleSave = () => {
-    if (!formData.name || !formData.category) return;
-
-    const newIntegration: Integration = {
-      id: selectedIntegration?.id || Date.now().toString(),
-      name: formData.name!,
-      category: formData.category!,
-      status: formData.status || "Not Configured",
-      settings: formData.settings || {},
-    };
+    if (!formData.service_provider || !formData.category) return;
 
     if (selectedIntegration) {
-      setIntegrations(integrations.map(i => i.id === selectedIntegration.id ? newIntegration : i));
+      updateIntegration({
+        id: selectedIntegration.id,
+        service_provider: formData.service_provider,
+        category: formData.category,
+        configuration: formData.configuration || {},
+      });
     } else {
-      setIntegrations([...integrations, newIntegration]);
+      createIntegration({
+        service_provider: formData.service_provider,
+        category: formData.category,
+        configuration: formData.configuration || {},
+      });
     }
 
     setShowAddDialog(false);
@@ -81,7 +94,7 @@ const External = ({ onBack }: ExternalProps) => {
 
   const handleDeleteConfirm = () => {
     if (selectedIntegration) {
-      setIntegrations(integrations.filter(i => i.id !== selectedIntegration.id));
+      deleteIntegration(selectedIntegration.id);
     }
     setShowDeleteDialog(false);
     setSelectedIntegration(null);
@@ -91,19 +104,19 @@ const External = ({ onBack }: ExternalProps) => {
     const template = serviceTemplates[serviceName as keyof typeof serviceTemplates] || {};
     setFormData({ 
       ...formData, 
-      name: serviceName,
-      settings: template 
+      service_provider: serviceName,
+      configuration: template 
     });
   };
 
   const handleSettingChange = (key: string, value: string) => {
     setFormData({
       ...formData,
-      settings: { ...formData.settings, [key]: value }
+      configuration: { ...formData.configuration, [key]: value }
     });
   };
 
-  const renderSettingsFields = (serviceName: string, settings: Record<string, string>) => {
+  const renderSettingsFields = (serviceName: string, configuration: Record<string, string>) => {
     const template = serviceTemplates[serviceName as keyof typeof serviceTemplates];
     if (!template) return null;
 
@@ -112,12 +125,17 @@ const External = ({ onBack }: ExternalProps) => {
         <Label htmlFor={key}>{key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}</Label>
         <Input
           id={key}
-          value={settings[key] || ""}
+          value={configuration[key] || ""}
           onChange={(e) => handleSettingChange(key, e.target.value)}
           placeholder={`Enter ${key}`}
         />
       </div>
     ));
+  };
+
+  const getIntegrationStatus = (configuration: Record<string, string>) => {
+    const hasAllSettings = Object.values(configuration).every(val => val && val.trim() !== "");
+    return hasAllSettings ? "Connected" : "Not Configured";
   };
 
   return (
@@ -143,32 +161,50 @@ const External = ({ onBack }: ExternalProps) => {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {integrations.map((integration) => (
-              <div key={integration.id} className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h4 className="font-medium">{integration.name}</h4>
-                    <Badge variant="outline" className="text-xs">{integration.category}</Badge>
-                    <Badge variant={integration.status === 'Connected' ? 'default' : 'secondary'}>
-                      {integration.status}
-                    </Badge>
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {Object.keys(integration.settings).length} settings configured
-                  </div>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              Loading integrations...
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {integrations.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Link className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No external integrations configured yet</p>
+                  <p className="text-sm">Click "Add Integration" to get started</p>
                 </div>
-                <div className="flex gap-2">
-                  <Button variant="ghost" size="sm" onClick={() => handleEdit(integration)}>
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => handleDelete(integration)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
+              ) : (
+                integrations.map((integration) => {
+                  const status = getIntegrationStatus(integration.configuration);
+                  return (
+                    <div key={integration.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h4 className="font-medium">{integration.service_provider}</h4>
+                          <Badge variant="outline" className="text-xs">{integration.category}</Badge>
+                          <Badge variant={status === 'Connected' ? 'default' : 'secondary'}>
+                            {status}
+                          </Badge>
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          {Object.keys(integration.configuration).length} settings configured
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => handleEdit(integration)}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleDelete(integration)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -191,7 +227,7 @@ const External = ({ onBack }: ExternalProps) => {
             <div className="space-y-2">
               <Label htmlFor="service">Service</Label>
               <Select 
-                value={formData.name} 
+                value={formData.service_provider} 
                 onValueChange={handleServiceChange}
                 disabled={!!selectedIntegration}
               >
@@ -221,7 +257,7 @@ const External = ({ onBack }: ExternalProps) => {
               </Select>
             </div>
 
-            {formData.name && renderSettingsFields(formData.name, formData.settings || {})}
+            {formData.service_provider && renderSettingsFields(formData.service_provider, formData.configuration || {})}
 
             <div className="flex justify-end gap-2 pt-4">
               <Button variant="outline" onClick={() => {
@@ -232,7 +268,11 @@ const External = ({ onBack }: ExternalProps) => {
               }}>
                 Cancel
               </Button>
-              <Button onClick={handleSave}>
+              <Button 
+                onClick={handleSave}
+                disabled={isCreating || isUpdating}
+              >
+                {(isCreating || isUpdating) && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                 {selectedIntegration ? "Update" : "Add"} Integration
               </Button>
             </div>
@@ -246,7 +286,7 @@ const External = ({ onBack }: ExternalProps) => {
         onOpenChange={setShowDeleteDialog}
         onConfirm={handleDeleteConfirm}
         title="Delete Integration"
-        description={`Are you sure you want to delete the ${selectedIntegration?.name} integration? This action cannot be undone.`}
+        description={`Are you sure you want to delete the ${selectedIntegration?.service_provider} integration? This action cannot be undone.`}
       />
     </div>
   );
