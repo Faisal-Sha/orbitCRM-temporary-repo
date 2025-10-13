@@ -102,7 +102,7 @@ const CalendarsTab = () => {
 
   const formatPhoneForUrl = (phone: string): string => {
     const digits = phone.replace(/\D/g, '');
-    return `%2B1${digits}`;
+    return digits;
   };
 
   const constructCalUrl = (): string => {
@@ -114,14 +114,6 @@ const CalendarsTab = () => {
     params.append('name', fullName);
     params.append('attendee_id', selectedPerson.id);
     params.append('email', selectedPerson.email || '');
-    
-    if (selectedPerson.phone) {
-      const phoneJson = JSON.stringify({
-        value: "phone",
-        optionValue: formatPhoneForUrl(selectedPerson.phone)
-      });
-      params.append('location', phoneJson);
-    }
 
     if (videoMeetingUrl && validateUrl(videoMeetingUrl)) {
       params.append('meetingURL', videoMeetingUrl);
@@ -130,7 +122,15 @@ const CalendarsTab = () => {
     params.append('appointment_type', settings.appointment_type);
     params.append('calendar_owner_id', settings.calendar_owner_id);
 
-    return `${settings.calendar_url}?${params.toString()}`;
+    // Manually construct location parameter to avoid double-encoding
+    let url = `${settings.calendar_url}?${params.toString()}`;
+    
+    if (selectedPerson.phone) {
+      const cleanDigits = formatPhoneForUrl(selectedPerson.phone);
+      url += `&location={"value":"phone","optionValue":"%2B1${cleanDigits}"}`;
+    }
+
+    return url;
   };
 
   const handleCopy = () => {
