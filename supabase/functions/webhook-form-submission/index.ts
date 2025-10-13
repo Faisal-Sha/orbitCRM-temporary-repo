@@ -149,6 +149,61 @@ serve(async (req) => {
 
     console.log('Form submission stored successfully:', submission.id);
 
+    // Check for service data and assign service if found
+    if (submittedById && submissionData.service) {
+      console.log('Service found in submission:', submissionData.service);
+      
+      try {
+        // Look up service by name in the same agency
+        const { data: serviceRecord, error: serviceError } = await supabase
+          .from('settings_services_and_fees')
+          .select('id')
+          .eq('agency_id', webhook.agency_id)
+          .ilike('service', submissionData.service)
+          .eq('is_deleted', false)
+          .maybeSingle();
+
+        if (serviceError) {
+          console.error('Error looking up service:', serviceError);
+        } else if (serviceRecord) {
+          console.log('Found service record:', serviceRecord.id);
+          
+          // Check if service assignment already exists
+          const { data: existingAssignment } = await supabase
+            .from('people_assign_service')
+            .select('id')
+            .eq('person_id', submittedById)
+            .eq('service_id', serviceRecord.id)
+            .eq('is_deleted', false)
+            .maybeSingle();
+
+          if (!existingAssignment) {
+            // Create new service assignment
+            const { error: assignError } = await supabase
+              .from('people_assign_service')
+              .insert({
+                person_id: submittedById,
+                service_id: serviceRecord.id,
+                created_by: submittedById,
+                updated_by: submittedById
+              });
+
+            if (assignError) {
+              console.error('Error assigning service:', assignError);
+            } else {
+              console.log('Service assigned successfully to person:', submittedById);
+            }
+          } else {
+            console.log('Service already assigned to this person');
+          }
+        } else {
+          console.warn('Service not found in database:', submissionData.service);
+        }
+      } catch (serviceAssignError) {
+        console.error('Error in service assignment process:', serviceAssignError);
+      }
+    }
+
     return new Response(JSON.stringify({ 
       success: true, 
       submission_id: submission.id,
