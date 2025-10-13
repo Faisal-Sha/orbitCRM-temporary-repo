@@ -60,9 +60,8 @@ const CalendarsTab = () => {
 
   useEffect(() => {
     setEditedSettings(settings);
-    if (!settings.calendar_url && !settings.calendar_owner_id && !settings.appointment_type) {
-      setIsEditing(true);
-    }
+    const hasSettings = !!(settings.calendar_url || settings.calendar_owner_id || settings.appointment_type);
+    setIsEditing(!hasSettings);
   }, [settings]);
 
   const selectedPerson = people.find(p => p.id === selectedPersonId);
