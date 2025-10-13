@@ -14,3 +14,6 @@ verify_jwt = true
 
 [functions.sync-mailerlite-lead]
 verify_jwt = false
+
+[functions.backfill-service-assignments]
+verify_jwt = false

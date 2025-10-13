@@ -407,7 +407,119 @@ async function processFormSubmission(supabase: any, webhook: any, data: any) {
   }
 
   console.log('Form submission stored successfully with ID:', submission.id);
+
+  // Assign services if present in submission data
+  await assignServicesIfPresent(supabase, webhook.agency_id, submittedById, data);
+
   return { id: submission.id, type: 'form_submission' };
+}
+
+// Helper function to assign services from submission data
+async function assignServicesIfPresent(supabase: any, agencyId: string, personId: string, submissionData: any) {
+  console.log('Checking for service data in submission for person:', personId);
+
+  try {
+    // Extract service value(s) - handle multiple possible field names
+    const rawService = 
+      submissionData.service ||
+      submissionData.Service ||
+      submissionData.services ||
+      submissionData.Services ||
+      Object.entries(submissionData).find(([key]) => 
+        key.toLowerCase().includes('service')
+      )?.[1];
+
+    if (!rawService) {
+      console.log('No service field found in submission data');
+      return;
+    }
+
+    // Normalize to array and clean up
+    const serviceNames = (Array.isArray(rawService) ? rawService : [rawService])
+      .map(s => String(s).trim())
+      .filter(Boolean);
+
+    if (serviceNames.length === 0) {
+      console.log('Service field is empty');
+      return;
+    }
+
+    console.log('Found service(s) in submission:', serviceNames);
+
+    // Process each service
+    for (const serviceName of serviceNames) {
+      console.log('Processing service:', serviceName);
+
+      // Try exact match first (case-insensitive)
+      let { data: serviceRecord, error: serviceError } = await supabase
+        .from('settings_services_and_fees')
+        .select('id, service')
+        .eq('agency_id', agencyId)
+        .ilike('service', serviceName)
+        .eq('is_deleted', false)
+        .maybeSingle();
+
+      // If no exact match, try contains match
+      if (!serviceRecord && !serviceError) {
+        console.log('No exact match, trying contains match for:', serviceName);
+        const { data: containsMatch, error: containsError } = await supabase
+          .from('settings_services_and_fees')
+          .select('id, service')
+          .eq('agency_id', agencyId)
+          .ilike('service', `%${serviceName}%`)
+          .eq('is_deleted', false)
+          .maybeSingle();
+
+        serviceRecord = containsMatch;
+        serviceError = containsError;
+      }
+
+      if (serviceError) {
+        console.error('Error looking up service:', serviceError);
+        continue;
+      }
+
+      if (!serviceRecord) {
+        console.warn('Service not found in database:', serviceName);
+        continue;
+      }
+
+      console.log('Found service record:', serviceRecord.id, '-', serviceRecord.service);
+
+      // Check if already assigned
+      const { data: existingAssignment } = await supabase
+        .from('people_assign_service')
+        .select('id')
+        .eq('person_id', personId)
+        .eq('service_id', serviceRecord.id)
+        .eq('is_deleted', false)
+        .maybeSingle();
+
+      if (existingAssignment) {
+        console.log('Service already assigned to this person:', serviceRecord.service);
+        continue;
+      }
+
+      // Create service assignment
+      const { error: assignError } = await supabase
+        .from('people_assign_service')
+        .insert({
+          person_id: personId,
+          service_id: serviceRecord.id,
+          created_by: personId,
+          updated_by: personId
+        });
+
+      if (assignError) {
+        console.error('Error assigning service:', assignError);
+      } else {
+        console.log('✓ Service assigned successfully:', serviceRecord.service, 'to person:', personId);
+      }
+    }
+  } catch (error) {
+    console.error('Error in service assignment process:', error);
+    // Don't throw - service assignment is not critical to form submission
+  }
 }
 
 async function updateExistingPerson(supabase: any, existingPerson: any, personData: any, agencyId: string) {
