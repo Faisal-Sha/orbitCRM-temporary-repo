@@ -68,7 +68,10 @@ const Integrations = () => {
               <div className="text-center py-8 text-muted-foreground">
                 <Link className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p>No external integrations configured yet</p>
-                <p className="text-sm">Click "View All External Integrations" to get started</p>
+                <p className="text-sm mb-4">Click "View All External Integrations" to get started</p>
+                <Button variant="outline" onClick={() => setShowExternal(true)}>
+                  View All External Integrations
+                </Button>
               </div>
             ) : (
               <>
