@@ -505,9 +505,7 @@ async function assignServicesIfPresent(supabase: any, agencyId: string, personId
         .from('people_assign_service')
         .insert({
           person_id: personId,
-          service_id: serviceRecord.id,
-          created_by: personId,
-          updated_by: personId
+          service_id: serviceRecord.id
         });
 
       if (assignError) {

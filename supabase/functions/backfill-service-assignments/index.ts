@@ -149,9 +149,7 @@ serve(async (req) => {
           .from('people_assign_service')
           .insert({
             person_id: person_id,
-            service_id: serviceRecord.id,
-            created_by: person_id,
-            updated_by: person_id
+            service_id: serviceRecord.id
           });
 
         if (assignError) {
