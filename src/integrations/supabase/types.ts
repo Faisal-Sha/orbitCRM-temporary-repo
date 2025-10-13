@@ -1796,6 +1796,48 @@ export type Database = {
           },
         ]
       }
+      settings_integrations_external: {
+        Row: {
+          category: string | null
+          configuration: Json | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          id: string
+          is_deleted: boolean
+          service_provider: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          category?: string | null
+          configuration?: Json | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          id?: string
+          is_deleted?: boolean
+          service_provider?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          category?: string | null
+          configuration?: Json | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          id?: string
+          is_deleted?: boolean
+          service_provider?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       settings_integrations_webhooks: {
         Row: {
           agency_id: string
