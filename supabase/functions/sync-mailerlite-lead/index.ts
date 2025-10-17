@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json();
     person_id = body.person_id;
-    const sync_type = body.sync_type || 'application'; // 'application', 'appointment', or 'client_active'
+    const sync_type = body.sync_type || 'application'; // 'application', 'appointment', 'client_active', or 'client_discharged'
     
     console.log('Edge function invoked with:', { person_id, sync_type, body });
     
@@ -79,12 +79,15 @@ Deno.serve(async (req) => {
     const groupIdApplication = integration.configuration?.groupIdLeadApplication;
     const groupIdAppointment = integration.configuration?.groupIdLeadAppointment;
     const groupIdClientActive = integration.configuration?.groupIdClientActive;
+    const groupIdClientDischarged = integration.configuration?.groupIdClientDischarged;
     
     // Select appropriate group ID based on sync_type
     const groupId = sync_type === 'appointment' 
       ? groupIdAppointment 
       : sync_type === 'client_active'
       ? groupIdClientActive
+      : sync_type === 'client_discharged'
+      ? groupIdClientDischarged
       : groupIdApplication;
 
   console.log('MailerLite config found:', { 

@@ -45,7 +45,8 @@ const External = ({ onBack }: ExternalProps) => {
       sendingDomain: "", 
       groupIdLeadApplication: "",
       groupIdLeadAppointment: "",
-      groupIdClientActive: ""
+      groupIdClientActive: "",
+      groupIdClientDischarged: ""
     },
     "Zoom": { clientId: "", clientSecret: "", redirectUrl: "" },
     "Twilio": { accountSid: "", authToken: "", apiKeySid: "", apiKeySecret: "" },
@@ -135,7 +136,7 @@ const External = ({ onBack }: ExternalProps) => {
 
     return Object.keys(template).map((key) => {
       const fieldLabel = fieldLabels[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-      const isMailerLiteGroupId = (key === 'groupIdLeadApplication' || key === 'groupIdLeadAppointment' || key === 'groupIdClientActive') && serviceName === 'MailerLite';
+      const isMailerLiteGroupId = (key === 'groupIdLeadApplication' || key === 'groupIdLeadAppointment' || key === 'groupIdClientActive' || key === 'groupIdClientDischarged') && serviceName === 'MailerLite';
       
       return (
         <div key={key} className="space-y-2">
