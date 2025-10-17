@@ -130,6 +130,7 @@ const External = ({ onBack }: ExternalProps) => {
       groupIdLeadApplication: "Group ID (Lead Application | CPST. Adults)",
       groupIdLeadAppointment: "Group ID (Lead Appointment | CPST, Adults)",
       groupIdClientActive: "Group ID (Clients, Active | CPST, Adults)",
+      groupIdClientDischarged: "Group ID (Clients, Discharged | CPST, Adults)",
     };
 
     return Object.keys(template).map((key) => {
@@ -161,10 +162,11 @@ const External = ({ onBack }: ExternalProps) => {
     // For MailerLite, check if at least apiKey and one group ID are configured
     if (integration.service_provider === "MailerLite") {
       const hasApiKey = config.apiKey && config.apiKey.trim() !== "";
-      const hasAtLeastOneGroup = 
-        (config.groupIdLeadApplication && config.groupIdLeadApplication.trim() !== "") ||
-        (config.groupIdLeadAppointment && config.groupIdLeadAppointment.trim() !== "") ||
-        (config.groupIdClientActive && config.groupIdClientActive.trim() !== "");
+    const hasAtLeastOneGroup = 
+      (config.groupIdLeadApplication && config.groupIdLeadApplication.trim() !== "") ||
+      (config.groupIdLeadAppointment && config.groupIdLeadAppointment.trim() !== "") ||
+      (config.groupIdClientActive && config.groupIdClientActive.trim() !== "") ||
+      (config.groupIdClientDischarged && config.groupIdClientDischarged.trim() !== "");
       return hasApiKey && hasAtLeastOneGroup ? "Connected" : "Not Configured";
     }
     

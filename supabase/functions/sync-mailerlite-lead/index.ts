@@ -87,14 +87,15 @@ Deno.serve(async (req) => {
       ? groupIdClientActive
       : groupIdApplication;
 
-    console.log('MailerLite config found:', { 
-      hasApiKey: !!apiKey, 
-      sync_type,
-      groupIdApplication,
-      groupIdAppointment,
-      groupIdClientActive,
-      selectedGroupId: groupId 
-    });
+  console.log('MailerLite config found:', { 
+    hasApiKey: !!apiKey, 
+    sync_type,
+    groupIdApplication,
+    groupIdAppointment,
+    groupIdClientActive,
+    groupIdClientDischarged,
+    selectedGroupId: groupId 
+  });
 
     if (!apiKey) {
       console.error('MailerLite API key not found in configuration');
