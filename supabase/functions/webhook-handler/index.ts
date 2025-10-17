@@ -990,7 +990,33 @@ async function processMailerLiteEvent(supabase: any, webhook: any, data: any) {
       let personId = null;
       let matchedToPerson = false;
       
-      if (subscriberEmail) {
+      // Extract personid from MailerLite custom fields (sent during API sync)
+      const mailerlitePersonId = eventData.subscriber?.fields?.personid || null;
+      
+      // Strategy 1: Match by personid (most reliable - direct UUID match)
+      if (mailerlitePersonId) {
+        const { data: personData } = await supabase
+          .from('people')
+          .select(`
+            id,
+            app_agencies_people!inner(agency_id)
+          `)
+          .eq('id', mailerlitePersonId)
+          .eq('app_agencies_people.agency_id', webhook.agency_id)
+          .eq('is_deleted', false)
+          .maybeSingle();
+        
+        if (personData) {
+          personId = personData.id;
+          matchedToPerson = true;
+          console.log(`Matched subscriber via personid: ${personId}`);
+        } else {
+          console.log(`personid ${mailerlitePersonId} from MailerLite not found in agency ${webhook.agency_id}`);
+        }
+      }
+      
+      // Strategy 2: Fallback to email matching (for external/legacy subscribers)
+      if (!personId && subscriberEmail) {
         const { data: personContact } = await supabase
           .from('people_contacts')
           .select(`
@@ -1008,7 +1034,7 @@ async function processMailerLiteEvent(supabase: any, webhook: any, data: any) {
         if (personContact?.person_id) {
           personId = personContact.person_id;
           matchedToPerson = true;
-          console.log(`Matched subscriber ${subscriberEmail} to person ${personId}`);
+          console.log(`Matched subscriber via email fallback: ${subscriberEmail} to person ${personId}`);
         } else {
           console.log(`No person match found for ${subscriberEmail} in agency`);
         }
