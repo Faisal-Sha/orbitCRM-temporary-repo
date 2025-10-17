@@ -40,7 +40,12 @@ const External = ({ onBack }: ExternalProps) => {
 
   const serviceTemplates = {
     "Mailgun": { apiKey: "", sendingDomain: "" },
-    "MailerLite": { apiKey: "", sendingDomain: "", groupId: "" },
+    "MailerLite": { 
+      apiKey: "", 
+      sendingDomain: "", 
+      groupIdLeadApplication: "",
+      groupIdLeadAppointment: ""
+    },
     "Zoom": { clientId: "", clientSecret: "", redirectUrl: "" },
     "Twilio": { accountSid: "", authToken: "", apiKeySid: "", apiKeySecret: "" },
     "Stripe": { apiKey: "", webhookSecret: "" },
@@ -120,11 +125,14 @@ const External = ({ onBack }: ExternalProps) => {
     const template = serviceTemplates[serviceName as keyof typeof serviceTemplates];
     if (!template) return null;
 
+    const fieldLabels: Record<string, string> = {
+      groupIdLeadApplication: "Group ID (Lead Application | CPST. Adults)",
+      groupIdLeadAppointment: "Group ID (Lead Appointment | CPST, Adults)",
+    };
+
     return Object.keys(template).map((key) => {
-      const isMailerLiteGroupId = key === 'groupId' && serviceName === 'MailerLite';
-      const fieldLabel = isMailerLiteGroupId 
-        ? 'Group ID (Lead Application | CPST. Adults)'
-        : key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+      const fieldLabel = fieldLabels[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+      const isMailerLiteGroupId = (key === 'groupIdLeadApplication' || key === 'groupIdLeadAppointment') && serviceName === 'MailerLite';
       
       return (
         <div key={key} className="space-y-2">
@@ -145,8 +153,21 @@ const External = ({ onBack }: ExternalProps) => {
     });
   };
 
-  const getIntegrationStatus = (configuration: Record<string, string>) => {
-    const hasAllSettings = Object.values(configuration).every(val => val && val.trim() !== "");
+  const getIntegrationStatus = (integration: ExternalIntegration) => {
+    const config = integration.configuration;
+    
+    // For MailerLite, check if at least apiKey and one group ID are configured
+    if (integration.service_provider === "MailerLite") {
+      const hasApiKey = config.apiKey && config.apiKey.trim() !== "";
+      const hasAtLeastOneGroup = 
+        (config.groupIdLeadApplication && config.groupIdLeadApplication.trim() !== "") ||
+        (config.groupIdLeadAppointment && config.groupIdLeadAppointment.trim() !== "") ||
+        (config.groupId && config.groupId.trim() !== ""); // Legacy support
+      return hasApiKey && hasAtLeastOneGroup ? "Connected" : "Not Configured";
+    }
+    
+    // For other services, check all fields
+    const hasAllSettings = Object.values(config).every(val => val && val.trim() !== "");
     return hasAllSettings ? "Connected" : "Not Configured";
   };
 
@@ -188,7 +209,7 @@ const External = ({ onBack }: ExternalProps) => {
                 </div>
               ) : (
                 integrations.map((integration) => {
-                  const status = getIntegrationStatus(integration.configuration);
+                  const status = getIntegrationStatus(integration);
                   return (
                     <div key={integration.id} className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="flex-1">
