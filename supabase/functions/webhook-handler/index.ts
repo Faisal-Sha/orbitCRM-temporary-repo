@@ -1516,12 +1516,13 @@ async function processCalAttendees(supabase: any, appointmentId: string, booking
             const currentStatus = existingPerson.status;
 
             if (roleName === 'lead' && currentStatus !== 'Scheduled') {
-              console.log('Updating existing lead status to Scheduled:', personId);
+              console.log(`Updating existing lead status from "${currentStatus}" to "Scheduled":`, personId);
+              
+              // Update people.status without updated_by to avoid FK constraint error
               const { error: updateStatusError } = await supabase
                 .from('people')
                 .update({
                   status: 'Scheduled',
-                  updated_by: calendarOwnerId || null,
                   updated_at: new Date().toISOString(),
                 })
                 .eq('id', personId);
@@ -1530,7 +1531,35 @@ async function processCalAttendees(supabase: any, appointmentId: string, booking
                 console.error('Error updating lead status to Scheduled:', updateStatusError);
               } else {
                 console.log('Successfully updated lead status to Scheduled');
-                // people_assign_status entry is created automatically by the AFTER UPDATE trigger
+                
+                // Explicitly insert people_assign_status record with idempotency guard
+                const oneMinuteAgo = new Date(Date.now() - 60000).toISOString();
+                const { data: existingStatusRecord } = await supabase
+                  .from('people_assign_status')
+                  .select('id')
+                  .eq('person_id', personId)
+                  .eq('new_status', 'Scheduled')
+                  .eq('old_status', currentStatus)
+                  .gte('created_at', oneMinuteAgo)
+                  .maybeSingle();
+
+                if (!existingStatusRecord) {
+                  const { error: statusHistoryError } = await supabase
+                    .from('people_assign_status')
+                    .insert({
+                      person_id: personId,
+                      new_status: 'Scheduled',
+                      old_status: currentStatus,
+                    });
+
+                  if (statusHistoryError) {
+                    console.error('Error inserting people_assign_status record:', statusHistoryError);
+                  } else {
+                    console.log('Successfully inserted people_assign_status record');
+                  }
+                } else {
+                  console.log('people_assign_status record already exists (recent duplicate), skipping insert');
+                }
               }
             }
           }
