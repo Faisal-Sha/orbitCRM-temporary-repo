@@ -44,7 +44,8 @@ const External = ({ onBack }: ExternalProps) => {
       apiKey: "", 
       sendingDomain: "", 
       groupIdLeadApplication: "",
-      groupIdLeadAppointment: ""
+      groupIdLeadAppointment: "",
+      groupIdClientActive: ""
     },
     "Zoom": { clientId: "", clientSecret: "", redirectUrl: "" },
     "Twilio": { accountSid: "", authToken: "", apiKeySid: "", apiKeySecret: "" },
@@ -128,11 +129,12 @@ const External = ({ onBack }: ExternalProps) => {
     const fieldLabels: Record<string, string> = {
       groupIdLeadApplication: "Group ID (Lead Application | CPST. Adults)",
       groupIdLeadAppointment: "Group ID (Lead Appointment | CPST, Adults)",
+      groupIdClientActive: "Group ID (Clients, Active | CPST, Adults)",
     };
 
     return Object.keys(template).map((key) => {
       const fieldLabel = fieldLabels[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-      const isMailerLiteGroupId = (key === 'groupIdLeadApplication' || key === 'groupIdLeadAppointment') && serviceName === 'MailerLite';
+      const isMailerLiteGroupId = (key === 'groupIdLeadApplication' || key === 'groupIdLeadAppointment' || key === 'groupIdClientActive') && serviceName === 'MailerLite';
       
       return (
         <div key={key} className="space-y-2">
@@ -161,7 +163,8 @@ const External = ({ onBack }: ExternalProps) => {
       const hasApiKey = config.apiKey && config.apiKey.trim() !== "";
       const hasAtLeastOneGroup = 
         (config.groupIdLeadApplication && config.groupIdLeadApplication.trim() !== "") ||
-        (config.groupIdLeadAppointment && config.groupIdLeadAppointment.trim() !== "");
+        (config.groupIdLeadAppointment && config.groupIdLeadAppointment.trim() !== "") ||
+        (config.groupIdClientActive && config.groupIdClientActive.trim() !== "");
       return hasApiKey && hasAtLeastOneGroup ? "Connected" : "Not Configured";
     }
     
