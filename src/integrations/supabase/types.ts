@@ -878,6 +878,129 @@ export type Database = {
           },
         ]
       }
+      mailerlite_event_items: {
+        Row: {
+          automation_id: string | null
+          campaign_id: string | null
+          created_at: string
+          event_data: Json | null
+          event_timestamp: string
+          event_type: string
+          group_id: string | null
+          id: string
+          mailerlite_event_id: string
+          matched_to_person: boolean
+          person_id: string | null
+          subscriber_email: string
+          subscriber_mailerlite_id: string | null
+        }
+        Insert: {
+          automation_id?: string | null
+          campaign_id?: string | null
+          created_at?: string
+          event_data?: Json | null
+          event_timestamp: string
+          event_type: string
+          group_id?: string | null
+          id?: string
+          mailerlite_event_id: string
+          matched_to_person?: boolean
+          person_id?: string | null
+          subscriber_email: string
+          subscriber_mailerlite_id?: string | null
+        }
+        Update: {
+          automation_id?: string | null
+          campaign_id?: string | null
+          created_at?: string
+          event_data?: Json | null
+          event_timestamp?: string
+          event_type?: string
+          group_id?: string | null
+          id?: string
+          mailerlite_event_id?: string
+          matched_to_person?: boolean
+          person_id?: string | null
+          subscriber_email?: string
+          subscriber_mailerlite_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mailerlite_event_items_mailerlite_event_id_fkey"
+            columns: ["mailerlite_event_id"]
+            isOneToOne: false
+            referencedRelation: "mailerlite_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mailerlite_event_items_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mailerlite_events: {
+        Row: {
+          agency_id: string
+          batch_size: number | null
+          created_at: string
+          error_message: string | null
+          event_type: string
+          id: string
+          is_batch: boolean
+          processed_at: string | null
+          processing_status: string
+          raw_payload: Json
+          received_at: string
+          webhook_id: string
+        }
+        Insert: {
+          agency_id: string
+          batch_size?: number | null
+          created_at?: string
+          error_message?: string | null
+          event_type: string
+          id?: string
+          is_batch?: boolean
+          processed_at?: string | null
+          processing_status?: string
+          raw_payload: Json
+          received_at?: string
+          webhook_id: string
+        }
+        Update: {
+          agency_id?: string
+          batch_size?: number | null
+          created_at?: string
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          is_batch?: boolean
+          processed_at?: string | null
+          processing_status?: string
+          raw_payload?: Json
+          received_at?: string
+          webhook_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mailerlite_events_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "app_agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mailerlite_events_webhook_id_fkey"
+            columns: ["webhook_id"]
+            isOneToOne: false
+            referencedRelation: "settings_integrations_webhooks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mailerlite_sync_log: {
         Row: {
           created_at: string | null
@@ -2366,6 +2489,19 @@ export type Database = {
           phone: string
           preferences: string
           status: string
+        }[]
+      }
+      get_mailerlite_event_summary: {
+        Args: {
+          p_agency_id?: string
+          p_end_date?: string
+          p_start_date?: string
+        }
+        Returns: {
+          event_type: string
+          matched_subscribers: number
+          total_events: number
+          unmatched_subscribers: number
         }[]
       }
       get_organization_settings: {

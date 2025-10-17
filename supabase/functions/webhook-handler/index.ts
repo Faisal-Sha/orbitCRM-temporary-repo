@@ -15,7 +15,7 @@ const webhookProcessors = {
   forms: processFormSubmission,
   form_submission: processFormSubmission, // legacy support
   scheduling: processCalSchedulingEvent,
-  marketing: processCustomData,
+  marketing: processMailerLiteEvent,
   crm: processCrmData,
   crm_data: processCrmData, // legacy support
   payment: processPaymentNotification,
@@ -906,6 +906,177 @@ async function processCustomData(supabase: any, webhook: any, data: any) {
 
   if (error) throw error;
   return { id: customRecord.id, type: 'custom' };
+}
+
+// MailerLite webhook processor
+async function processMailerLiteEvent(supabase: any, webhook: any, data: any) {
+  console.log('Processing MailerLite event:', JSON.stringify(data, null, 2));
+  
+  // Determine if this is a batch event
+  const isBatch = Array.isArray(data.events);
+  const events = isBatch ? data.events : [data];
+  const batchSize = events.length;
+  
+  // Detect event type from payload
+  let eventType = 'unknown';
+  if (isBatch && data.events && data.events.length > 0) {
+    eventType = 'batch';
+  } else if (data.type) {
+    eventType = data.type;
+  } else if (data.event) {
+    eventType = data.event;
+  }
+  
+  console.log(`Processing ${batchSize} MailerLite event(s), type: ${eventType}, batch: ${isBatch}`);
+  
+  // Store parent event record
+  const { data: mailerliteEvent, error: eventError } = await supabase
+    .from('mailerlite_events')
+    .insert({
+      agency_id: webhook.agency_id,
+      webhook_id: webhook.id,
+      event_type: eventType,
+      is_batch: isBatch,
+      batch_size: batchSize,
+      raw_payload: data,
+      processing_status: 'pending'
+    })
+    .select()
+    .single();
+  
+  if (eventError) {
+    console.error('Error storing MailerLite event:', eventError);
+    throw eventError;
+  }
+  
+  console.log('Created MailerLite event record:', mailerliteEvent.id);
+  
+  // Process individual events
+  let successCount = 0;
+  let failureCount = 0;
+  const errors: string[] = [];
+  
+  for (const event of events) {
+    try {
+      // Extract event data
+      const eventData = event.data || event;
+      const eventTypeIndividual = event.type || eventType;
+      
+      // Extract subscriber information
+      const subscriberEmail = eventData.email || eventData.subscriber?.email || '';
+      const subscriberMailerliteId = eventData.id || eventData.subscriber?.id || '';
+      
+      // Extract timestamp
+      const eventTimestamp = event.fired_at || event.timestamp || eventData.created_at || new Date().toISOString();
+      
+      // Extract additional IDs based on event type
+      let campaignId = null;
+      let groupId = null;
+      let automationId = null;
+      
+      if (eventTypeIndividual.includes('campaign')) {
+        campaignId = eventData.campaign_id || eventData.campaign?.id || null;
+      }
+      if (eventTypeIndividual.includes('group')) {
+        groupId = eventData.group_id || eventData.group?.id || null;
+      }
+      if (eventTypeIndividual.includes('automation')) {
+        automationId = eventData.automation_id || eventData.automation?.id || null;
+      }
+      
+      console.log(`Processing event: ${eventTypeIndividual} for ${subscriberEmail}`);
+      
+      // Try to match subscriber to existing person in agency
+      let personId = null;
+      let matchedToPerson = false;
+      
+      if (subscriberEmail) {
+        const { data: personContact } = await supabase
+          .from('people_contacts')
+          .select(`
+            person_id,
+            people!inner(
+              id,
+              app_agencies_people!inner(agency_id)
+            )
+          `)
+          .eq('email', subscriberEmail)
+          .eq('people.app_agencies_people.agency_id', webhook.agency_id)
+          .eq('is_deleted', false)
+          .maybeSingle();
+        
+        if (personContact?.person_id) {
+          personId = personContact.person_id;
+          matchedToPerson = true;
+          console.log(`Matched subscriber ${subscriberEmail} to person ${personId}`);
+        } else {
+          console.log(`No person match found for ${subscriberEmail} in agency`);
+        }
+      }
+      
+      // Store event item
+      const { error: itemError } = await supabase
+        .from('mailerlite_event_items')
+        .insert({
+          mailerlite_event_id: mailerliteEvent.id,
+          event_type: eventTypeIndividual,
+          event_timestamp: eventTimestamp,
+          subscriber_email: subscriberEmail,
+          subscriber_mailerlite_id: subscriberMailerliteId,
+          person_id: personId,
+          campaign_id: campaignId,
+          group_id: groupId,
+          automation_id: automationId,
+          event_data: eventData,
+          matched_to_person: matchedToPerson
+        });
+      
+      if (itemError) {
+        console.error('Error storing event item:', itemError);
+        failureCount++;
+        errors.push(`${eventTypeIndividual}: ${itemError.message}`);
+      } else {
+        successCount++;
+        console.log(`Stored event item for ${subscriberEmail}`);
+      }
+      
+    } catch (itemProcessError) {
+      console.error('Error processing event item:', itemProcessError);
+      failureCount++;
+      errors.push(itemProcessError instanceof Error ? itemProcessError.message : String(itemProcessError));
+    }
+  }
+  
+  // Update parent event with processing status
+  let processingStatus = 'completed';
+  if (failureCount > 0 && successCount === 0) {
+    processingStatus = 'failed';
+  } else if (failureCount > 0) {
+    processingStatus = 'partial';
+  }
+  
+  const { error: updateError } = await supabase
+    .from('mailerlite_events')
+    .update({
+      processed_at: new Date().toISOString(),
+      processing_status: processingStatus,
+      error_message: errors.length > 0 ? errors.join('; ') : null
+    })
+    .eq('id', mailerliteEvent.id);
+  
+  if (updateError) {
+    console.error('Error updating event status:', updateError);
+  }
+  
+  console.log(`MailerLite event processing complete: ${successCount} succeeded, ${failureCount} failed`);
+  
+  return { 
+    id: mailerliteEvent.id, 
+    type: 'mailerlite', 
+    processed: successCount,
+    failed: failureCount,
+    status: processingStatus
+  };
 }
 
 // Cal.com scheduling webhook processor
