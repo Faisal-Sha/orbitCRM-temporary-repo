@@ -1509,6 +1509,31 @@ async function processCalAttendees(supabase: any, appointmentId: string, booking
           personId = existingContact.person_id;
           existingPerson = existingContact.people;
           console.log('Found existing person for attendee:', personId);
+          
+          // Update existing Lead's status to Scheduled if needed
+          if (existingPerson && appointmentType?.toLowerCase() === 'lead') {
+            const roleName = existingPerson.app_user_roles?.role_name?.toLowerCase();
+            const currentStatus = existingPerson.status;
+
+            if (roleName === 'lead' && currentStatus !== 'Scheduled') {
+              console.log('Updating existing lead status to Scheduled:', personId);
+              const { error: updateStatusError } = await supabase
+                .from('people')
+                .update({
+                  status: 'Scheduled',
+                  updated_by: calendarOwnerId || null,
+                  updated_at: new Date().toISOString(),
+                })
+                .eq('id', personId);
+
+              if (updateStatusError) {
+                console.error('Error updating lead status to Scheduled:', updateStatusError);
+              } else {
+                console.log('Successfully updated lead status to Scheduled');
+                // people_assign_status entry is created automatically by the AFTER UPDATE trigger
+              }
+            }
+          }
         }
       }
 
