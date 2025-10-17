@@ -32,8 +32,9 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json();
     person_id = body.person_id;
+    const sync_type = body.sync_type || 'application'; // 'application' or 'appointment'
     
-    console.log('Edge function invoked with:', { person_id, body });
+    console.log('Edge function invoked with:', { person_id, sync_type, body });
     
     if (!person_id) {
       console.error('No person_id provided in request');
@@ -75,9 +76,19 @@ Deno.serve(async (req) => {
     }
 
     const apiKey = integration.configuration?.apiKey;
-    const groupId = integration.configuration?.groupId;
+    const groupIdApplication = integration.configuration?.groupIdLeadApplication || integration.configuration?.groupId;
+    const groupIdAppointment = integration.configuration?.groupIdLeadAppointment;
+    
+    // Select appropriate group ID based on sync_type
+    const groupId = sync_type === 'appointment' ? groupIdAppointment : groupIdApplication;
 
-    console.log('MailerLite config found:', { hasApiKey: !!apiKey, hasGroupId: !!groupId, groupId });
+    console.log('MailerLite config found:', { 
+      hasApiKey: !!apiKey, 
+      sync_type,
+      groupIdApplication,
+      groupIdAppointment,
+      selectedGroupId: groupId 
+    });
 
     if (!apiKey) {
       console.error('MailerLite API key not found in configuration');
@@ -96,7 +107,7 @@ Deno.serve(async (req) => {
     }
 
     if (!groupId) {
-      console.warn('MailerLite Group ID not configured - subscriber will not be added to any group');
+      console.warn(`MailerLite Group ID not configured for sync_type '${sync_type}' - subscriber will not be added to any group`);
     }
 
     // Fetch person basic data
@@ -238,10 +249,11 @@ Deno.serve(async (req) => {
       .from('mailerlite_sync_log')
       .update({ 
         sync_status: 'success', 
-        error_message: `Successfully synced to MailerLite${groupId ? ` in group ${groupId}` : ''}: ${responseData.data?.id || 'subscriber created'}` 
+        error_message: `Successfully synced to MailerLite (${sync_type})${groupId ? ` in group ${groupId}` : ''}: ${responseData.data?.id || 'subscriber created'}` 
       })
       .eq('person_id', person_id)
-      .eq('sync_status', 'pending');
+      .eq('sync_status', 'pending')
+      .eq('sync_type', sync_type);
 
     return new Response(
       JSON.stringify({ success: true, data: responseData }),
