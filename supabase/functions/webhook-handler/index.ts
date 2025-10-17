@@ -1014,7 +1014,7 @@ async function processMailerLiteEvent(supabase: any, webhook: any, data: any) {
         }
       }
       
-      // Store event item
+      // Store event item with deduplication handling
       const { error: itemError } = await supabase
         .from('mailerlite_event_items')
         .insert({
@@ -1032,9 +1032,16 @@ async function processMailerLiteEvent(supabase: any, webhook: any, data: any) {
         });
       
       if (itemError) {
-        console.error('Error storing event item:', itemError);
-        failureCount++;
-        errors.push(`${eventTypeIndividual}: ${itemError.message}`);
+        // Check if this is a duplicate (unique constraint violation)
+        if (itemError.code === '23505') {
+          console.log(`Duplicate event detected for ${subscriberEmail} - skipping (idempotency)`);
+          successCount++; // Count as success since we already have this event
+          errors.push(`duplicate_detected: ${eventTypeIndividual} for ${subscriberEmail}`);
+        } else {
+          console.error('Error storing event item:', itemError);
+          failureCount++;
+          errors.push(`${eventTypeIndividual}: ${itemError.message}`);
+        }
       } else {
         successCount++;
         console.log(`Stored event item for ${subscriberEmail}`);
