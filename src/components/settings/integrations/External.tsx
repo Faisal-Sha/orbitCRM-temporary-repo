@@ -161,8 +161,7 @@ const External = ({ onBack }: ExternalProps) => {
       const hasApiKey = config.apiKey && config.apiKey.trim() !== "";
       const hasAtLeastOneGroup = 
         (config.groupIdLeadApplication && config.groupIdLeadApplication.trim() !== "") ||
-        (config.groupIdLeadAppointment && config.groupIdLeadAppointment.trim() !== "") ||
-        (config.groupId && config.groupId.trim() !== ""); // Legacy support
+        (config.groupIdLeadAppointment && config.groupIdLeadAppointment.trim() !== "");
       return hasApiKey && hasAtLeastOneGroup ? "Connected" : "Not Configured";
     }
     

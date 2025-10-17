@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
     }
 
     const apiKey = integration.configuration?.apiKey;
-    const groupIdApplication = integration.configuration?.groupIdLeadApplication || integration.configuration?.groupId;
+    const groupIdApplication = integration.configuration?.groupIdLeadApplication;
     const groupIdAppointment = integration.configuration?.groupIdLeadAppointment;
     
     // Select appropriate group ID based on sync_type
