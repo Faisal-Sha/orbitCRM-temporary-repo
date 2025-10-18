@@ -6,20 +6,21 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
-import { getIntakeOutcomeBadgeProps } from "../utils";
 
 interface InlineOutcomeDropdownProps {
   value: string;
   options: string[];
   onChange: (value: string) => void;
   badgeClass?: string;
+  getBadgeProps: (outcome: string) => { className: string; label: string };
 }
 
 export const InlineOutcomeDropdown = ({
   value,
   options,
   onChange,
-  badgeClass
+  badgeClass,
+  getBadgeProps
 }: InlineOutcomeDropdownProps) => (
   <DropdownMenu>
     <DropdownMenuTrigger asChild>
@@ -34,7 +35,7 @@ export const InlineOutcomeDropdown = ({
       {options.map(opt => (
         <DropdownMenuItem
           key={opt}
-          className={`cursor-pointer px-3 py-2 text-sm ${getIntakeOutcomeBadgeProps(opt).className} ${opt === value ? "font-bold" : ""}`}
+          className={`cursor-pointer px-3 py-2 text-sm ${getBadgeProps(opt).className} ${opt === value ? "font-bold" : ""}`}
           onClick={() => { if (opt !== value) onChange(opt); }}
         >
           {opt}

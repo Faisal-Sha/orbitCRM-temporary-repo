@@ -38,7 +38,7 @@ export function generateAppointments(count: number): Appointment[] {
     const numInvitees = 2 + i % 3;
     const attendees = attendeesBase.slice(0, numInvitees);
     const note = i % 5 === 0 && type !== "personal" ? "Please bring last session notes for review." : i % 6 === 0 && type === "clients" ? "" : undefined;
-    const attendeeNote = type === "intakes" && i % 4 === 0 ? "Looking forward to the session. I have some questions about the treatment plan." : undefined;
+    const attendeeNote = (type === "intakes" && i % 4 === 0) || (type === "clients" && i % 3 === 0) ? "Looking forward to the session. I have some questions about the treatment plan." : undefined;
     
     const isTimeRange = (type === "intakes" && i % 3 === 0);
     let time;
@@ -98,11 +98,8 @@ export function getIntakeOutcomeBadgeProps(outcome: string) {
 export function getClientOutcomeBadgeProps(outcome: string) {
   switch (outcome) {
     case "Success": return { className: "bg-green-100 text-green-800", label: "Success" };
-    case "No Answer": return { className: "bg-yellow-100 text-yellow-800", label: "No Answer" };
-    case "Rescheduled": return { className: "bg-blue-100 text-blue-800", label: "Rescheduled" };
-    case "Cancel":
-    case "Canceled":
-    case "Cancelled": return { className: "bg-red-100 text-red-800", label: "Cancelled" };
+    case "Due": return { className: "bg-yellow-100 text-yellow-800", label: "Due" };
+    case "No Show": return { className: "bg-gray-200 text-gray-700", label: "No Show" };
     default: return { className: "bg-gray-100 text-gray-800", label: outcome || "None" };
   }
 }

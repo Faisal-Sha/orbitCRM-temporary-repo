@@ -378,6 +378,7 @@ const ListView = () => {
                                 options={["Due", "No Show", "New Client", "Unqualified", "Doubtful", "Remove"]}
                                 onChange={val => handleEdit(appt.id, "outcome", val)}
                                 badgeClass={getIntakeOutcomeBadgeProps(appt.outcome).className}
+                                getBadgeProps={getIntakeOutcomeBadgeProps}
                               />
                             </td>
                             <td className="pl-2 pr-4 py-2 text-end">
@@ -642,13 +643,17 @@ const ListView = () => {
                             <td className="px-2 py-2 text-center"><AlertIconWithTooltip level={appt.alertLevel} /></td>
                             <td className="px-2 py-2 text-center"><GrowthStatusCell stage={appt.growthStage} /></td>
                             <td className="px-2 py-2 flex items-center gap-1">
+                              {appt.clinicianFullName}
+                              {renderNoteIcon(appt.note)}
+                            </td>
+                            <td className="px-2 py-2">
                               <InlineOutcomeDropdown
                                 value={appt.outcome}
-                                options={["Success", "No Answer", "Rescheduled", "Cancel"]}
+                                options={["Due", "Success", "No Show"]}
                                 onChange={val => handleEdit(appt.id, "outcome", val)}
                                 badgeClass={getClientOutcomeBadgeProps(appt.outcome).className}
+                                getBadgeProps={getClientOutcomeBadgeProps}
                               />
-                              {renderNoteIcon(appt.note)}
                             </td>
                             <td className="pl-2 pr-4 py-2 text-end">
                               <button onClick={() => handleExpand(appt.id)} aria-label={expanded[appt.id] ? "Collapse" : "Expand"} className="p-1 focus:outline-none transition-colors" tabIndex={0}>
@@ -659,97 +664,151 @@ const ListView = () => {
                           {expanded[appt.id] && (
                             <tr className="bg-gray-50 border-b">
                               <td colSpan={8} className="px-0 py-8">
-                                <div className="flex flex-col items-center gap-12 justify-center">
-                                  <div className="flex flex-col md:flex-row gap-8 md:gap-16 text-center md:text-left w-full justify-center">
-                                    {/* --- ICONS: Edit, UserProfile, Note, Cancel --- */}
-                                    <div className="flex flex-col items-center gap-3 flex-1 min-w-[140px]">
-                                      <Mail className="h-5 w-5 text-muted-foreground mx-auto" />
-                                      <EditableCell
-                                        value={appt.email}
-                                        maxLen={64}
-                                        onSave={val => handleEdit(appt.id, "email", val)}
-                                        className="w-[150px] mx-auto"
-                                        type="email"
-                                      />
+                                <div className="flex flex-col gap-6">
+                                  {/* Contact Information Section */}
+                                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
+                                    <h4 className="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">Contact Information</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                      {/* Email - Non-editable */}
+                                      <div className="flex flex-col gap-2">
+                                        <div className="flex items-center gap-2">
+                                          <Mail className="h-4 w-4 text-muted-foreground" />
+                                          <span className="text-xs font-medium text-gray-600">Email</span>
+                                        </div>
+                                        <p className="text-sm text-gray-900 break-all">{appt.email}</p>
+                                      </div>
+
+                                      {/* Phone - Non-editable */}
+                                      <div className="flex flex-col gap-2">
+                                        <div className="flex items-center gap-2">
+                                          <Phone className="h-4 w-4 text-muted-foreground" />
+                                          <span className="text-xs font-medium text-gray-600">Phone</span>
+                                        </div>
+                                        <p className="text-sm text-gray-900">{appt.phone}</p>
+                                      </div>
+
+                                      {/* Attendee Note - Non-editable */}
+                                      <div className="flex flex-col gap-2">
+                                        <div className="flex items-center gap-2">
+                                          <FormInput className="h-4 w-4 text-muted-foreground" />
+                                          <span className="text-xs font-medium text-gray-600">Attendee Note</span>
+                                        </div>
+                                        {appt.attendeeNote ? (
+                                          <TooltipProvider>
+                                            <Tooltip>
+                                              <TooltipTrigger asChild>
+                                                <p className="text-sm text-gray-900 cursor-default truncate max-w-[200px]">
+                                                  {appt.attendeeNote.length > 50 ? `${appt.attendeeNote.substring(0, 50)}...` : appt.attendeeNote}
+                                                </p>
+                                              </TooltipTrigger>
+                                              <TooltipContent className="bg-white text-black border border-gray-200 shadow-lg max-w-xs">
+                                                <p className="text-sm">{appt.attendeeNote}</p>
+                                              </TooltipContent>
+                                            </Tooltip>
+                                          </TooltipProvider>
+                                        ) : (
+                                          <p className="text-sm text-gray-400 italic">No note</p>
+                                        )}
+                                      </div>
+
+                                      {/* Provider Note - Editable */}
+                                      <div className="flex flex-col gap-2">
+                                        <div className="flex items-center gap-2">
+                                          <FormInput className="h-4 w-4 text-muted-foreground" />
+                                          <span className="text-xs font-medium text-gray-600">Provider Note</span>
+                                        </div>
+                                        {editingNoteId === appt.id ? (
+                                          <div className="flex flex-col gap-2">
+                                            <Input
+                                              value={editingNoteValue}
+                                              onChange={(e) => setEditingNoteValue(e.target.value)}
+                                              className="text-sm"
+                                              placeholder="Enter note..."
+                                            />
+                                            <div className="flex gap-2">
+                                              <Button size="sm" variant="default" onClick={() => saveNoteEdit(appt.id)}>Save</Button>
+                                              <Button size="sm" variant="outline" onClick={cancelNoteEdit}>Cancel</Button>
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <>
+                                            {appt.note ? (
+                                              <TooltipProvider>
+                                                <Tooltip>
+                                                  <TooltipTrigger asChild>
+                                                    <p
+                                                      className="text-sm text-gray-900 cursor-pointer hover:text-primary transition-colors truncate max-w-[200px]"
+                                                      onClick={() => startNoteEdit(appt.id, appt.note)}
+                                                    >
+                                                      {appt.note.length > 50 ? `${appt.note.substring(0, 50)}...` : appt.note}
+                                                    </p>
+                                                  </TooltipTrigger>
+                                                  <TooltipContent className="bg-white text-black border border-gray-200 shadow-lg max-w-xs">
+                                                    <p className="text-sm">{appt.note}</p>
+                                                  </TooltipContent>
+                                                </Tooltip>
+                                              </TooltipProvider>
+                                            ) : (
+                                              <button
+                                                onClick={() => startNoteEdit(appt.id, "")}
+                                                className="text-sm text-primary hover:text-primary/80 transition-colors text-left"
+                                              >
+                                                + Add Note
+                                              </button>
+                                            )}
+                                          </>
+                                        )}
+                                      </div>
                                     </div>
-                                    <div className="flex flex-col items-center gap-3 flex-1 min-w-[130px]">
-                                      <Phone className="h-5 w-5 text-muted-foreground mx-auto" />
-                                      <EditableCell
-                                        value={appt.phone}
-                                        maxLen={18}
-                                        onSave={val => handleEdit(appt.id, "phone", val)}
-                                        className="w-[130px] mx-auto"
-                                        type="tel"
-                                      />
-                                    </div>
-                                    <div className="flex flex-col items-center gap-3 flex-1 min-w-[150px]">
-                                      <FormInput className="h-5 w-5 text-muted-foreground mx-auto" />
-                                      {appt.note === undefined ? (
-                                        <span>
-                                          <Button
-                                            size="sm"
-                                            variant="outline"
-                                            className="text-xs"
-                                            onClick={() => handleCreateNote(appt.id, "Type your note here.")}
-                                          >
-                                            + Add Note
-                                          </Button>
-                                        </span>
-                                      ) : (
-                                        <EditableCell
-                                          value={appt.note}
-                                          maxLen={120}
-                                          onSave={val => handleEdit(appt.id, "note", val)}
-                                          className="w-[160px] mx-auto"
-                                        />
-                                      )}
-                                    </div>
-                                    {/* ICON BUTTON GROUP, ORDER: Edit (Calendar), UserProfile, Note (Progress Notes), Cancel */}
-                                    <div className="flex flex-row justify-center items-center gap-4 flex-1 min-w-[85px]">
-                                      <TooltipProvider>
-                                        <Tooltip>
-                                          <TooltipTrigger asChild>
-                                            <button
-                                              type="button"
-                                              onClick={() => openEditModalForAppt(appt)}
-                                              className="rounded-full p-1 hover:bg-primary/10 focus:outline-none transition"
-                                            >
-                                              <Calendar className="h-6 w-6 text-primary" />
-                                            </button>
-                                          </TooltipTrigger>
-                                          <TooltipContent>Edit appointment</TooltipContent>
-                                        </Tooltip>
-                                      </TooltipProvider>
-                                      <span
-                                        className="cursor-pointer rounded-full hover:bg-primary/10 p-1 transition"
-                                        title="View profile"
-                                        tabIndex={0}
-                                        onClick={() => openUserProfile(appt)}
-                                        role="button"
-                                      >
-                                        <User className="h-6 w-6 text-primary" />
-                                      </span>
-                                      <TooltipProvider>
-                                        <Tooltip>
-                                          <TooltipTrigger asChild>
-                                            <button
-                                              type="button"
-                                              onClick={() => openProgressNotesForm(appt.clientFullName)}
-                                              className="rounded-full p-1 hover:bg-primary/10 focus:outline-none transition"
-                                            >
-                                              <StickyNote className="w-6 h-6 text-primary" />
-                                            </button>
-                                          </TooltipTrigger>
-                                          <TooltipContent>Progress note form</TooltipContent>
-                                        </Tooltip>
-                                      </TooltipProvider>
+                                  </div>
+
+                                  {/* Actions Section */}
+                                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
+                                    <h4 className="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">Actions</h4>
+                                    <div className="flex flex-wrap items-center justify-center gap-3">
                                       <button
                                         type="button"
-                                        title="Cancel appointment"
-                                        onClick={() => openCancelDialog(appt)}
-                                        className="rounded-full p-1 hover:bg-destructive/10 focus:outline-none transition"
+                                        onClick={() => openEditModalForAppt(appt)}
+                                        className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-primary/5 hover:border-primary/30 transition-all text-sm font-medium text-gray-700 hover:text-primary shadow-sm"
                                       >
-                                        <X className="h-6 w-6 text-destructive" />
+                                        <Calendar className="h-4 w-4" />
+                                        <span>Reschedule</span>
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => openUserProfile(appt)}
+                                        className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-primary/5 hover:border-primary/30 transition-all text-sm font-medium text-gray-700 hover:text-primary shadow-sm"
+                                      >
+                                        <User className="h-4 w-4" />
+                                        <span>Profile</span>
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => openProgressNotesForm(appt.clientFullName)}
+                                        className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-primary/5 hover:border-primary/30 transition-all text-sm font-medium text-gray-700 hover:text-primary shadow-sm"
+                                      >
+                                        <StickyNote className="h-4 w-4" />
+                                        <span>Progress Note</span>
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => {/* No action for now */}}
+                                        className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-primary/5 hover:border-primary/30 transition-all text-sm font-medium text-gray-700 hover:text-primary shadow-sm"
+                                      >
+                                        <FileText className="h-4 w-4" />
+                                        <span>Transcript</span>
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => openCancelDialog(appt)}
+                                        className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-destructive/5 hover:border-destructive/30 transition-all text-sm font-medium text-gray-700 hover:text-destructive shadow-sm"
+                                      >
+                                        <X className="h-4 w-4" />
+                                        <span>Cancel</span>
                                       </button>
                                     </div>
                                   </div>
