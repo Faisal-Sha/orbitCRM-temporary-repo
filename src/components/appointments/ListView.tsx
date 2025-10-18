@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Mail, Phone, FormInput, User, ChevronDown, ChevronUp, Users, FileText, StickyNote, Calendar, X } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { TooltipProvider, Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import UserProfilePanel from "@/components/userprofile/UserProfilePanel";
 import ScheduleAppointmentModal from "@/components/appointments/ScheduleAppointmentModal";
@@ -89,6 +90,41 @@ const ListView = () => {
       ...a,
       note
     } : a));
+  }
+
+  function handleCallLogToggle(apptId: string, callIndex: number) {
+    setApptsData(appts => appts.map(a => {
+      if (a.id === apptId && a.callLogs) {
+        const newCallLogs = [...a.callLogs];
+        newCallLogs[callIndex] = !newCallLogs[callIndex];
+        return { ...a, callLogs: newCallLogs };
+      }
+      return a;
+    }));
+  }
+
+  // State for inline note editing
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editingNoteValue, setEditingNoteValue] = useState<string>("");
+
+  function startNoteEdit(apptId: string, currentNote: string) {
+    setEditingNoteId(apptId);
+    setEditingNoteValue(currentNote);
+  }
+
+  function saveNoteEdit(apptId: string) {
+    if (editingNoteValue.trim() === "") {
+      handleEdit(apptId, "note", undefined as any);
+    } else {
+      handleEdit(apptId, "note", editingNoteValue);
+    }
+    setEditingNoteId(null);
+    setEditingNoteValue("");
+  }
+
+  function cancelNoteEdit() {
+    setEditingNoteId(null);
+    setEditingNoteValue("");
   }
   
   function openUserProfile(appt: any) {
@@ -316,9 +352,11 @@ const ListView = () => {
                       );
                     }
                     if (appt.type === "intakes") {
-                      // For intakes with time ranges, hide provider name if status is Due
-                      const shouldHideProvider = appt.outcome === "Due" && appt.isTimeRange;
-                      const displayProviderName = shouldHideProvider ? "" : appt.clinicianFullName;
+                      // Calculate call count for display
+                      const callCount = appt.callLogs ? appt.callLogs.filter(Boolean).length : 0;
+                      const displayProviderName = callCount > 0 
+                        ? `${appt.clinicianFullName} (${callCount})`
+                        : appt.clinicianFullName;
                       
                       return (
                         <React.Fragment key={appt.id}>
@@ -404,12 +442,45 @@ const ListView = () => {
                                         </div>
                                         <div className="flex-1 min-w-0">
                                           <label className="text-xs text-muted-foreground block mb-1">Assessor Note</label>
-                                          {appt.note === undefined ? (
+                                          {editingNoteId === appt.id ? (
+                                            <div className="flex flex-col gap-2">
+                                              <Input
+                                                value={editingNoteValue}
+                                                onChange={(e) => setEditingNoteValue(e.target.value)}
+                                                className="text-sm"
+                                                autoFocus
+                                                onKeyDown={(e) => {
+                                                  if (e.key === "Enter") {
+                                                    saveNoteEdit(appt.id);
+                                                  } else if (e.key === "Escape") {
+                                                    cancelNoteEdit();
+                                                  }
+                                                }}
+                                              />
+                                              <div className="flex gap-2">
+                                                <Button
+                                                  size="sm"
+                                                  onClick={() => saveNoteEdit(appt.id)}
+                                                  className="text-xs h-7"
+                                                >
+                                                  Save
+                                                </Button>
+                                                <Button
+                                                  size="sm"
+                                                  variant="outline"
+                                                  onClick={cancelNoteEdit}
+                                                  className="text-xs h-7"
+                                                >
+                                                  Cancel
+                                                </Button>
+                                              </div>
+                                            </div>
+                                          ) : appt.note === undefined || appt.note === "" ? (
                                             <Button
                                               size="sm"
                                               variant="outline"
                                               className="text-xs h-8 w-full justify-start"
-                                              onClick={() => handleCreateNote(appt.id, "Type your note here.")}
+                                              onClick={() => startNoteEdit(appt.id, "")}
                                             >
                                               + Add Note
                                             </Button>
@@ -417,25 +488,16 @@ const ListView = () => {
                                             <TooltipProvider>
                                               <Tooltip>
                                                 <TooltipTrigger asChild>
-                                                  <div className="w-full">
-                                                    <span
-                                                      className="text-sm text-gray-900 block cursor-pointer px-1 py-1 rounded hover:bg-primary/10 transition-colors"
-                                                      onClick={() => {
-                                                        const newNote = prompt("Edit Assessor Note:", appt.note);
-                                                        if (newNote !== null && newNote !== appt.note) {
-                                                          handleEdit(appt.id, "note", newNote);
-                                                        }
-                                                      }}
-                                                    >
-                                                      {appt.note.length > 50 ? `${appt.note.substring(0, 50)}...` : appt.note}
-                                                    </span>
+                                                  <div 
+                                                    className="text-sm text-gray-900 cursor-pointer px-2 py-1.5 rounded hover:bg-primary/10 transition-colors border border-transparent hover:border-primary/20"
+                                                    onClick={() => startNoteEdit(appt.id, appt.note || "")}
+                                                  >
+                                                    {appt.note.length > 50 ? `${appt.note.substring(0, 50)}...` : appt.note}
                                                   </div>
                                                 </TooltipTrigger>
-                                                {appt.note.length > 50 && (
-                                                  <TooltipContent className="bg-white text-black border border-gray-200 max-w-xs">
-                                                    {appt.note}
-                                                  </TooltipContent>
-                                                )}
+                                                <TooltipContent className="bg-white text-black border border-gray-200 max-w-xs">
+                                                  {appt.note}
+                                                </TooltipContent>
                                               </Tooltip>
                                             </TooltipProvider>
                                           )}
@@ -444,58 +506,125 @@ const ListView = () => {
                                     </div>
                                   </div>
 
-                                  {/* Actions Section */}
-                                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
-                                    <h4 className="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">Actions</h4>
-                                    <div className="flex flex-wrap items-center justify-center gap-3">
-                                      <button
-                                        type="button"
-                                        onClick={() => openEditModalForAppt(appt)}
-                                        className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-primary/5 hover:border-primary/30 transition-all text-sm font-medium text-gray-700 hover:text-primary shadow-sm"
-                                      >
-                                        <Calendar className="h-4 w-4" />
-                                        <span>Reschedule</span>
-                                      </button>
+                                  {/* Call Logs and Actions Section */}
+                                  {appt.isTimeRange ? (
+                                    <div className="flex gap-4">
+                                      {/* Call Logs Section - 1/3 width */}
+                                      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5 w-1/3">
+                                        <h4 className="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">Call Logs</h4>
+                                        <div className="flex flex-col gap-3">
+                                          {appt.callLogs?.map((checked, index) => (
+                                            <div key={index} className="flex items-center gap-2">
+                                              <Checkbox
+                                                id={`call-${appt.id}-${index}`}
+                                                checked={checked}
+                                                onCheckedChange={() => handleCallLogToggle(appt.id, index)}
+                                              />
+                                              <label
+                                                htmlFor={`call-${appt.id}-${index}`}
+                                                className="text-sm text-gray-700 cursor-pointer"
+                                              >
+                                                Call {index + 1}
+                                              </label>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
 
-                                      <button
-                                        type="button"
-                                        onClick={() => openUserProfile(appt)}
-                                        className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-primary/5 hover:border-primary/30 transition-all text-sm font-medium text-gray-700 hover:text-primary shadow-sm"
-                                      >
-                                        <User className="h-4 w-4" />
-                                        <span>Profile</span>
-                                      </button>
+                                      {/* Actions Section - 2/3 width */}
+                                      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5 w-2/3">
+                                        <h4 className="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">Actions</h4>
+                                        <div className="flex flex-wrap items-center justify-center gap-3">
+                                          <button
+                                            type="button"
+                                            onClick={() => openEditModalForAppt(appt)}
+                                            className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-primary/5 hover:border-primary/30 transition-all text-sm font-medium text-gray-700 hover:text-primary shadow-sm"
+                                          >
+                                            <Calendar className="h-4 w-4" />
+                                            <span>Reschedule</span>
+                                          </button>
 
-                                      <button
-                                        type="button"
-                                        onClick={() => openAssessmentForm(appt.clientFullName)}
-                                        className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-primary/5 hover:border-primary/30 transition-all text-sm font-medium text-gray-700 hover:text-primary shadow-sm"
-                                      >
-                                        <FormInput className="h-4 w-4" />
-                                        <span>Assessment</span>
-                                      </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => openUserProfile(appt)}
+                                            className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-primary/5 hover:border-primary/30 transition-all text-sm font-medium text-gray-700 hover:text-primary shadow-sm"
+                                          >
+                                            <User className="h-4 w-4" />
+                                            <span>Profile</span>
+                                          </button>
 
-                                      {appt.isTimeRange && (
+                                          <button
+                                            type="button"
+                                            onClick={() => openAssessmentForm(appt.clientFullName)}
+                                            className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-primary/5 hover:border-primary/30 transition-all text-sm font-medium text-gray-700 hover:text-primary shadow-sm"
+                                          >
+                                            <FormInput className="h-4 w-4" />
+                                            <span>Assessment</span>
+                                          </button>
+
+                                          <button
+                                            type="button"
+                                            onClick={() => {/* No action for now */}}
+                                            className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-primary/5 hover:border-primary/30 transition-all text-sm font-medium text-gray-700 hover:text-primary shadow-sm"
+                                          >
+                                            <FileText className="h-4 w-4" />
+                                            <span>Transcript</span>
+                                          </button>
+
+                                          <button
+                                            type="button"
+                                            onClick={() => openCancelDialog(appt)}
+                                            className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-destructive/5 hover:border-destructive/30 transition-all text-sm font-medium text-gray-700 hover:text-destructive shadow-sm"
+                                          >
+                                            <X className="h-4 w-4" />
+                                            <span>Cancel</span>
+                                          </button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    /* Actions Section for non-time-range appointments */
+                                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
+                                      <h4 className="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">Actions</h4>
+                                      <div className="flex flex-wrap items-center justify-center gap-3">
                                         <button
                                           type="button"
-                                          onClick={() => {/* No action for now */}}
+                                          onClick={() => openEditModalForAppt(appt)}
                                           className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-primary/5 hover:border-primary/30 transition-all text-sm font-medium text-gray-700 hover:text-primary shadow-sm"
                                         >
-                                          <FileText className="h-4 w-4" />
-                                          <span>Transcript</span>
+                                          <Calendar className="h-4 w-4" />
+                                          <span>Reschedule</span>
                                         </button>
-                                      )}
 
-                                      <button
-                                        type="button"
-                                        onClick={() => openCancelDialog(appt)}
-                                        className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-destructive/5 hover:border-destructive/30 transition-all text-sm font-medium text-gray-700 hover:text-destructive shadow-sm"
-                                      >
-                                        <X className="h-4 w-4" />
-                                        <span>Cancel</span>
-                                      </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => openUserProfile(appt)}
+                                          className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-primary/5 hover:border-primary/30 transition-all text-sm font-medium text-gray-700 hover:text-primary shadow-sm"
+                                        >
+                                          <User className="h-4 w-4" />
+                                          <span>Profile</span>
+                                        </button>
+
+                                        <button
+                                          type="button"
+                                          onClick={() => openAssessmentForm(appt.clientFullName)}
+                                          className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-primary/5 hover:border-primary/30 transition-all text-sm font-medium text-gray-700 hover:text-primary shadow-sm"
+                                        >
+                                          <FormInput className="h-4 w-4" />
+                                          <span>Assessment</span>
+                                        </button>
+
+                                        <button
+                                          type="button"
+                                          onClick={() => openCancelDialog(appt)}
+                                          className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-destructive/5 hover:border-destructive/30 transition-all text-sm font-medium text-gray-700 hover:text-destructive shadow-sm"
+                                        >
+                                          <X className="h-4 w-4" />
+                                          <span>Cancel</span>
+                                        </button>
+                                      </div>
                                     </div>
-                                  </div>
+                                  )}
                                 </div>
                               </td>
                             </tr>

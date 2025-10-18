@@ -24,6 +24,7 @@ export interface Appointment {
   location?: string;
   address?: string;
   otherDetails?: string;
+  callLogs?: boolean[];
 }
 
 export interface FilterOptions {

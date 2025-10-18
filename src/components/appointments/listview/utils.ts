@@ -77,6 +77,7 @@ export function generateAppointments(count: number): Appointment[] {
       meetingUrl: type === "team" || type === "personal" ? "https://zoom.us/j/123456789" : "",
       description,
       location: location,
+      callLogs: isTimeRange ? [false, false, false] : undefined,
     });
   }
   return appointments;
