@@ -1,7 +1,7 @@
 import { format } from "date-fns";
 import { getFormattedPhoneDisplay } from "./phoneFormatting";
 
-export const transformSupabaseToAppointment = (row: any, latestOutcome?: string) => {
+export const transformSupabaseToAppointment = (row: any, latestOutcome?: string, serviceByPersonId?: Record<string, string>) => {
   const bookingDetails = row.booking_details || {};
   
   // Get attendee data from the first attendee
@@ -42,8 +42,10 @@ export const transformSupabaseToAppointment = (row: any, latestOutcome?: string)
   // Determine appointment type
   const type = row.appointment_type === 'Lead' ? 'intakes' : 'clients';
   
-  // Get service name - try multiple possible paths from the query structure
-  const service = attendeeService?.service?.service 
+  // Get service name - prefer map lookup, fallback to nested paths
+  const serviceFromMap = attendee?.id ? serviceByPersonId?.[attendee.id] : undefined;
+  const service = serviceFromMap
+    || attendeeService?.service?.service 
     || attendeeService?.settings_services_and_fees?.service
     || '';
   

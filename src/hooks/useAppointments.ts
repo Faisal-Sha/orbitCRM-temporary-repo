@@ -74,15 +74,50 @@ export const useAppointments = ({ appointmentType, enabled }: UseAppointmentsOpt
 
       // Map latest outcome per appointment
       const latestOutcomes = new Map();
-      outcomesData?.forEach(outcome => {
+      outcomesData?.forEach((outcome: any) => {
         if (!latestOutcomes.has(outcome.appointment_id)) {
           latestOutcomes.set(outcome.appointment_id, outcome.outcome);
         }
       });
 
+      // Build service map per attendee (person) id
+      const attendeeIds: string[] = Array.from(new Set(
+        (data || []).flatMap((appt: any) =>
+          (appt.schedule_appointment_attendees || [])
+            .map((a: any) => a?.attendee?.id || a?.attendee_id)
+            .filter(Boolean)
+        )
+      ));
+
+      let serviceByPersonId: Record<string, string> = {};
+      if (attendeeIds.length > 0) {
+        const { data: pasData } = await supabase
+          .from('people_assign_service')
+          .select(`
+            person_id,
+            created_at,
+            is_deleted,
+            service:settings_services_and_fees(
+              service
+            )
+          `)
+          .in('person_id', attendeeIds)
+          .eq('is_deleted', false)
+          .order('created_at', { ascending: false });
+
+        if (pasData) {
+          for (const row of pasData as any[]) {
+            const pid = row.person_id;
+            if (!serviceByPersonId[pid] && row.service?.service) {
+              serviceByPersonId[pid] = row.service.service;
+            }
+          }
+        }
+      }
+
       // Transform data to match Appointment interface
-      return data?.map(appt => 
-        transformSupabaseToAppointment(appt, latestOutcomes.get(appt.id))
+      return data?.map((appt: any) => 
+        transformSupabaseToAppointment(appt, latestOutcomes.get(appt.id), serviceByPersonId)
       ) || [];
     },
     enabled,
