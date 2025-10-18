@@ -1804,6 +1804,96 @@ export type Database = {
           },
         ]
       }
+      schedule_appointment_notes: {
+        Row: {
+          appointment_id: string
+          appointment_note: string | null
+          call_log_1: string | null
+          call_log_2: string | null
+          call_log_3: string | null
+          created_at: string
+          id: string
+          person_id: string
+          updated_at: string
+        }
+        Insert: {
+          appointment_id: string
+          appointment_note?: string | null
+          call_log_1?: string | null
+          call_log_2?: string | null
+          call_log_3?: string | null
+          created_at?: string
+          id?: string
+          person_id: string
+          updated_at?: string
+        }
+        Update: {
+          appointment_id?: string
+          appointment_note?: string | null
+          call_log_1?: string | null
+          call_log_2?: string | null
+          call_log_3?: string | null
+          created_at?: string
+          id?: string
+          person_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_appointment_notes_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "schedule_appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_appointment_notes_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      schedule_appointment_outcomes_log: {
+        Row: {
+          appointment_id: string
+          created_at: string
+          id: string
+          outcome: string | null
+          person_id: string
+        }
+        Insert: {
+          appointment_id: string
+          created_at?: string
+          id?: string
+          outcome?: string | null
+          person_id: string
+        }
+        Update: {
+          appointment_id?: string
+          created_at?: string
+          id?: string
+          outcome?: string | null
+          person_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_appointment_outcomes_log_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "schedule_appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_appointment_outcomes_log_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       schedule_appointment_trigger_log: {
         Row: {
           appointment_id: string | null
