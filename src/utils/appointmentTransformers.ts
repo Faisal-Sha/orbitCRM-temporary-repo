@@ -42,8 +42,10 @@ export const transformSupabaseToAppointment = (row: any, latestOutcome?: string)
   // Determine appointment type
   const type = row.appointment_type === 'Lead' ? 'intakes' : 'clients';
   
-  // Get service name
-  const service = attendeeService?.service?.service || '';
+  // Get service name - try multiple possible paths from the query structure
+  const service = attendeeService?.service?.service 
+    || attendeeService?.settings_services_and_fees?.service
+    || '';
   
   // Get attendee full name
   const clientFullName = attendee 
@@ -67,8 +69,15 @@ export const transformSupabaseToAppointment = (row: any, latestOutcome?: string)
   // Get outcome
   const outcome = latestOutcome || 'Due';
   
-  // Determine if time range (for intakes - show call logs)
-  const isTimeRange = type === 'intakes';
+  // Hide Call Logs for now - will be enabled when time range format is implemented
+  // Currently only displaying start_time (e.g., "1 PM")
+  // Future: Show Call Logs only when time range format is detected (e.g., "1 PM - 4 PM")
+  const isTimeRange = false;
+  
+  // TODO: Enable when time range format is implemented:
+  // const endTime = row.end_time ? new Date(row.end_time) : null;
+  // const hasTimeRange = endTime && endTime.getTime() !== startTime.getTime();
+  // const isTimeRange = type === 'intakes' && hasTimeRange;
   
   return {
     id: row.id,
