@@ -312,8 +312,8 @@ const ListView = () => {
                         </tr>
                       );
                     }
-                    if (appt.type === "intakes" || appt.type === "followups") {
-                      // For intakes with time ranges and all followups, hide provider name if status is Pending
+                    if (appt.type === "intakes") {
+                      // For intakes with time ranges, hide provider name if status is Pending
                       const shouldHideProvider = appt.outcome === "Pending" && appt.isTimeRange;
                       const displayProviderName = shouldHideProvider ? "" : appt.clinicianFullName;
                       

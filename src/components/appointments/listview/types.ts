@@ -5,7 +5,7 @@ export interface Appointment {
   groupDateDisplay: string;
   time: string;
   isTimeRange: boolean;
-  type: "intakes" | "followups" | "clients" | "team" | "personal";
+  type: "intakes" | "clients" | "team" | "personal";
   service: string;
   clientFullName: string;
   clinicianFullName: string;

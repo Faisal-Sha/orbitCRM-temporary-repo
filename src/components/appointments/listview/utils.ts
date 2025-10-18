@@ -24,10 +24,10 @@ export function generateAppointments(count: number): Appointment[] {
   
   for (let i = 0; i < count; i++) {
     const group = datePool[i % datePool.length];
-    const type = i % 10 < 3 ? "intakes" : i % 10 < 5 ? "followups" : i % 10 < 7 ? "clients" : i % 10 < 8 ? "team" : "personal";
+    const type = i % 10 < 3 ? "intakes" : i % 10 < 6 ? "clients" : i % 10 < 8 ? "team" : "personal";
     let alertLevel: "red" | "yellow" | "grey" = "grey";
     
-    if (type === "intakes" || type === "clients" || type === "followups") {
+    if (type === "intakes" || type === "clients") {
       alertLevel = i % 7 === 0 ? "red" : i % 5 === 0 ? "yellow" : "grey";
     }
     
@@ -39,7 +39,7 @@ export function generateAppointments(count: number): Appointment[] {
     const attendees = attendeesBase.slice(0, numInvitees);
     const note = i % 5 === 0 && type !== "personal" ? "Please bring last session notes for review." : i % 6 === 0 && type === "clients" ? "" : undefined;
     
-    const isTimeRange = (type === "intakes" && i % 3 === 0) || type === "followups";
+    const isTimeRange = (type === "intakes" && i % 3 === 0);
     let time;
     if (isTimeRange) {
       time = TIME_RANGES[i % TIME_RANGES.length];
@@ -71,7 +71,7 @@ export function generateAppointments(count: number): Appointment[] {
       email: `${firstName.toLowerCase().replace(/\s+/g, ".")}@mail.com`,
       phone: `+1 (555) 234-${1200 + i}`,
       growthStage: GROWTH_STAGES[i % GROWTH_STAGES.length] as any,
-      outcome: type === "intakes" || type === "followups" ? OUTCOMES_INTAKES[i % OUTCOMES_INTAKES.length] : type === "clients" ? OUTCOMES_CLIENTS[i % OUTCOMES_CLIENTS.length] : "",
+      outcome: type === "intakes" ? OUTCOMES_INTAKES[i % OUTCOMES_INTAKES.length] : type === "clients" ? OUTCOMES_CLIENTS[i % OUTCOMES_CLIENTS.length] : "",
       meetingUrl: type === "team" || type === "personal" ? "https://zoom.us/j/123456789" : "",
       description,
       location: location,

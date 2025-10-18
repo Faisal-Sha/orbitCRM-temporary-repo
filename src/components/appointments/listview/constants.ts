@@ -4,7 +4,6 @@ import { FilterOptions } from "./types";
 export const TYPE_OPTIONS: FilterOptions[] = [
   { value: "all", label: "All" },
   { value: "intakes", label: "Intakes" },
-  { value: "followups", label: "Follow Ups" },
   { value: "clients", label: "Clients" },
   { value: "team", label: "Team" },
   { value: "personal", label: "Personal" }
