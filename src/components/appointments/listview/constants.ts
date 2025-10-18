@@ -2,11 +2,11 @@
 import { FilterOptions } from "./types";
 
 export const TYPE_OPTIONS: FilterOptions[] = [
-  { value: "all", label: "All" },
   { value: "intakes", label: "Intakes" },
   { value: "clients", label: "Clients" },
   { value: "team", label: "Team" },
-  { value: "personal", label: "Personal" }
+  { value: "personal", label: "Personal" },
+  { value: "all", label: "All" }
 ];
 
 export const DATE_OPTIONS: FilterOptions[] = [

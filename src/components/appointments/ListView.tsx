@@ -19,7 +19,7 @@ import { InlineOutcomeDropdown } from "./listview/components/InlineOutcomeDropdo
 
 const ListView = () => {
   // Filters, search, appointment expanded state
-  const [type, setType] = useState("all");
+  const [type, setType] = useState("intakes");
   const [date, setDate] = useState("today");
   const [search, setSearch] = useState("");
   const [loadAmount, setLoadAmount] = useState(INITIAL_LOAD);
@@ -341,92 +341,116 @@ const ListView = () => {
                             </td>
                           </tr>
                           {expanded[appt.id] && (
-                            <tr className="bg-gray-50 border-b">
-                              <td colSpan={8} className="px-0 py-8">
-                                <div className="flex flex-col items-center gap-12 justify-center">
-                                  <div className="flex flex-col md:flex-row gap-8 md:gap-16 text-center md:text-left w-full justify-center">
-                                    {/* --- ICONS: Edit, UserProfile, Note, Cancel --- */}
-                                    <div className="flex flex-col items-center gap-3 flex-1 min-w-[140px]">
-                                      <Mail className="h-5 w-5 text-muted-foreground mx-auto" />
-                                      <EditableCell
-                                        value={appt.email}
-                                        maxLen={64}
-                                        onSave={val => handleEdit(appt.id, "email", val)}
-                                        className="w-[150px] mx-auto"
-                                        type="email"
-                                      />
+                            <tr className="bg-gradient-to-br from-gray-50 to-gray-100/50 border-b">
+                              <td colSpan={8} className="px-6 py-6">
+                                <div className="max-w-4xl mx-auto">
+                                  {/* Contact Information Section */}
+                                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5 mb-4">
+                                    <h4 className="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">Contact Information</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                      <div className="flex items-start gap-3">
+                                        <div className="mt-0.5">
+                                          <Mail className="h-4 w-4 text-primary" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <label className="text-xs text-muted-foreground block mb-1">Email</label>
+                                          <EditableCell
+                                            value={appt.email}
+                                            maxLen={64}
+                                            onSave={val => handleEdit(appt.id, "email", val)}
+                                            className="w-full text-sm"
+                                            type="email"
+                                          />
+                                        </div>
+                                      </div>
+                                      <div className="flex items-start gap-3">
+                                        <div className="mt-0.5">
+                                          <Phone className="h-4 w-4 text-primary" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <label className="text-xs text-muted-foreground block mb-1">Phone</label>
+                                          <EditableCell
+                                            value={appt.phone}
+                                            maxLen={18}
+                                            onSave={val => handleEdit(appt.id, "phone", val)}
+                                            className="w-full text-sm"
+                                            type="tel"
+                                          />
+                                        </div>
+                                      </div>
+                                      <div className="flex items-start gap-3">
+                                        <div className="mt-0.5">
+                                          <StickyNote className="h-4 w-4 text-primary" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <label className="text-xs text-muted-foreground block mb-1">Note</label>
+                                          {appt.note === undefined ? (
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              className="text-xs h-8 w-full justify-start"
+                                              onClick={() => handleCreateNote(appt.id, "Type your note here.")}
+                                            >
+                                              + Add Note
+                                            </Button>
+                                          ) : (
+                                            <EditableCell
+                                              value={appt.note}
+                                              maxLen={120}
+                                              onSave={val => handleEdit(appt.id, "note", val)}
+                                              className="w-full text-sm"
+                                            />
+                                          )}
+                                        </div>
+                                      </div>
                                     </div>
-                                    <div className="flex flex-col items-center gap-3 flex-1 min-w-[130px]">
-                                      <Phone className="h-5 w-5 text-muted-foreground mx-auto" />
-                                      <EditableCell
-                                        value={appt.phone}
-                                        maxLen={18}
-                                        onSave={val => handleEdit(appt.id, "phone", val)}
-                                        className="w-[130px] mx-auto"
-                                        type="tel"
-                                      />
-                                    </div>
-                                    <div className="flex flex-col items-center gap-3 flex-1 min-w-[150px]">
-                                      <FormInput className="h-5 w-5 text-muted-foreground mx-auto" />
-                                      {appt.note === undefined ? (
-                                        <span>
-                                          <Button
-                                            size="sm"
-                                            variant="outline"
-                                            className="text-xs"
-                                            onClick={() => handleCreateNote(appt.id, "Type your note here.")}
-                                          >
-                                            + Add Note
-                                          </Button>
-                                        </span>
-                                      ) : (
-                                        <EditableCell
-                                          value={appt.note}
-                                          maxLen={120}
-                                          onSave={val => handleEdit(appt.id, "note", val)}
-                                          className="w-[160px] mx-auto"
-                                        />
-                                      )}
-                                    </div>
-                                    {/* ICON BUTTON GROUP, ORDER: Edit (Calendar), UserProfile, Note (Assessment), Transcript (for time-range only), Cancel */}
-                                    <div className="flex flex-row justify-center items-center gap-4 flex-1 min-w-[85px]">
+                                  </div>
+
+                                  {/* Actions Section */}
+                                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
+                                    <h4 className="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">Actions</h4>
+                                    <div className="flex flex-wrap items-center justify-center gap-3">
                                       <TooltipProvider>
                                         <Tooltip>
                                           <TooltipTrigger asChild>
                                             <button
                                               type="button"
                                               onClick={() => openEditModalForAppt(appt)}
-                                              className="rounded-full p-1 hover:bg-primary/10 focus:outline-none transition"
+                                              className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-primary/5 hover:border-primary/30 transition-all text-sm font-medium text-gray-700 hover:text-primary shadow-sm"
                                             >
-                                              <Calendar className="h-6 w-6 text-primary" />
+                                              <Calendar className="h-4 w-4" />
+                                              <span>Edit</span>
                                             </button>
                                           </TooltipTrigger>
                                           <TooltipContent>Edit appointment</TooltipContent>
                                         </Tooltip>
                                       </TooltipProvider>
-                                      <span
-                                        className="cursor-pointer rounded-full hover:bg-primary/10 p-1 transition"
-                                        title="View profile"
-                                        tabIndex={0}
+
+                                      <button
+                                        type="button"
                                         onClick={() => openUserProfile(appt)}
-                                        role="button"
+                                        className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-primary/5 hover:border-primary/30 transition-all text-sm font-medium text-gray-700 hover:text-primary shadow-sm"
                                       >
-                                        <User className="h-6 w-6 text-primary" />
-                                      </span>
+                                        <User className="h-4 w-4" />
+                                        <span>Profile</span>
+                                      </button>
+
                                       <TooltipProvider>
                                         <Tooltip>
                                           <TooltipTrigger asChild>
                                             <button
                                               type="button"
                                               onClick={() => openAssessmentForm(appt.clientFullName)}
-                                              className="rounded-full p-1 hover:bg-primary/10 focus:outline-none transition"
+                                              className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-primary/5 hover:border-primary/30 transition-all text-sm font-medium text-gray-700 hover:text-primary shadow-sm"
                                             >
-                                              <StickyNote className="w-6 h-6 text-primary" />
+                                              <FormInput className="h-4 w-4" />
+                                              <span>Assessment</span>
                                             </button>
                                           </TooltipTrigger>
                                           <TooltipContent>Assessment form</TooltipContent>
                                         </Tooltip>
                                       </TooltipProvider>
+
                                       {appt.isTimeRange && (
                                         <TooltipProvider>
                                           <Tooltip>
@@ -434,22 +458,24 @@ const ListView = () => {
                                               <button
                                                 type="button"
                                                 onClick={() => {/* No action for now */}}
-                                                className="rounded-full p-1 hover:bg-primary/10 focus:outline-none transition"
+                                                className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-primary/5 hover:border-primary/30 transition-all text-sm font-medium text-gray-700 hover:text-primary shadow-sm"
                                               >
-                                                <FileText className="w-6 h-6 text-primary" />
+                                                <FileText className="h-4 w-4" />
+                                                <span>Transcript</span>
                                               </button>
                                             </TooltipTrigger>
                                             <TooltipContent>Transcript</TooltipContent>
                                           </Tooltip>
                                         </TooltipProvider>
                                       )}
+
                                       <button
                                         type="button"
-                                        title="Cancel appointment"
                                         onClick={() => openCancelDialog(appt)}
-                                        className="rounded-full p-1 hover:bg-destructive/10 focus:outline-none transition"
+                                        className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-destructive/5 hover:border-destructive/30 transition-all text-sm font-medium text-gray-700 hover:text-destructive shadow-sm"
                                       >
-                                        <X className="h-6 w-6 text-destructive" />
+                                        <X className="h-4 w-4" />
+                                        <span>Cancel</span>
                                       </button>
                                     </div>
                                   </div>
