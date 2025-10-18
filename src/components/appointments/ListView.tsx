@@ -639,12 +639,23 @@ const ListView = () => {
                           <tr className="border-b group hover:bg-gray-50 transition-colors">
                             <td className="px-4 py-2 whitespace-nowrap text-xs">{appt.time}</td>
                             <td className="px-2 py-2">{appt.service}</td>
-                            <td className="px-2 py-2">{appt.clientFullName}</td>
+                            <td className="px-2 py-2">
+                              <div className="flex items-center gap-1">
+                                {appt.clientFullName}
+                                {appt.attendeeNote && (
+                                  <FileText className="h-3.5 w-3.5 text-blue-600" />
+                                )}
+                              </div>
+                            </td>
                             <td className="px-2 py-2 text-center"><AlertIconWithTooltip level={appt.alertLevel} /></td>
                             <td className="px-2 py-2 text-center"><GrowthStatusCell stage={appt.growthStage} /></td>
-                            <td className="px-2 py-2 flex items-center gap-1">
-                              {appt.clinicianFullName}
-                              {renderNoteIcon(appt.note)}
+                            <td className="px-2 py-2">
+                              <div className="flex items-center gap-1">
+                                {appt.clinicianFullName}
+                                {appt.note && (
+                                  <FileText className="h-3.5 w-3.5 text-blue-600" />
+                                )}
+                              </div>
                             </td>
                             <td className="px-2 py-2">
                               <InlineOutcomeDropdown
@@ -665,99 +676,131 @@ const ListView = () => {
                             <tr className="bg-gray-50 border-b">
                               <td colSpan={8} className="px-0 py-8">
                                 <div className="flex flex-col gap-6">
-                                  {/* Contact Information Section */}
+                                   {/* Contact Information Section */}
                                   <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
                                     <h4 className="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">Contact Information</h4>
-                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                                      {/* Email - Non-editable */}
-                                      <div className="flex flex-col gap-2">
-                                        <div className="flex items-center gap-2">
-                                          <Mail className="h-4 w-4 text-muted-foreground" />
-                                          <span className="text-xs font-medium text-gray-600">Email</span>
-                                        </div>
-                                        <p className="text-sm text-gray-900 break-all">{appt.email}</p>
-                                      </div>
-
-                                      {/* Phone - Non-editable */}
-                                      <div className="flex flex-col gap-2">
-                                        <div className="flex items-center gap-2">
-                                          <Phone className="h-4 w-4 text-muted-foreground" />
-                                          <span className="text-xs font-medium text-gray-600">Phone</span>
-                                        </div>
-                                        <p className="text-sm text-gray-900">{appt.phone}</p>
-                                      </div>
-
-                                      {/* Attendee Note - Non-editable */}
-                                      <div className="flex flex-col gap-2">
-                                        <div className="flex items-center gap-2">
-                                          <FormInput className="h-4 w-4 text-muted-foreground" />
-                                          <span className="text-xs font-medium text-gray-600">Attendee Note</span>
-                                        </div>
-                                        {appt.attendeeNote ? (
-                                          <TooltipProvider>
-                                            <Tooltip>
-                                              <TooltipTrigger asChild>
-                                                <p className="text-sm text-gray-900 cursor-default truncate max-w-[200px]">
-                                                  {appt.attendeeNote.length > 50 ? `${appt.attendeeNote.substring(0, 50)}...` : appt.attendeeNote}
-                                                </p>
-                                              </TooltipTrigger>
-                                              <TooltipContent className="bg-white text-black border border-gray-200 shadow-lg max-w-xs">
-                                                <p className="text-sm">{appt.attendeeNote}</p>
-                                              </TooltipContent>
-                                            </Tooltip>
-                                          </TooltipProvider>
-                                        ) : (
-                                          <p className="text-sm text-gray-400 italic">No note</p>
-                                        )}
-                                      </div>
-
-                                      {/* Provider Note - Editable */}
-                                      <div className="flex flex-col gap-2">
-                                        <div className="flex items-center gap-2">
-                                          <FormInput className="h-4 w-4 text-muted-foreground" />
-                                          <span className="text-xs font-medium text-gray-600">Provider Note</span>
-                                        </div>
-                                        {editingNoteId === appt.id ? (
-                                          <div className="flex flex-col gap-2">
-                                            <Input
-                                              value={editingNoteValue}
-                                              onChange={(e) => setEditingNoteValue(e.target.value)}
-                                              className="text-sm"
-                                              placeholder="Enter note..."
-                                            />
-                                            <div className="flex gap-2">
-                                              <Button size="sm" variant="default" onClick={() => saveNoteEdit(appt.id)}>Save</Button>
-                                              <Button size="sm" variant="outline" onClick={cancelNoteEdit}>Cancel</Button>
-                                            </div>
+                                    <div className="flex flex-col gap-6">
+                                      {/* Row 1: Email and Phone */}
+                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        {/* Email - Non-editable */}
+                                        <div className="flex items-start gap-3">
+                                          <div className="mt-0.5">
+                                            <Mail className="h-4 w-4 text-primary" />
                                           </div>
-                                        ) : (
-                                          <>
-                                            {appt.note ? (
+                                          <div className="flex-1 min-w-0">
+                                            <label className="text-xs text-muted-foreground block mb-1">Email</label>
+                                            <p className="text-sm text-gray-900 break-all">{appt.email}</p>
+                                          </div>
+                                        </div>
+
+                                        {/* Phone - Non-editable */}
+                                        <div className="flex items-start gap-3">
+                                          <div className="mt-0.5">
+                                            <Phone className="h-4 w-4 text-primary" />
+                                          </div>
+                                          <div className="flex-1 min-w-0">
+                                            <label className="text-xs text-muted-foreground block mb-1">Phone</label>
+                                            <p className="text-sm text-gray-900">{appt.phone}</p>
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      {/* Row 2: Attendee Note and Provider Note */}
+                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        {/* Attendee Note - Non-editable */}
+                                        <div className="flex items-start gap-3">
+                                          <div className="mt-0.5">
+                                            <StickyNote className="h-4 w-4 text-primary" />
+                                          </div>
+                                          <div className="flex-1 min-w-0">
+                                            <label className="text-xs text-muted-foreground block mb-1">Attendee Note</label>
+                                            {appt.attendeeNote ? (
                                               <TooltipProvider>
                                                 <Tooltip>
                                                   <TooltipTrigger asChild>
-                                                    <p
-                                                      className="text-sm text-gray-900 cursor-pointer hover:text-primary transition-colors truncate max-w-[200px]"
-                                                      onClick={() => startNoteEdit(appt.id, appt.note)}
-                                                    >
-                                                      {appt.note.length > 50 ? `${appt.note.substring(0, 50)}...` : appt.note}
+                                                    <p className="text-sm text-gray-900 truncate cursor-default">
+                                                      {appt.attendeeNote.length > 50 ? `${appt.attendeeNote.substring(0, 50)}...` : appt.attendeeNote}
                                                     </p>
                                                   </TooltipTrigger>
-                                                  <TooltipContent className="bg-white text-black border border-gray-200 shadow-lg max-w-xs">
-                                                    <p className="text-sm">{appt.note}</p>
+                                                  <TooltipContent className="bg-white text-black border border-gray-200 max-w-xs">
+                                                    {appt.attendeeNote}
                                                   </TooltipContent>
                                                 </Tooltip>
                                               </TooltipProvider>
                                             ) : (
-                                              <button
+                                              <p className="text-sm text-muted-foreground italic">No note</p>
+                                            )}
+                                          </div>
+                                        </div>
+
+                                        {/* Provider Note - Editable */}
+                                        <div className="flex items-start gap-3">
+                                          <div className="mt-0.5">
+                                            <StickyNote className="h-4 w-4 text-primary" />
+                                          </div>
+                                          <div className="flex-1 min-w-0">
+                                            <label className="text-xs text-muted-foreground block mb-1">Provider Note</label>
+                                            {editingNoteId === appt.id ? (
+                                              <div className="flex flex-col gap-2">
+                                                <Input
+                                                  value={editingNoteValue}
+                                                  onChange={(e) => setEditingNoteValue(e.target.value)}
+                                                  className="text-sm"
+                                                  autoFocus
+                                                  onKeyDown={(e) => {
+                                                    if (e.key === "Enter") {
+                                                      saveNoteEdit(appt.id);
+                                                    } else if (e.key === "Escape") {
+                                                      cancelNoteEdit();
+                                                    }
+                                                  }}
+                                                />
+                                                <div className="flex gap-2">
+                                                  <Button
+                                                    size="sm"
+                                                    onClick={() => saveNoteEdit(appt.id)}
+                                                    className="text-xs h-7"
+                                                  >
+                                                    Save
+                                                  </Button>
+                                                  <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={cancelNoteEdit}
+                                                    className="text-xs h-7"
+                                                  >
+                                                    Cancel
+                                                  </Button>
+                                                </div>
+                                              </div>
+                                            ) : appt.note === undefined || appt.note === "" ? (
+                                              <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="text-xs h-8 w-full justify-start"
                                                 onClick={() => startNoteEdit(appt.id, "")}
-                                                className="text-sm text-primary hover:text-primary/80 transition-colors text-left"
                                               >
                                                 + Add Note
-                                              </button>
+                                              </Button>
+                                            ) : (
+                                              <TooltipProvider>
+                                                <Tooltip>
+                                                  <TooltipTrigger asChild>
+                                                    <div 
+                                                      className="text-sm text-gray-900 cursor-pointer px-2 py-1.5 rounded hover:bg-primary/10 transition-colors border border-transparent hover:border-primary/20"
+                                                      onClick={() => startNoteEdit(appt.id, appt.note || "")}
+                                                    >
+                                                      {appt.note.length > 50 ? `${appt.note.substring(0, 50)}...` : appt.note}
+                                                    </div>
+                                                  </TooltipTrigger>
+                                                  <TooltipContent className="bg-white text-black border border-gray-200 max-w-xs">
+                                                    {appt.note}
+                                                  </TooltipContent>
+                                                </Tooltip>
+                                              </TooltipProvider>
                                             )}
-                                          </>
-                                        )}
+                                          </div>
+                                        </div>
                                       </div>
                                     </div>
                                   </div>

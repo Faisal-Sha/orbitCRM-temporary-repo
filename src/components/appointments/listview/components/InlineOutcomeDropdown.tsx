@@ -32,15 +32,25 @@ export const InlineOutcomeDropdown = ({
       </span>
     </DropdownMenuTrigger>
     <DropdownMenuContent side="bottom" align="start" className="z-50 min-w-[150px] bg-white outline-none">
-      {options.map(opt => (
-        <DropdownMenuItem
-          key={opt}
-          className={`cursor-pointer px-3 py-2 text-sm ${getBadgeProps(opt).className} ${opt === value ? "font-bold" : ""}`}
-          onClick={() => { if (opt !== value) onChange(opt); }}
-        >
-          {opt}
-        </DropdownMenuItem>
-      ))}
+      {options.map(opt => {
+        const props = getBadgeProps(opt);
+        return (
+          <DropdownMenuItem
+            key={opt}
+            className={`cursor-pointer px-3 py-2 text-sm ${props.className} ${opt === value ? "font-bold" : ""}`}
+            style={{ pointerEvents: 'auto' }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.opacity = '0.9';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.opacity = '1';
+            }}
+            onClick={() => { if (opt !== value) onChange(opt); }}
+          >
+            {opt}
+          </DropdownMenuItem>
+        );
+      })}
     </DropdownMenuContent>
   </DropdownMenu>
 );
