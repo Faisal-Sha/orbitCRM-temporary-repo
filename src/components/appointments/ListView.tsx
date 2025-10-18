@@ -186,21 +186,10 @@ const ListView = () => {
     setCancelDialogOpen(false);
   }
 
-  // Render helpers
+  // Render helpers - Simple note icon without tooltip
   function renderNoteIcon(note: string | undefined) {
     if (typeof note === "string" && note.trim() !== "") {
-      return (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="ml-1 inline-flex items-center text-primary" tabIndex={0}>
-                <StickyNote className="w-4 h-4" aria-label="Has note" />
-              </span>
-            </TooltipTrigger>
-            <TooltipContent>Has note</TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      );
+      return <FileText className="h-3.5 w-3.5 text-blue-600" />;
     }
     return null;
   }
@@ -363,14 +352,22 @@ const ListView = () => {
                           <tr className="border-b group hover:bg-gray-50 transition-colors">
                             <td className="px-4 py-2 whitespace-nowrap text-xs">{appt.time}</td>
                             <td className="px-2 py-2">{appt.service}</td>
-                            <td className="px-2 py-2 flex items-center gap-1">
-                              {appt.clientFullName}
-                              {renderNoteIcon(appt.attendeeNote)}
+                            <td className="px-2 py-2">
+                              <div className="flex items-center gap-1">
+                                {appt.clientFullName}
+                                {appt.attendeeNote && (
+                                  <FileText className="h-3.5 w-3.5 text-blue-600" />
+                                )}
+                              </div>
                             </td>
                             <td className="px-2 py-2 text-center"><AlertIconWithTooltip level={appt.alertLevel} /></td>
-                            <td className="px-2 py-2 flex items-center gap-1">
-                              {displayProviderName}
-                              {renderNoteIcon(appt.note)}
+                            <td className="px-2 py-2">
+                              <div className="flex items-center gap-1">
+                                {displayProviderName}
+                                {appt.note && (
+                                  <FileText className="h-3.5 w-3.5 text-blue-600" />
+                                )}
+                              </div>
                             </td>
                             <td className="px-2 py-2">
                               <InlineOutcomeDropdown
