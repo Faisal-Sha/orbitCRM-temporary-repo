@@ -17,6 +17,7 @@ import LegalAdminTab from "./LegalAdminTab";
 const AssessmentForm = () => {
   const [searchParams] = useSearchParams();
   const clientName = searchParams.get('client') || 'Assessment';
+  const personId = searchParams.get('personId');
 
   const CompanionedAITab = () => {
     const [activeSubTab, setActiveSubTab] = useState("chat");
@@ -251,7 +252,7 @@ const AssessmentForm = () => {
   };
 
   const GeneralTabWrapper = () => (
-    <GeneralTab personId="demo-person-id" hideUpcomingAppointments={true} />
+    <GeneralTab personId={personId || "demo-person-id"} hideUpcomingAppointments={true} />
   );
 
   const tabs = [

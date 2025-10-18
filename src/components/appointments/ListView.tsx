@@ -1,4 +1,6 @@
 import React, { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Mail, Phone, FormInput, User, ChevronDown, ChevronUp, Users, FileText, StickyNote, Calendar, X } from "lucide-react";
@@ -17,6 +19,9 @@ import { GrowthStatusCell } from "./listview/components/GrowthStatusCell";
 import { AlertIconWithTooltip } from "./listview/components/AlertIconWithTooltip";
 import { EditableCell } from "./listview/components/EditableCell";
 import { InlineOutcomeDropdown } from "./listview/components/InlineOutcomeDropdown";
+import { useAppointments } from "@/hooks/useAppointments";
+import { useAppointmentNotes } from "@/hooks/useAppointmentNotes";
+import { useAppointmentOutcomes } from "@/hooks/useAppointmentOutcomes";
 
 const ListView = () => {
   // Filters, search, appointment expanded state
@@ -25,8 +30,34 @@ const ListView = () => {
   const [search, setSearch] = useState("");
   const [loadAmount, setLoadAmount] = useState(INITIAL_LOAD);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  // Demo: Track edits to dummy data inline
-  const [apptsData, setApptsData] = useState(generateAppointments(MAX_APPOINTMENTS));
+  
+  // Mock data for Team/Personal/All views
+  const [mockApptsData, setMockApptsData] = useState(generateAppointments(MAX_APPOINTMENTS));
+  
+  // Get current user's person_id for mutations
+  const { data: currentPersonId } = useQuery({
+    queryKey: ['currentPersonId'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('current_user_person_id');
+      if (error) throw error;
+      return data;
+    }
+  });
+
+  // Fetch from Supabase for intakes/clients only
+  const shouldFetchFromSupabase = type === 'intakes' || type === 'clients';
+  const { data: supabaseAppts, isLoading } = useAppointments({
+    appointmentType: type === 'intakes' ? 'Lead' : 'Client',
+    enabled: shouldFetchFromSupabase
+  });
+
+  // Use Supabase data for intakes/clients, mock data for others
+  const apptsData = shouldFetchFromSupabase ? (supabaseAppts || []) : mockApptsData;
+
+  // Get mutation functions
+  const { updateNote, updateCallLog } = useAppointmentNotes();
+  const { logOutcome } = useAppointmentOutcomes();
+  
   // For UserProfile panel demo
   const [userProfileOpen, setUserProfileOpen] = useState(false);
   const [userProfileUser, setUserProfileUser] = useState<any>(null);
@@ -75,32 +106,64 @@ const ListView = () => {
   }
   
   function handleEdit(apptId: string, field: string, newVal: string) {
-    setApptsData(appts => appts.map(a => a.id === apptId ? {
-      ...a,
-      [field]: newVal
-    } : a));
+    if (shouldFetchFromSupabase && field === 'outcome' && currentPersonId) {
+      // Log outcome to Supabase for intakes/clients
+      logOutcome({
+        appointmentId: apptId,
+        personId: currentPersonId,
+        outcome: newVal
+      });
+    } else {
+      // Mock data update for other views
+      setMockApptsData(appts => appts.map(a => a.id === apptId ? {
+        ...a,
+        [field]: newVal
+      } : a));
+    }
   }
   
   function handleEditObj(apptId: string, fields: Partial<any>) {
-    setApptsData(appts => appts.map(a => a.id === apptId ? { ...a, ...fields } : a));
+    setMockApptsData(appts => appts.map(a => a.id === apptId ? { ...a, ...fields } : a));
   }
   
   function handleCreateNote(apptId: string, note: string) {
-    setApptsData(appts => appts.map(a => a.id === apptId ? {
-      ...a,
-      note
-    } : a));
+    if (shouldFetchFromSupabase && currentPersonId) {
+      updateNote({
+        appointmentId: apptId,
+        personId: currentPersonId,
+        note: note
+      });
+    } else {
+      setMockApptsData(appts => appts.map(a => a.id === apptId ? {
+        ...a,
+        note
+      } : a));
+    }
   }
 
   function handleCallLogToggle(apptId: string, callIndex: number) {
-    setApptsData(appts => appts.map(a => {
-      if (a.id === apptId && a.callLogs) {
-        const newCallLogs = [...a.callLogs];
-        newCallLogs[callIndex] = !newCallLogs[callIndex];
-        return { ...a, callLogs: newCallLogs };
-      }
-      return a;
-    }));
+    if (shouldFetchFromSupabase && currentPersonId) {
+      // Update call log in Supabase for intakes/clients
+      const appt = apptsData.find(a => a.id === apptId);
+      const currentValue = appt?.callLogs?.[callIndex];
+      
+      updateCallLog({
+        appointmentId: apptId,
+        personId: currentPersonId,
+        logNumber: (callIndex + 1) as 1 | 2 | 3,
+        checked: !currentValue
+      });
+    } else {
+      // Mock data update for other views
+      setMockApptsData(appts => appts.map(a => {
+        if (a.id === apptId && a.callLogs) {
+          const newCallLogs = [...a.callLogs];
+          newCallLogs[callIndex] = !newCallLogs[callIndex];
+          return { ...a, callLogs: newCallLogs };
+        }
+        return a;
+      }));
+    }
   }
 
   // State for inline note editing
@@ -113,10 +176,20 @@ const ListView = () => {
   }
 
   function saveNoteEdit(apptId: string) {
-    if (editingNoteValue.trim() === "") {
-      handleEdit(apptId, "note", undefined as any);
+    if (shouldFetchFromSupabase && currentPersonId) {
+      // Save note to Supabase for intakes/clients
+      updateNote({
+        appointmentId: apptId,
+        personId: currentPersonId,
+        note: editingNoteValue.trim() || null
+      });
     } else {
-      handleEdit(apptId, "note", editingNoteValue);
+      // Mock data update for other views
+      if (editingNoteValue.trim() === "") {
+        handleEdit(apptId, "note", undefined as any);
+      } else {
+        handleEdit(apptId, "note", editingNoteValue);
+      }
     }
     setEditingNoteId(null);
     setEditingNoteValue("");
@@ -129,6 +202,7 @@ const ListView = () => {
   
   function openUserProfile(appt: any) {
     setUserProfileUser({
+      person_id: appt.attendeeId || '',
       name: appt.clientFullName || appt.clinicianFullName,
       interest: "Client",
       inquiryDate: appt.groupDateDisplay,
@@ -139,13 +213,13 @@ const ListView = () => {
   }
 
   // Functions to open forms in new tabs
-  function openAssessmentForm(clientName: string) {
-    const url = `/records/assessment-form?client=${encodeURIComponent(clientName)}`;
+  function openAssessmentForm(clientName: string, attendeeId?: string) {
+    const url = `/records/assessment-form?client=${encodeURIComponent(clientName)}${attendeeId ? `&personId=${attendeeId}` : ''}`;
     window.open(url, '_blank');
   }
 
-  function openProgressNotesForm(clientName: string) {
-    const url = `/records/progress-notes-form?client=${encodeURIComponent(clientName)}`;
+  function openProgressNotesForm(clientName: string, attendeeId?: string) {
+    const url = `/records/progress-notes-form?client=${encodeURIComponent(clientName)}${attendeeId ? `&personId=${attendeeId}` : ''}`;
     window.open(url, '_blank');
   }
 
@@ -553,7 +627,7 @@ const ListView = () => {
 
                                           <button
                                             type="button"
-                                            onClick={() => openAssessmentForm(appt.clientFullName)}
+                                            onClick={() => openAssessmentForm(appt.clientFullName, appt.attendeeId)}
                                             className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-primary/5 hover:border-primary/30 transition-all text-sm font-medium text-gray-700 hover:text-primary shadow-sm"
                                           >
                                             <FormInput className="h-4 w-4" />
@@ -605,7 +679,7 @@ const ListView = () => {
 
                                         <button
                                           type="button"
-                                          onClick={() => openAssessmentForm(appt.clientFullName)}
+                                          onClick={() => openAssessmentForm(appt.clientFullName, appt.attendeeId)}
                                           className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-primary/5 hover:border-primary/30 transition-all text-sm font-medium text-gray-700 hover:text-primary shadow-sm"
                                         >
                                           <FormInput className="h-4 w-4" />
@@ -826,7 +900,7 @@ const ListView = () => {
 
                                       <button
                                         type="button"
-                                        onClick={() => openProgressNotesForm(appt.clientFullName)}
+                                        onClick={() => openProgressNotesForm(appt.clientFullName, appt.attendeeId)}
                                         className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-primary/5 hover:border-primary/30 transition-all text-sm font-medium text-gray-700 hover:text-primary shadow-sm"
                                       >
                                         <StickyNote className="h-4 w-4" />

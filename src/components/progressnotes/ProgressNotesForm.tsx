@@ -20,6 +20,7 @@ import SupervisionNotesTab from "./SupervisionNotesTab";
 const ProgressNotesForm = () => {
   const [searchParams] = useSearchParams();
   const clientName = searchParams.get('client') || 'Progress Notes';
+  const personId = searchParams.get('personId');
 
   const CompanionedAITab = () => {
     const [activeSubTab, setActiveSubTab] = useState("chat");
@@ -72,7 +73,7 @@ const ProgressNotesForm = () => {
             </TabsTrigger>
           </TabsList>
           <TabsContent value="general" className="mt-0">
-            <GeneralTab personId="demo-person-id" hideUpcomingAppointments={true} showApplicationInfo={false} />
+            <GeneralTab personId={personId || "demo-person-id"} hideUpcomingAppointments={true} showApplicationInfo={false} />
           </TabsContent>
           <TabsContent value="performance" className="mt-0">
             <PerformanceTab user={{}} />

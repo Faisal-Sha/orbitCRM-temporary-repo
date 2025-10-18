@@ -1,0 +1,104 @@
+import { format } from "date-fns";
+import { getFormattedPhoneDisplay } from "./phoneFormatting";
+
+export const transformSupabaseToAppointment = (row: any, latestOutcome?: string) => {
+  const bookingDetails = row.booking_details || {};
+  
+  // Get attendee data from the first attendee
+  const attendeeData = row.schedule_appointment_attendees?.[0];
+  const attendee = attendeeData?.attendee;
+  const attendeeContact = attendee?.people_contacts?.[0];
+  const attendeeService = attendee?.people_assign_service?.[0];
+  
+  // Extract email from booking_details or people_contacts
+  const email = bookingDetails.attendees?.[0]?.email 
+    || bookingDetails.responses?.email?.value 
+    || attendeeContact?.email
+    || '';
+  
+  // Extract phone/location from booking_details or people_contacts
+  let phoneLocation = bookingDetails.location 
+    || bookingDetails.responses?.location?.value?.value
+    || attendeeContact?.phone
+    || '';
+  
+  // Format phone number to USA format if it looks like a phone number
+  if (phoneLocation && phoneLocation.match(/^\+?[\d\s-]+$/)) {
+    phoneLocation = getFormattedPhoneDisplay(phoneLocation, 'United States');
+  }
+  
+  // Extract attendee note
+  const attendeeNote = bookingDetails.responses?.notes?.value 
+    || bookingDetails.additionalNotes 
+    || bookingDetails.notes
+    || '';
+  
+  // Format date and time
+  const startTime = new Date(row.start_time);
+  const groupDate = format(startTime, 'yyyy-MM-dd');
+  const groupDateDisplay = format(startTime, 'MMM d');
+  const time = format(startTime, 'h:mm a');
+  
+  // Determine appointment type
+  const type = row.appointment_type === 'Lead' ? 'intakes' : 'clients';
+  
+  // Get service name
+  const service = attendeeService?.service?.service || '';
+  
+  // Get attendee full name
+  const clientFullName = attendee 
+    ? `${attendee.first_name} ${attendee.last_name}`.trim()
+    : '';
+  
+  // Get host full name
+  const clinicianFullName = row.host 
+    ? `${row.host.first_name} ${row.host.last_name}`.trim()
+    : '';
+  
+  // Get note and call logs from schedule_appointment_notes
+  const notesData = row.schedule_appointment_notes?.[0];
+  const note = notesData?.appointment_note || undefined;
+  const callLogs = [
+    !!notesData?.call_log_1,
+    !!notesData?.call_log_2,
+    !!notesData?.call_log_3
+  ];
+  
+  // Get outcome
+  const outcome = latestOutcome || 'Due';
+  
+  // Determine if time range (for intakes - show call logs)
+  const isTimeRange = type === 'intakes';
+  
+  return {
+    id: row.id,
+    groupDate,
+    groupDateDisplay,
+    time,
+    isTimeRange,
+    type: type as "intakes" | "clients" | "team" | "personal",
+    service,
+    clientFullName,
+    clinicianFullName,
+    email,
+    phone: phoneLocation,
+    attendeeNote,
+    note,
+    callLogs,
+    outcome,
+    // Dummy data for now - as per requirements
+    alertLevel: 'grey' as "red" | "yellow" | "grey",
+    growthStage: 'foundation' as "foundation" | "developing" | "established",
+    // Store IDs for mutations and navigation
+    appointmentId: row.id,
+    attendeeId: attendee?.id || '',
+    // Other fields with defaults
+    numberOfInvitees: 1,
+    attendees: [clientFullName],
+    meetingTitle: `${service} Session`,
+    description: '',
+    location: phoneLocation,
+    address: '',
+    otherDetails: '',
+  };
+};
