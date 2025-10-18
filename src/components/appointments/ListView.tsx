@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Mail, Phone, FormInput, User, ChevronDown, ChevronUp, Users, FileText, StickyNote, Calendar, X } from "lucide-react";
@@ -18,6 +18,12 @@ import { AlertIconWithTooltip } from "./listview/components/AlertIconWithTooltip
 import { EditableCell } from "./listview/components/EditableCell";
 import { InlineOutcomeDropdown } from "./listview/components/InlineOutcomeDropdown";
 
+// Import Supabase hooks
+import { useAppointments } from "@/hooks/useAppointments";
+import { useAppointmentNotes } from "@/hooks/useAppointmentNotes";
+import { useAppointmentOutcomes } from "@/hooks/useAppointmentOutcomes";
+import { supabase } from "@/integrations/supabase/client";
+
 const ListView = () => {
   // Filters, search, appointment expanded state
   const [type, setType] = useState("intakes");
@@ -30,6 +36,45 @@ const ListView = () => {
   // For UserProfile panel demo
   const [userProfileOpen, setUserProfileOpen] = useState(false);
   const [userProfileUser, setUserProfileUser] = useState<any>(null);
+  
+  // Current user's person_id for mutations
+  const [currentPersonId, setCurrentPersonId] = useState<string | null>(null);
+
+  // Fetch appointments from Supabase for intakes/clients only
+  const shouldFetchFromSupabase = type === 'intakes' || type === 'clients';
+  const { data: supabaseAppointments, isLoading: isLoadingAppointments } = useAppointments(
+    shouldFetchFromSupabase ? type : 'intakes'
+  );
+  
+  // Mutations
+  const { updateNote, updateCallLog } = useAppointmentNotes();
+  const { logOutcome } = useAppointmentOutcomes();
+
+  // Get current user's person_id
+  useEffect(() => {
+    const fetchCurrentPersonId = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data } = await supabase
+        .from('people')
+        .select('id')
+        .eq('user_account_id', (
+          await supabase
+            .from('app_users')
+            .select('id')
+            .eq('user_id', user.id)
+            .single()
+        ).data?.id)
+        .single();
+
+      if (data) {
+        setCurrentPersonId(data.id);
+      }
+    };
+
+    fetchCurrentPersonId();
+  }, []);
 
   // Editing for team/personal
   const [editDetails, setEditDetails] = useState<{ [id: string]: boolean }>({});
@@ -45,9 +90,13 @@ const ListView = () => {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelDialogAppt, setCancelDialogAppt] = useState<any | null>(null);
 
-  // Generate, filter, group, and slice dummy appointments
+  // Generate, filter, group, and slice appointments (Supabase or mock data)
   const groupedAppts = useMemo(() => {
-    let raw = apptsData;
+    // Use Supabase data for intakes/clients, mock data for others
+    let raw: Appointment[] = shouldFetchFromSupabase && supabaseAppointments 
+      ? supabaseAppointments 
+      : apptsData;
+    
     raw = raw.filter(a => (type === "all" ? true : a.type === type) && (search === "" ? true : a.clientFullName?.toLowerCase().includes(search.toLowerCase()) || a.email?.toLowerCase().includes(search.toLowerCase()) || a.clinicianFullName?.toLowerCase().includes(search.toLowerCase())));
     // Group appointments by groupDate
     const grouped: Record<string, any[]> = {};
@@ -61,7 +110,7 @@ const ListView = () => {
       shown: Math.min(loadAmount, raw.length),
       hasMore: raw.length > loadAmount
     };
-  }, [type, search, loadAmount, apptsData]);
+  }, [type, search, loadAmount, apptsData, shouldFetchFromSupabase, supabaseAppointments]);
 
   // Handlers for expandable rows and inline editing
   function handleExpand(apptId: string) {
@@ -75,10 +124,19 @@ const ListView = () => {
   }
   
   function handleEdit(apptId: string, field: string, newVal: string) {
-    setApptsData(appts => appts.map(a => a.id === apptId ? {
-      ...a,
-      [field]: newVal
-    } : a));
+    // For intakes/clients, use Supabase mutations; for others, use local state
+    if (shouldFetchFromSupabase && currentPersonId) {
+      if (field === 'note') {
+        updateNote.mutate({ appointmentId: apptId, personId: currentPersonId, note: newVal });
+      } else if (field === 'outcome') {
+        logOutcome.mutate({ appointmentId: apptId, personId: currentPersonId, outcome: newVal });
+      }
+    } else {
+      setApptsData(appts => appts.map(a => a.id === apptId ? {
+        ...a,
+        [field]: newVal
+      } : a));
+    }
   }
   
   function handleEditObj(apptId: string, fields: Partial<any>) {
@@ -93,14 +151,27 @@ const ListView = () => {
   }
 
   function handleCallLogToggle(apptId: string, callIndex: number) {
-    setApptsData(appts => appts.map(a => {
-      if (a.id === apptId && a.callLogs) {
-        const newCallLogs = [...a.callLogs];
-        newCallLogs[callIndex] = !newCallLogs[callIndex];
-        return { ...a, callLogs: newCallLogs };
-      }
-      return a;
-    }));
+    if (shouldFetchFromSupabase && currentPersonId) {
+      // Find current state
+      const appt = (supabaseAppointments || []).find(a => a.id === apptId);
+      const currentState = appt?.callLogs?.[callIndex] || false;
+      
+      updateCallLog.mutate({ 
+        appointmentId: apptId, 
+        personId: currentPersonId, 
+        callIndex: callIndex as 0 | 1 | 2, 
+        checked: !currentState 
+      });
+    } else {
+      setApptsData(appts => appts.map(a => {
+        if (a.id === apptId && a.callLogs) {
+          const newCallLogs = [...a.callLogs];
+          newCallLogs[callIndex] = !newCallLogs[callIndex];
+          return { ...a, callLogs: newCallLogs };
+        }
+        return a;
+      }));
+    }
   }
 
   // State for inline note editing
@@ -113,10 +184,20 @@ const ListView = () => {
   }
 
   function saveNoteEdit(apptId: string) {
-    if (editingNoteValue.trim() === "") {
-      handleEdit(apptId, "note", undefined as any);
+    if (shouldFetchFromSupabase && currentPersonId) {
+      if (editingNoteValue.trim() !== "") {
+        updateNote.mutate({ 
+          appointmentId: apptId, 
+          personId: currentPersonId, 
+          note: editingNoteValue 
+        });
+      }
     } else {
-      handleEdit(apptId, "note", editingNoteValue);
+      if (editingNoteValue.trim() === "") {
+        handleEdit(apptId, "note", undefined as any);
+      } else {
+        handleEdit(apptId, "note", editingNoteValue);
+      }
     }
     setEditingNoteId(null);
     setEditingNoteValue("");
