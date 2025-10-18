@@ -68,8 +68,18 @@ export const transformSupabaseToAppointment = (row: any, latestOutcome?: string,
     !!notesData?.call_log_3
   ];
   
-  // Get outcome
-  const outcome = latestOutcome || 'Due';
+  // Determine outcome - prioritize appointment_status, then latest outcome log
+  // NOTE: When appointment_status changes to "canceled" or "rescheduled",
+  // these outcomes should also be logged in schedule_appointment_outcomes_log table
+  // (just like any other outcome change: No Show, New Client, etc.)
+  let outcome: string;
+  if (row.appointment_status === 'canceled') {
+    outcome = 'Canceled';
+  } else if (row.appointment_status === 'rescheduled') {
+    outcome = 'Rescheduled';
+  } else {
+    outcome = latestOutcome || 'Due';
+  }
   
   // Hide Call Logs for now - will be enabled when time range format is implemented
   // Currently only displaying start_time (e.g., "1 PM")

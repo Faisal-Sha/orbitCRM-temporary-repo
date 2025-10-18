@@ -450,6 +450,7 @@ const ListView = () => {
                                 onChange={val => handleEdit(appt.id, "outcome", val)}
                                 badgeClass={getIntakeOutcomeBadgeProps(appt.outcome).className}
                                 getBadgeProps={getIntakeOutcomeBadgeProps}
+                                disabled={appt.outcome === "Canceled" || appt.outcome === "Rescheduled"}
                               />
                             </td>
                             <td className="pl-2 pr-4 py-2 text-end">
@@ -735,6 +736,7 @@ const ListView = () => {
                                 onChange={val => handleEdit(appt.id, "outcome", val)}
                                 badgeClass={getClientOutcomeBadgeProps(appt.outcome).className}
                                 getBadgeProps={getClientOutcomeBadgeProps}
+                                disabled={appt.outcome === "Canceled" || appt.outcome === "Rescheduled"}
                               />
                             </td>
                             <td className="pl-2 pr-4 py-2 text-end">
