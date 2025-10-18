@@ -334,7 +334,7 @@ const ListView = () => {
                               {displayProviderName}
                               {renderNoteIcon(appt.note)}
                             </td>
-                            <td className="px-2 py-2 flex items-center gap-1">
+                            <td className="px-2 py-2">
                               <InlineOutcomeDropdown
                                 value={appt.outcome}
                                 options={["Due", "No Show", "New Client", "Unqualified", "Doubtful", "Remove"]}
