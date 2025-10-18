@@ -14,6 +14,7 @@ export interface Appointment {
   attendees: string[];
   alertLevel: "red" | "yellow" | "grey";
   note?: string;
+  attendeeNote?: string;
   email: string;
   phone: string;
   growthStage: "foundation" | "developing" | "established";

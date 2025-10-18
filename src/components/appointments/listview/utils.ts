@@ -19,8 +19,8 @@ export function generateAppointments(count: number): Appointment[] {
     { date: "2025-06-08", display: "8 June 2025" }
   ];
   
-  const attendeesBase = ["Emma Johnson", "Liam Thompson", "Olivia Williams", "Noah Brown", "Sophia Lee"];
-  const appointments: Appointment[] = [];
+    const attendeesBase = ["Emma Johnson", "Liam Thompson", "Olivia Williams", "Noah Brown", "Sophia Lee"];
+    const appointments: Appointment[] = [];
   
   for (let i = 0; i < count; i++) {
     const group = datePool[i % datePool.length];
@@ -38,6 +38,7 @@ export function generateAppointments(count: number): Appointment[] {
     const numInvitees = 2 + i % 3;
     const attendees = attendeesBase.slice(0, numInvitees);
     const note = i % 5 === 0 && type !== "personal" ? "Please bring last session notes for review." : i % 6 === 0 && type === "clients" ? "" : undefined;
+    const attendeeNote = type === "intakes" && i % 4 === 0 ? "Looking forward to the session. I have some questions about the treatment plan." : undefined;
     
     const isTimeRange = (type === "intakes" && i % 3 === 0);
     let time;
@@ -68,6 +69,7 @@ export function generateAppointments(count: number): Appointment[] {
       attendees,
       alertLevel,
       note,
+      attendeeNote,
       email: `${firstName.toLowerCase().replace(/\s+/g, ".")}@mail.com`,
       phone: `+1 (555) 234-${1200 + i}`,
       growthStage: GROWTH_STAGES[i % GROWTH_STAGES.length] as any,
@@ -83,14 +85,11 @@ export function generateAppointments(count: number): Appointment[] {
 export function getIntakeOutcomeBadgeProps(outcome: string) {
   switch (outcome) {
     case "New Client": return { className: "bg-green-100 text-green-800", label: "New Client" };
-    case "Pending": return { className: "bg-yellow-100 text-yellow-800", label: "Pending" };
-    case "Rescheduled": return { className: "bg-blue-100 text-blue-800", label: "Rescheduled" };
-    case "Cancelled": return { className: "bg-red-100 text-red-800", label: "Cancelled" };
+    case "Due": return { className: "bg-yellow-100 text-yellow-800", label: "Due" };
     case "No Show": return { className: "bg-gray-200 text-gray-700", label: "No Show" };
-    case "Not Eligible": return { className: "bg-orange-100 text-orange-800", label: "Not Eligible" };
+    case "Unqualified": return { className: "bg-orange-100 text-orange-800", label: "Unqualified" };
     case "Doubtful": return { className: "bg-pink-100 text-pink-800", label: "Doubtful" };
-    case "Unsubscribe": return { className: "bg-slate-100 text-slate800", label: "Unsubscribe" };
-    case "No Answer": return { className: "bg-yellow-200 text-yellow-900", label: "No Answer" };
+    case "Remove": return { className: "bg-slate-100 text-slate-800", label: "Remove" };
     default: return { className: "bg-gray-100 text-gray-800", label: outcome || "None" };
   }
 }
