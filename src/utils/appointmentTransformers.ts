@@ -148,6 +148,8 @@ export const transformSupabaseToAppointment = (
     startISO,
     rescheduleReasons: finalRescheduleReasons,
     meetingUrl: meetingURL,
+    calBookingId: row.cal_booking_id || '',
+    calendarOwnerId: row.calendar_owner_id || '',
     // Dummy data for now - as per requirements
     alertLevel: 'grey' as "red" | "yellow" | "grey",
     growthStage: 'foundation' as "foundation" | "developing" | "established",

@@ -10,6 +10,7 @@ import UserProfilePanel from "@/components/userprofile/UserProfilePanel";
 import ScheduleAppointmentModal from "@/components/appointments/ScheduleAppointmentModal";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { generateCalRescheduleUrl, openCalRescheduleUrl } from "@/utils/calRescheduleUrl";
 
 // Import new components
 import { TYPE_OPTIONS, DATE_OPTIONS, INITIAL_LOAD, LOAD_MORE_AMOUNT, MAX_APPOINTMENTS } from "./listview/constants";
@@ -85,6 +86,20 @@ const shouldHideEditActions = (appt: any) => {
       if (error) throw error;
       return data;
     }
+  });
+
+  // Fetch Cal calendar users data for reschedule URLs
+  const { data: calCalendarUsers } = useQuery({
+    queryKey: ['cal-calendar-users'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('cal_calendar_users')
+        .select('calendar_owner_id, calendar_url, appointment_type');
+      
+      if (error) throw error;
+      return data;
+    },
+    staleTime: 300000, // 5 minutes (calendar URLs rarely change)
   });
 
   // Fetch from Supabase for intakes/clients only
@@ -284,6 +299,37 @@ const shouldHideEditActions = (appt: any) => {
     setEditingNoteId(null);
     setEditingNoteValue("");
   }
+
+  // Handle reschedule button click - generates Cal.com reschedule URL
+  const handleRescheduleClick = (appt: Appointment) => {
+    // Find matching calendar URL based on calendar_owner_id and appointment_type
+    const calendarData = calCalendarUsers?.find(
+      (cal) => 
+        cal.calendar_owner_id === appt.calendarOwnerId &&
+        cal.appointment_type === (appt.type === 'intakes' ? 'Lead' : 'Client')
+    );
+
+    if (!calendarData?.calendar_url) {
+      toast.error('Unable to generate reschedule link: Calendar not found');
+      console.error('Calendar not found for appointment:', {
+        calendarOwnerId: appt.calendarOwnerId,
+        appointmentType: appt.type
+      });
+      return;
+    }
+
+    // Generate reschedule URL
+    const rescheduleUrl = generateCalRescheduleUrl(
+      appt.calBookingId,
+      calendarData.calendar_url
+    );
+
+    // Open URL in new tab
+    if (!openCalRescheduleUrl(rescheduleUrl)) {
+      toast.error('Unable to open reschedule link: Missing booking ID');
+      console.error('Missing cal_booking_id for appointment:', appt.id);
+    }
+  };
   
   function openUserProfile(appt: any) {
     setUserProfileUser({
@@ -724,10 +770,10 @@ const shouldHideEditActions = (appt: any) => {
                                       {/* Actions Section - 2/3 width */}
                                       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5 w-2/3">
                                         <h4 className="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">Actions</h4>
-                                        <div className="flex flex-wrap items-center justify-center gap-3">
+                                         <div className="flex flex-wrap items-center justify-center gap-3">
                                           <button
                                             type="button"
-                                            onClick={() => openEditModalForAppt(appt)}
+                                            onClick={() => handleRescheduleClick(appt)}
                                             className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-primary/5 hover:border-primary/30 transition-all text-sm font-medium text-gray-700 hover:text-primary shadow-sm"
                                           >
                                             <Calendar className="h-4 w-4" />
@@ -780,10 +826,10 @@ const shouldHideEditActions = (appt: any) => {
                                     /* Actions Section for non-time-range appointments */
                                     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
                                       <h4 className="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">Actions</h4>
-                                      <div className="flex flex-wrap items-center justify-center gap-3">
+                                       <div className="flex flex-wrap items-center justify-center gap-3">
                                         <button
                                           type="button"
-                                          onClick={() => openEditModalForAppt(appt)}
+                                          onClick={() => handleRescheduleClick(appt)}
                                           className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-primary/5 hover:border-primary/30 transition-all text-sm font-medium text-gray-700 hover:text-primary shadow-sm"
                                         >
                                           <Calendar className="h-4 w-4" />
@@ -1025,10 +1071,10 @@ const shouldHideEditActions = (appt: any) => {
                                    {/* Actions Section */}
                                   <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
                                     <h4 className="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">Actions</h4>
-                                    <div className="flex flex-wrap items-center justify-center gap-3">
+                                     <div className="flex flex-wrap items-center justify-center gap-3">
                                       <button
                                         type="button"
-                                        onClick={() => openEditModalForAppt(appt)}
+                                        onClick={() => handleRescheduleClick(appt)}
                                         className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-primary/5 hover:border-primary/30 transition-all text-sm font-medium text-gray-700 hover:text-primary shadow-sm"
                                       >
                                         <Calendar className="h-4 w-4" />

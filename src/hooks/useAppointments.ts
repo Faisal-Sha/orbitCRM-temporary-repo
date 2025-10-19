@@ -31,6 +31,7 @@ export const useAppointments = ({ appointmentType, enabled }: UseAppointmentsOpt
       booking_details,
           calendar_owner_id,
           agency_id,
+          cal_booking_id,
           host:people!schedule_appointments_calendar_owner_id_fkey(
             id,
             first_name,

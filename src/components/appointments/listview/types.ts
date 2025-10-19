@@ -29,6 +29,8 @@ export interface Appointment {
   startISO?: string;
   rescheduleReasons?: string[];
   meetingUrl?: string;
+  calBookingId?: string;
+  calendarOwnerId?: string;
 }
 
 export interface FilterOptions {
