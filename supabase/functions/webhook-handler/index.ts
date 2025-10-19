@@ -1314,7 +1314,12 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
     // Extract cancellation data from payload (if applicable)
     const cancellationReason = p.cancellationReason || null;
     const cancelledBy = p.cancelledBy || null;
-    console.log('Cancellation data - reason:', cancellationReason, 'cancelledBy:', cancelledBy);
+    const cancelledByEmail = p.cancelledBy || null; // Email of person who canceled
+    console.log('Cancellation data - reason:', cancellationReason, 'cancelledBy:', cancelledBy, 'cancelledByEmail:', cancelledByEmail);
+    
+    // Extract reschedule data from payload (if applicable)
+    const rescheduledBy = p.rescheduledBy || null; // Email of person who rescheduled
+    console.log('Reschedule data - rescheduledBy:', rescheduledBy);
 
     // Check if appointment already exists (robust multi-identifier lookup)
     // For BOOKING_RESCHEDULED, prioritize lookup by rescheduleUid (original appointment)
@@ -1452,8 +1457,9 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
       if (eventType === 'BOOKING_CANCELLED') {
         updateData.cancellation_reason = cancellationReason;
         updateData.canceled_by = calendarOwnerId; // Person who owns the calendar
+        updateData.canceled_by_email = cancelledByEmail; // Email of person who canceled
         updateData.canceled_at = new Date().toISOString();
-        console.log('Adding cancellation fields - reason:', cancellationReason, 'canceled_by:', calendarOwnerId);
+        console.log('Adding cancellation fields - reason:', cancellationReason, 'canceled_by:', calendarOwnerId, 'canceled_by_email:', cancelledByEmail);
       }
 
       // Add reschedule-specific fields if this is a reschedule event
@@ -1461,7 +1467,8 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
         updateData.appointment_status = 'rescheduled'; // Explicitly ensure status is rescheduled
         updateData.cal_booking_id = calBookingId; // Update to new booking ID
         updateData.reschedule_id = rescheduleUid; // Store original booking ID for history
-        console.log('Adding reschedule fields - new cal_booking_id:', calBookingId, 'reschedule_id:', rescheduleUid);
+        updateData.rescheduled_by_email = rescheduledBy; // Email of person who rescheduled
+        console.log('Adding reschedule fields - new cal_booking_id:', calBookingId, 'reschedule_id:', rescheduleUid, 'rescheduled_by_email:', rescheduledBy);
       }
       
       const { data: updatedAppointment, error: updateError } = await supabase

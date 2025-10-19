@@ -685,6 +685,9 @@ const shouldHideEditActions = (appt: any) => {
                                                 </div>
                                               ))}
                                             </div>
+                                            {appt.rescheduledByEmail && (
+                                              <p className="text-xs text-gray-500 mt-2">Rescheduled by: {appt.rescheduledByEmail}</p>
+                                            )}
                                           </div>
                                         </div>
                                       )}
@@ -697,11 +700,16 @@ const shouldHideEditActions = (appt: any) => {
                                             {appt.outcome === "Canceled" ? "Cancellation Reason" : "Assessor Note"}
                                           </div>
                                           {appt.outcome === "Canceled" ? (
-                                            appt.cancellationReason ? (
-                                              <p className="text-sm text-gray-900">{appt.cancellationReason}</p>
-                                            ) : (
-                                              <p className="text-sm text-gray-400 italic">No cancellation reason provided</p>
-                                            )
+                                            <>
+                                              {appt.cancellationReason ? (
+                                                <p className="text-sm text-gray-900">{appt.cancellationReason}</p>
+                                              ) : (
+                                                <p className="text-sm text-gray-400 italic">No cancellation reason provided</p>
+                                              )}
+                                              {appt.canceledByEmail && (
+                                                <p className="text-xs text-gray-500 mt-2">Canceled by: {appt.canceledByEmail}</p>
+                                              )}
+                                            </>
                                           ) : !isNoteEditable(appt, date) ? (
                                             appt.note ? (
                                               <p className="text-sm text-gray-900">{appt.note}</p>

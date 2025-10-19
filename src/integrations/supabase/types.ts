@@ -1949,6 +1949,7 @@ export type Database = {
           calendar_owner_id: string
           canceled_at: string | null
           canceled_by: string | null
+          canceled_by_email: string | null
           cancellation_reason: string | null
           created_at: string
           created_by: string
@@ -1958,6 +1959,7 @@ export type Database = {
           location_details: string | null
           rejection_reason: string | null
           reschedule_id: string | null
+          rescheduled_by_email: string | null
           start_time: string
           updated_at: string
           updated_by: string
@@ -1971,6 +1973,7 @@ export type Database = {
           calendar_owner_id: string
           canceled_at?: string | null
           canceled_by?: string | null
+          canceled_by_email?: string | null
           cancellation_reason?: string | null
           created_at?: string
           created_by: string
@@ -1980,6 +1983,7 @@ export type Database = {
           location_details?: string | null
           rejection_reason?: string | null
           reschedule_id?: string | null
+          rescheduled_by_email?: string | null
           start_time: string
           updated_at?: string
           updated_by: string
@@ -1993,6 +1997,7 @@ export type Database = {
           calendar_owner_id?: string
           canceled_at?: string | null
           canceled_by?: string | null
+          canceled_by_email?: string | null
           cancellation_reason?: string | null
           created_at?: string
           created_by?: string
@@ -2002,6 +2007,7 @@ export type Database = {
           location_details?: string | null
           rejection_reason?: string | null
           reschedule_id?: string | null
+          rescheduled_by_email?: string | null
           start_time?: string
           updated_at?: string
           updated_by?: string

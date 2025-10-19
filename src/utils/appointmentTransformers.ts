@@ -150,6 +150,8 @@ export const transformSupabaseToAppointment = (
     meetingUrl: meetingURL,
     calBookingId: row.cal_booking_id || '',
     calendarOwnerId: row.calendar_owner_id || '',
+    rescheduledByEmail: row.rescheduled_by_email || '',
+    canceledByEmail: row.canceled_by_email || '',
     // Dummy data for now - as per requirements
     alertLevel: 'grey' as "red" | "yellow" | "grey",
     growthStage: 'foundation' as "foundation" | "developing" | "established",

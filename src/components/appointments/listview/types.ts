@@ -31,6 +31,8 @@ export interface Appointment {
   meetingUrl?: string;
   calBookingId?: string;
   calendarOwnerId?: string;
+  rescheduledByEmail?: string;
+  canceledByEmail?: string;
 }
 
 export interface FilterOptions {
