@@ -1495,8 +1495,8 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ personId, hideUpcomingAppointme
       .filter(appt => 
         // Future appointments only
         appt.startMs > todayEnd &&
-        // Not canceled
-        appt.outcome !== "Canceled" &&
+        // Not canceled (use isCanceled flag)
+        !appt.isCanceled &&
         // Belongs to this person
         appt.attendeeId === personId
       )

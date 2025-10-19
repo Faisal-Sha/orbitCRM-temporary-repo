@@ -80,6 +80,8 @@ export function generateAppointments(count: number): Appointment[] {
       callLogs: isTimeRange ? [false, false, false] : undefined,
       startMs: new Date(group.date + ' ' + time).getTime(),
       startISO: group.date + 'T' + time,
+      isCanceled: (type === "intakes" ? OUTCOMES_INTAKES[i % OUTCOMES_INTAKES.length] : type === "clients" ? OUTCOMES_CLIENTS[i % OUTCOMES_CLIENTS.length] : "") === "Canceled",
+      appointmentStatus: (type === "intakes" ? OUTCOMES_INTAKES[i % OUTCOMES_INTAKES.length] : type === "clients" ? OUTCOMES_CLIENTS[i % OUTCOMES_CLIENTS.length] : "") === "Canceled" ? 'canceled' : 'scheduled',
     });
   }
   return appointments;

@@ -34,7 +34,7 @@ const ListView = () => {
 // Helper function to determine if appointment notes should be editable
 const isNoteEditable = (appt: any, currentDateFilter: string) => {
   // Canceled appointments are never editable (show cancellation reason instead)
-  if (appt.outcome === "Canceled") {
+  if (appt.isCanceled) {
     return false;
   }
   
@@ -48,7 +48,7 @@ const isNoteEditable = (appt: any, currentDateFilter: string) => {
 // Helper function to determine if appointment outcomes should be editable
 const isOutcomeEditable = (appt: any) => {
   // Canceled appointments are never editable
-  if (appt.outcome === "Canceled") {
+  if (appt.isCanceled) {
     return false;
   }
   
@@ -62,7 +62,7 @@ const isOutcomeEditable = (appt: any) => {
 // Helper function to determine if Assessment/Cancel actions should be hidden
 const shouldHideEditActions = (appt: any) => {
   // Hide for canceled appointments
-  if (appt.outcome === "Canceled") {
+  if (appt.isCanceled) {
     return true;
   }
   
@@ -145,19 +145,19 @@ const shouldHideEditActions = (appt: any) => {
           // Show all events for today (past and upcoming), exclude canceled
           return a.startMs >= todayStart && 
                  a.startMs <= todayEnd && 
-                 a.outcome !== "Canceled";
+                 !a.isCanceled;
         
         case "upcoming":
           // Show events after today, exclude canceled
-          return a.startMs > todayEnd && a.outcome !== "Canceled";
+          return a.startMs > todayEnd && !a.isCanceled;
         
         case "past":
           // Show events before now (including earlier today), exclude canceled
-          return a.startMs < nowMs && a.outcome !== "Canceled";
+          return a.startMs < nowMs && !a.isCanceled;
         
         case "canceled":
           // Show only canceled events (all dates)
-          return a.outcome === "Canceled";
+          return a.isCanceled;
         
         default:
           return true;
