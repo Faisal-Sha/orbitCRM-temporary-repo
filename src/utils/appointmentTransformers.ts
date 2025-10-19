@@ -33,6 +33,16 @@ export const transformSupabaseToAppointment = (row: any, latestOutcome?: string,
     || bookingDetails.notes
     || '';
   
+  // Extract reschedule reasons (could be string or array)
+  let rescheduleReasons: string[] = [];
+  if (bookingDetails.rescheduleReason) {
+    if (Array.isArray(bookingDetails.rescheduleReason)) {
+      rescheduleReasons = bookingDetails.rescheduleReason.filter(r => r && r.trim());
+    } else if (typeof bookingDetails.rescheduleReason === 'string' && bookingDetails.rescheduleReason.trim()) {
+      rescheduleReasons = [bookingDetails.rescheduleReason.trim()];
+    }
+  }
+  
   // Format date and time
   const startTime = new Date(row.start_time);
   const groupDate = format(startTime, 'yyyy-MM-dd');
@@ -112,6 +122,7 @@ export const transformSupabaseToAppointment = (row: any, latestOutcome?: string,
     cancellationReason,
     startMs,
     startISO,
+    rescheduleReasons,
     // Dummy data for now - as per requirements
     alertLevel: 'grey' as "red" | "yellow" | "grey",
     growthStage: 'foundation' as "foundation" | "developing" | "established",

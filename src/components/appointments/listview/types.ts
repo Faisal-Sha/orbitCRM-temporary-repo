@@ -28,6 +28,7 @@ export interface Appointment {
   callLogs?: boolean[];
   startMs: number;
   startISO?: string;
+  rescheduleReasons?: string[];
 }
 
 export interface FilterOptions {

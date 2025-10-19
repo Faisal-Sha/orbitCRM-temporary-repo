@@ -37,17 +37,11 @@ const isNoteEditable = (appt: any, currentDateFilter: string) => {
     return false;
   }
   
-  // Notes are only editable when viewing the "Today" filter and appointment is today
-  if (currentDateFilter !== "today") {
-    return false;
-  }
-  
   const now = new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0).getTime();
-  const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).getTime();
   
-  // Editable only if appointment is today
-  return appt.startMs >= todayStart && appt.startMs <= todayEnd;
+  // Editable for today and future appointments (not past)
+  return appt.startMs >= todayStart;
 };
 
 // Helper function to determine if appointment outcomes should be editable
@@ -63,6 +57,20 @@ const isOutcomeEditable = (appt: any) => {
   // Disable outcomes for appointments that are yesterday or older
   return appt.startMs > yesterdayEnd;
 };
+
+// Helper function to determine if Assessment/Cancel actions should be hidden
+const shouldHideEditActions = (appt: any) => {
+  // Hide for canceled appointments
+  if (appt.outcome === "Canceled") {
+    return true;
+  }
+  
+  // Hide for past appointments (yesterday and older)
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0).getTime();
+  return appt.startMs < todayStart;
+};
+
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   
   // Mock data for Team/Personal/All views
@@ -585,6 +593,28 @@ const isOutcomeEditable = (appt: any) => {
                                           )}
                                         </div>
                                       </div>
+
+                                      {/* Reschedule Reasons */}
+                                      {appt.rescheduleReasons && appt.rescheduleReasons.length > 0 && (
+                                        <div className="flex items-start gap-3">
+                                          <div className="mt-0.5">
+                                            <Calendar className="h-4 w-4 text-amber-600" />
+                                          </div>
+                                          <div className="flex-1 min-w-0">
+                                            <label className="text-xs text-muted-foreground block mb-1">
+                                              Reschedule Reasons
+                                            </label>
+                                            <div className="space-y-2">
+                                              {appt.rescheduleReasons.map((reason, index) => (
+                                                <div key={index} className="text-sm text-gray-900 p-2 bg-amber-50 border border-amber-200 rounded">
+                                                  <span className="font-medium text-amber-700">#{index + 1}:</span> {reason}
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      )}
+
                 <div className="flex items-start gap-3">
                   <div className="mt-0.5">
                     <StickyNote className="h-4 w-4 text-primary" />
@@ -746,14 +776,16 @@ const isOutcomeEditable = (appt: any) => {
                                             <span>Profile</span>
                                           </button>
 
-                                          <button
-                                            type="button"
-                                            onClick={() => openAssessmentForm(appt.clientFullName, appt.attendeeId)}
-                                            className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-primary/5 hover:border-primary/30 transition-all text-sm font-medium text-gray-700 hover:text-primary shadow-sm"
-                                          >
-                                            <FormInput className="h-4 w-4" />
-                                            <span>Assessment</span>
-                                          </button>
+                                           {!shouldHideEditActions(appt) && (
+                                             <button
+                                               type="button"
+                                               onClick={() => openAssessmentForm(appt.clientFullName, appt.attendeeId)}
+                                               className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-primary/5 hover:border-primary/30 transition-all text-sm font-medium text-gray-700 hover:text-primary shadow-sm"
+                                             >
+                                               <FormInput className="h-4 w-4" />
+                                               <span>Assessment</span>
+                                             </button>
+                                           )}
 
                                           <button
                                             type="button"
@@ -764,14 +796,16 @@ const isOutcomeEditable = (appt: any) => {
                                             <span>Transcript</span>
                                           </button>
 
-                                          <button
-                                            type="button"
-                                            onClick={() => openCancelDialog(appt)}
-                                            className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-destructive/5 hover:border-destructive/30 transition-all text-sm font-medium text-gray-700 hover:text-destructive shadow-sm"
-                                          >
-                                            <X className="h-4 w-4" />
-                                            <span>Cancel</span>
-                                          </button>
+                                           {!shouldHideEditActions(appt) && (
+                                             <button
+                                               type="button"
+                                               onClick={() => openCancelDialog(appt)}
+                                               className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-destructive/5 hover:border-destructive/30 transition-all text-sm font-medium text-gray-700 hover:text-destructive shadow-sm"
+                                             >
+                                               <X className="h-4 w-4" />
+                                               <span>Cancel</span>
+                                             </button>
+                                           )}
                                         </div>
                                       </div>
                                     </div>
@@ -798,23 +832,27 @@ const isOutcomeEditable = (appt: any) => {
                                           <span>Profile</span>
                                         </button>
 
-                                        <button
-                                          type="button"
-                                          onClick={() => openAssessmentForm(appt.clientFullName, appt.attendeeId)}
-                                          className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-primary/5 hover:border-primary/30 transition-all text-sm font-medium text-gray-700 hover:text-primary shadow-sm"
-                                        >
-                                          <FormInput className="h-4 w-4" />
-                                          <span>Assessment</span>
-                                        </button>
+                                         {!shouldHideEditActions(appt) && (
+                                           <button
+                                             type="button"
+                                             onClick={() => openAssessmentForm(appt.clientFullName, appt.attendeeId)}
+                                             className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-primary/5 hover:border-primary/30 transition-all text-sm font-medium text-gray-700 hover:text-primary shadow-sm"
+                                           >
+                                             <FormInput className="h-4 w-4" />
+                                             <span>Assessment</span>
+                                           </button>
+                                         )}
 
-                                        <button
-                                          type="button"
-                                          onClick={() => openCancelDialog(appt)}
-                                          className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-destructive/5 hover:border-destructive/30 transition-all text-sm font-medium text-gray-700 hover:text-destructive shadow-sm"
-                                        >
-                                          <X className="h-4 w-4" />
-                                          <span>Cancel</span>
-                                        </button>
+                                         {!shouldHideEditActions(appt) && (
+                                           <button
+                                             type="button"
+                                             onClick={() => openCancelDialog(appt)}
+                                             className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-destructive/5 hover:border-destructive/30 transition-all text-sm font-medium text-gray-700 hover:text-destructive shadow-sm"
+                                           >
+                                             <X className="h-4 w-4" />
+                                             <span>Cancel</span>
+                                           </button>
+                                         )}
                                       </div>
                                     </div>
                                   )}
@@ -1035,14 +1073,35 @@ const isOutcomeEditable = (appt: any) => {
                           </Tooltip>
                         </TooltipProvider>
                       )
-                    )}
-                  </div>
-                </div>
-                                      </div>
-                                    </div>
-                                  </div>
+                                             )}
+                                           </div>
+                                         </div>
 
-                                  {/* Actions Section */}
+                                         {/* Reschedule Reasons */}
+                                         {appt.rescheduleReasons && appt.rescheduleReasons.length > 0 && (
+                                           <div className="flex items-start gap-3 mt-4">
+                                             <div className="mt-0.5">
+                                               <Calendar className="h-4 w-4 text-amber-600" />
+                                             </div>
+                                             <div className="flex-1 min-w-0">
+                                               <label className="text-xs text-muted-foreground block mb-1">
+                                                 Reschedule Reasons
+                                               </label>
+                                               <div className="space-y-2">
+                                                 {appt.rescheduleReasons.map((reason, index) => (
+                                                   <div key={index} className="text-sm text-gray-900 p-2 bg-amber-50 border border-amber-200 rounded">
+                                                     <span className="font-medium text-amber-700">#{index + 1}:</span> {reason}
+                                                   </div>
+                                                 ))}
+                                               </div>
+                                             </div>
+                                           </div>
+                                         )}
+                                       </div>
+                                     </div>
+                                   </div>
+
+                                   {/* Actions Section */}
                                   <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
                                     <h4 className="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">Actions</h4>
                                     <div className="flex flex-wrap items-center justify-center gap-3">
@@ -1064,32 +1123,36 @@ const isOutcomeEditable = (appt: any) => {
                                         <span>Profile</span>
                                       </button>
 
-                                      <button
-                                        type="button"
-                                        onClick={() => openProgressNotesForm(appt.clientFullName, appt.attendeeId)}
-                                        className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-primary/5 hover:border-primary/30 transition-all text-sm font-medium text-gray-700 hover:text-primary shadow-sm"
-                                      >
-                                        <StickyNote className="h-4 w-4" />
-                                        <span>Progress Note</span>
-                                      </button>
+                                       {!shouldHideEditActions(appt) && (
+                                         <button
+                                           type="button"
+                                           onClick={() => openProgressNotesForm(appt.clientFullName, appt.attendeeId)}
+                                           className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-primary/5 hover:border-primary/30 transition-all text-sm font-medium text-gray-700 hover:text-primary shadow-sm"
+                                         >
+                                           <StickyNote className="h-4 w-4" />
+                                           <span>Progress Note</span>
+                                         </button>
+                                       )}
 
-                                      <button
-                                        type="button"
-                                        onClick={() => {/* No action for now */}}
-                                        className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-primary/5 hover:border-primary/30 transition-all text-sm font-medium text-gray-700 hover:text-primary shadow-sm"
-                                      >
-                                        <FileText className="h-4 w-4" />
-                                        <span>Transcript</span>
-                                      </button>
+                                       <button
+                                         type="button"
+                                         onClick={() => {/* No action for now */}}
+                                         className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-primary/5 hover:border-primary/30 transition-all text-sm font-medium text-gray-700 hover:text-primary shadow-sm"
+                                       >
+                                         <FileText className="h-4 w-4" />
+                                         <span>Transcript</span>
+                                       </button>
 
-                                      <button
-                                        type="button"
-                                        onClick={() => openCancelDialog(appt)}
-                                        className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-destructive/5 hover:border-destructive/30 transition-all text-sm font-medium text-gray-700 hover:text-destructive shadow-sm"
-                                      >
-                                        <X className="h-4 w-4" />
-                                        <span>Cancel</span>
-                                      </button>
+                                       {!shouldHideEditActions(appt) && (
+                                         <button
+                                           type="button"
+                                           onClick={() => openCancelDialog(appt)}
+                                           className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-destructive/5 hover:border-destructive/30 transition-all text-sm font-medium text-gray-700 hover:text-destructive shadow-sm"
+                                         >
+                                           <X className="h-4 w-4" />
+                                           <span>Cancel</span>
+                                         </button>
+                                       )}
                                     </div>
                                   </div>
                                 </div>
