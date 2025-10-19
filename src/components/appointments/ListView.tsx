@@ -549,36 +549,33 @@ const shouldHideEditActions = (appt: any) => {
                               <td colSpan={8} className="px-6 py-6">
                                 <div className="max-w-4xl mx-auto">
                                   {/* Contact Information Section */}
-                                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5 mb-4">
-                                    <h4 className="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">Contact Information</h4>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-4">
+                                    <h4 className="text-sm font-semibold text-gray-900 mb-5 uppercase tracking-wide">Contact Information</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5">
+                                      {/* Email */}
                                       <div className="flex items-start gap-3">
-                                        <div className="mt-0.5">
-                                          <Mail className="h-4 w-4 text-primary" />
-                                        </div>
+                                        <Mail className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
                                         <div className="flex-1 min-w-0">
-                                          <label className="text-xs text-muted-foreground block mb-1">Email</label>
-                                          <p className="text-sm text-gray-900">{appt.email}</p>
+                                          <div className="text-xs font-medium text-gray-500 mb-1">Email</div>
+                                          <p className="text-sm text-gray-900 break-all">{appt.email}</p>
                                         </div>
                                       </div>
+
+                                      {/* Phone */}
                                       <div className="flex items-start gap-3">
-                                        <div className="mt-0.5">
-                                          <Phone className="h-4 w-4 text-primary" />
-                                        </div>
+                                        <Phone className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
                                         <div className="flex-1 min-w-0">
-                                          <label className="text-xs text-muted-foreground block mb-1">Phone</label>
+                                          <div className="text-xs font-medium text-gray-500 mb-1">Phone</div>
                                           <p className="text-sm text-gray-900">{appt.phone}</p>
                                         </div>
                                       </div>
-                                      
+
                                       {/* Meeting URL */}
                                       {appt.meetingUrl && (
-                                         <div className="flex items-start gap-3">
-                                          <div className="mt-0.5">
-                                            <Video className="h-4 w-4 text-blue-600" />
-                                          </div>
+                                        <div className="flex items-start gap-3">
+                                          <Video className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
                                           <div className="flex-1 min-w-0">
-                                            <label className="text-xs text-muted-foreground block mb-1">Meeting URL</label>
+                                            <div className="text-xs font-medium text-gray-500 mb-1">Meeting URL</div>
                                             <div className="flex items-center gap-2">
                                               <a
                                                 href={appt.meetingUrl}
@@ -603,164 +600,99 @@ const shouldHideEditActions = (appt: any) => {
                                           </div>
                                         </div>
                                       )}
-                                      
+
+                                      {/* Attendee Note */}
                                       <div className="flex items-start gap-3">
-                                        <div className="mt-0.5">
-                                          <StickyNote className="h-4 w-4 text-primary" />
-                                        </div>
+                                        <StickyNote className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
                                         <div className="flex-1 min-w-0">
-                                          <label className="text-xs text-muted-foreground block mb-1">Attendee Note</label>
+                                          <div className="text-xs font-medium text-gray-500 mb-1">Attendee Note</div>
                                           {appt.attendeeNote ? (
-                                            <TooltipProvider>
-                                              <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                  <p className="text-sm text-gray-900 truncate cursor-default">
-                                                    {appt.attendeeNote.length > 50 ? `${appt.attendeeNote.substring(0, 50)}...` : appt.attendeeNote}
-                                                  </p>
-                                                </TooltipTrigger>
-                                                <TooltipContent className="bg-white text-black border border-gray-200 max-w-xs">
-                                                  {appt.attendeeNote}
-                                                </TooltipContent>
-                                              </Tooltip>
-                                            </TooltipProvider>
+                                            <p className="text-sm text-gray-900">{appt.attendeeNote}</p>
                                           ) : (
-                                            <p className="text-sm text-muted-foreground italic">No note</p>
+                                            <p className="text-sm text-gray-400 italic">ok</p>
                                           )}
                                         </div>
                                       </div>
 
-                              {/* Reschedule Reasons */}
-                              {appt.rescheduleReasons && appt.rescheduleReasons.length > 0 && (
-                                <div className="flex items-start gap-3">
-                                  <div className="mt-0.5">
-                                    <Calendar className="h-4 w-4 text-gray-600" />
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <label className="text-xs text-muted-foreground block mb-1">
-                                      Reschedule Reasons
-                                    </label>
-                                    <div className="space-y-2">
-                                      {appt.rescheduleReasons.map((reason, index) => (
-                                        <div key={index} className="text-sm text-gray-900 p-2 bg-white border border-gray-200 rounded">
-                                          <span className="font-medium text-gray-700">#{index + 1}:</span> {reason}
+                                      {/* Reschedule Reasons */}
+                                      {appt.rescheduleReasons && appt.rescheduleReasons.length > 0 && (
+                                        <div className="flex items-start gap-3 md:col-span-2">
+                                          <Calendar className="h-5 w-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+                                          <div className="flex-1 min-w-0">
+                                            <div className="text-xs font-medium text-gray-500 mb-2">Reschedule Reasons</div>
+                                            <div className="space-y-2">
+                                              {appt.rescheduleReasons.map((reason, index) => (
+                                                <div key={index} className="text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md border border-gray-200">
+                                                  <span className="font-semibold text-yellow-600">#{index + 1}:</span> {reason}
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </div>
                                         </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
+                                      )}
 
-                <div className="flex items-start gap-3">
-                  <div className="mt-0.5">
-                    <StickyNote className="h-4 w-4 text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <label className="text-xs text-muted-foreground block mb-1">
-                      {appt.outcome === "Canceled" ? "Cancellation Reason" : "Assessor Note"}
-                    </label>
-                    
-                    {appt.outcome === "Canceled" ? (
-                      // Display cancellation reason (non-editable)
-                      appt.cancellationReason ? (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <p className="text-sm text-gray-900 truncate cursor-default">
-                                {appt.cancellationReason.length > 50 
-                                  ? `${appt.cancellationReason.substring(0, 50)}...` 
-                                  : appt.cancellationReason}
-                              </p>
-                            </TooltipTrigger>
-                            <TooltipContent className="bg-white text-black border border-gray-200 max-w-xs">
-                              {appt.cancellationReason}
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      ) : (
-                        <p className="text-sm text-muted-foreground italic">No cancellation reason provided</p>
-                      )
-                    ) : !isNoteEditable(appt, date) ? (
-                      // Display note as read-only (for past dates)
-                      appt.note ? (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <p className="text-sm text-gray-900 truncate cursor-default">
-                                {appt.note.length > 50 ? `${appt.note.substring(0, 50)}...` : appt.note}
-                              </p>
-                            </TooltipTrigger>
-                            <TooltipContent className="bg-white text-black border border-gray-200 max-w-xs">
-                              {appt.note}
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      ) : (
-                        <p className="text-sm text-muted-foreground italic">No note</p>
-                      )
-                    ) : (
-                      // Original editable logic (for today's appointments)
-                      editingNoteId === appt.id ? (
-                        <div className="flex flex-col gap-2">
-                          <Input
-                            value={editingNoteValue}
-                            onChange={(e) => setEditingNoteValue(e.target.value)}
-                            className="text-sm"
-                            autoFocus
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                saveNoteEdit(appt.id);
-                              } else if (e.key === "Escape") {
-                                cancelNoteEdit();
-                              }
-                            }}
-                          />
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              onClick={() => saveNoteEdit(appt.id)}
-                              className="text-xs h-7"
-                            >
-                              Save
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={cancelNoteEdit}
-                              className="text-xs h-7"
-                            >
-                              Cancel
-                            </Button>
-                          </div>
-                        </div>
-                      ) : appt.note === undefined || appt.note === "" ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-xs h-8 w-full justify-start"
-                          onClick={() => startNoteEdit(appt.id, "")}
-                        >
-                          + Add Note
-                        </Button>
-                      ) : (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div 
-                                className="text-sm text-gray-900 cursor-pointer px-2 py-1.5 rounded hover:bg-primary/10 transition-colors border border-transparent hover:border-primary/20"
-                                onClick={() => startNoteEdit(appt.id, appt.note || "")}
-                              >
-                                {appt.note.length > 50 ? `${appt.note.substring(0, 50)}...` : appt.note}
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent className="bg-white text-black border border-gray-200 max-w-xs">
-                              {appt.note}
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      )
-                    )}
-                  </div>
-                </div>
+                                      {/* Assessor/Cancellation Note */}
+                                      <div className="flex items-start gap-3 md:col-span-2">
+                                        <StickyNote className={`h-5 w-5 mt-0.5 flex-shrink-0 ${appt.outcome === "Canceled" ? "text-red-600" : "text-blue-600"}`} />
+                                        <div className="flex-1 min-w-0">
+                                          <div className="text-xs font-medium text-gray-500 mb-1">
+                                            {appt.outcome === "Canceled" ? "Cancellation Reason" : "Assessor Note"}
+                                          </div>
+                                          {appt.outcome === "Canceled" ? (
+                                            appt.cancellationReason ? (
+                                              <p className="text-sm text-gray-900">{appt.cancellationReason}</p>
+                                            ) : (
+                                              <p className="text-sm text-gray-400 italic">No cancellation reason provided</p>
+                                            )
+                                          ) : !isNoteEditable(appt, date) ? (
+                                            appt.note ? (
+                                              <p className="text-sm text-gray-900">{appt.note}</p>
+                                            ) : (
+                                              <p className="text-sm text-gray-400 italic">No note</p>
+                                            )
+                                          ) : editingNoteId === appt.id ? (
+                                            <div className="flex flex-col gap-2">
+                                              <Input
+                                                value={editingNoteValue}
+                                                onChange={(e) => setEditingNoteValue(e.target.value)}
+                                                className="text-sm"
+                                                autoFocus
+                                                onKeyDown={(e) => {
+                                                  if (e.key === "Enter") {
+                                                    saveNoteEdit(appt.id);
+                                                  } else if (e.key === "Escape") {
+                                                    cancelNoteEdit();
+                                                  }
+                                                }}
+                                              />
+                                              <div className="flex gap-2">
+                                                <Button size="sm" onClick={() => saveNoteEdit(appt.id)} className="text-xs h-7">
+                                                  Save
+                                                </Button>
+                                                <Button size="sm" variant="outline" onClick={cancelNoteEdit} className="text-xs h-7">
+                                                  Cancel
+                                                </Button>
+                                              </div>
+                                            </div>
+                                          ) : appt.note === undefined || appt.note === "" ? (
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              className="text-xs h-8 w-fit justify-start"
+                                              onClick={() => startNoteEdit(appt.id, "")}
+                                            >
+                                              + Add Note
+                                            </Button>
+                                          ) : (
+                                            <div 
+                                              className="text-sm text-gray-900 cursor-pointer px-2 py-1.5 rounded hover:bg-blue-50 transition-colors border border-transparent hover:border-blue-200"
+                                              onClick={() => startNoteEdit(appt.id, appt.note || "")}
+                                            >
+                                              {appt.note}
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
                                     </div>
                                   </div>
 
@@ -940,255 +872,155 @@ const shouldHideEditActions = (appt: any) => {
                           </tr>
                           {expanded[appt.id] && (
                             <tr className="bg-gray-50 border-b">
-                              <td colSpan={8} className="px-0 py-8">
-                                <div className="flex flex-col gap-6">
+                              <td colSpan={8} className="px-6 py-8">
+                                <div className="max-w-6xl mx-auto">
                                    {/* Contact Information Section */}
-                                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
-                                    <h4 className="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">Contact Information</h4>
-                                    <div className="flex flex-col gap-6">
-                                      {/* Row 1: Email and Phone */}
-                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        {/* Email - Non-editable */}
-                                        <div className="flex items-start gap-3">
-                                          <div className="mt-0.5">
-                                            <Mail className="h-4 w-4 text-primary" />
-                                          </div>
-                                          <div className="flex-1 min-w-0">
-                                            <label className="text-xs text-muted-foreground block mb-1">Email</label>
-                                            <p className="text-sm text-gray-900 break-all">{appt.email}</p>
-                                          </div>
+                                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                                    <h4 className="text-sm font-semibold text-gray-900 mb-5 uppercase tracking-wide">Contact Information</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5">
+                                      {/* Email */}
+                                      <div className="flex items-start gap-3">
+                                        <Mail className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                                        <div className="flex-1 min-w-0">
+                                          <div className="text-xs font-medium text-gray-500 mb-1">Email</div>
+                                          <p className="text-sm text-gray-900 break-all">{appt.email}</p>
                                         </div>
-
-                                        {/* Phone - Non-editable */}
-                                        <div className="flex items-start gap-3">
-                                          <div className="mt-0.5">
-                                            <Phone className="h-4 w-4 text-primary" />
-                                          </div>
-                                          <div className="flex-1 min-w-0">
-                                            <label className="text-xs text-muted-foreground block mb-1">Phone</label>
-                                            <p className="text-sm text-gray-900">{appt.phone}</p>
-                                          </div>
-                                        </div>
-                                        
-                                        {/* Meeting URL */}
-                                        {appt.meetingUrl && (
-                                          <div className="flex items-start gap-3">
-                                            <div className="mt-0.5">
-                                              <Video className="h-4 w-4 text-blue-600" />
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                              <label className="text-xs text-muted-foreground block mb-1">Meeting URL</label>
-                                              <div className="flex items-center gap-2">
-                                                <a
-                                                  href={appt.meetingUrl}
-                                                  target="_blank"
-                                                  rel="noopener noreferrer"
-                                                  className="text-sm text-blue-600 hover:text-blue-800 hover:underline break-all flex-1"
-                                                >
-                                                  {appt.meetingUrl}
-                                                </a>
-                                                <button
-                                                  type="button"
-                                                  onClick={() => {
-                                                    navigator.clipboard.writeText(appt.meetingUrl || '');
-                                                    toast.success('Meeting URL copied to clipboard');
-                                                  }}
-                                                  className="flex-shrink-0 p-1.5 rounded hover:bg-gray-100 transition-colors"
-                                                  title="Copy to clipboard"
-                                                >
-                                                  <Copy className="h-4 w-4 text-gray-600" />
-                                                </button>
-                                              </div>
-                                            </div>
-                                          </div>
-                                        )}
                                       </div>
 
-                                      {/* Row 2: Attendee Note and Provider Note */}
-                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        {/* Attendee Note - Non-editable */}
-                                        <div className="flex items-start gap-3">
-                                          <div className="mt-0.5">
-                                            <StickyNote className="h-4 w-4 text-primary" />
-                                          </div>
-                                          <div className="flex-1 min-w-0">
-                                            <label className="text-xs text-muted-foreground block mb-1">Attendee Note</label>
-                                            {appt.attendeeNote ? (
-                                              <TooltipProvider>
-                                                <Tooltip>
-                                                  <TooltipTrigger asChild>
-                                                    <p className="text-sm text-gray-900 truncate cursor-default">
-                                                      {appt.attendeeNote.length > 50 ? `${appt.attendeeNote.substring(0, 50)}...` : appt.attendeeNote}
-                                                    </p>
-                                                  </TooltipTrigger>
-                                                  <TooltipContent className="bg-white text-black border border-gray-200 max-w-xs">
-                                                    {appt.attendeeNote}
-                                                  </TooltipContent>
-                                                </Tooltip>
-                                              </TooltipProvider>
-                                            ) : (
-                                              <p className="text-sm text-muted-foreground italic">No note</p>
-                                             )}
-                                          </div>
+                                      {/* Phone */}
+                                      <div className="flex items-start gap-3">
+                                        <Phone className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                                        <div className="flex-1 min-w-0">
+                                          <div className="text-xs font-medium text-gray-500 mb-1">Phone</div>
+                                          <p className="text-sm text-gray-900">{appt.phone}</p>
                                         </div>
+                                      </div>
 
-                              {/* Reschedule Reasons */}
-                              {appt.rescheduleReasons && appt.rescheduleReasons.length > 0 && (
-                                <div className="flex items-start gap-3">
-                                  <div className="mt-0.5">
-                                    <Calendar className="h-4 w-4 text-gray-600" />
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <label className="text-xs text-muted-foreground block mb-1">
-                                      Reschedule Reasons
-                                    </label>
-                                    <div className="space-y-2">
-                                      {appt.rescheduleReasons.map((reason, index) => (
-                                        <div key={index} className="text-sm text-gray-900 p-2 bg-white border border-gray-200 rounded">
-                                          <span className="font-medium text-gray-700">#{index + 1}:</span> {reason}
+                                      {/* Meeting URL */}
+                                      {appt.meetingUrl && (
+                                        <div className="flex items-start gap-3">
+                                          <Video className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                                          <div className="flex-1 min-w-0">
+                                            <div className="text-xs font-medium text-gray-500 mb-1">Meeting URL</div>
+                                            <div className="flex items-center gap-2">
+                                              <a
+                                                href={appt.meetingUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-sm text-blue-600 hover:text-blue-800 hover:underline break-all flex-1"
+                                              >
+                                                {appt.meetingUrl}
+                                              </a>
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  navigator.clipboard.writeText(appt.meetingUrl || '');
+                                                  toast.success('Meeting URL copied to clipboard');
+                                                }}
+                                                className="flex-shrink-0 p-1.5 rounded hover:bg-gray-100 transition-colors"
+                                                title="Copy to clipboard"
+                                              >
+                                                <Copy className="h-4 w-4 text-gray-600" />
+                                              </button>
+                                            </div>
+                                          </div>
                                         </div>
-                                      ))}
+                                      )}
+
+                                      {/* Attendee Note */}
+                                      <div className="flex items-start gap-3">
+                                        <StickyNote className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                                        <div className="flex-1 min-w-0">
+                                          <div className="text-xs font-medium text-gray-500 mb-1">Attendee Note</div>
+                                          {appt.attendeeNote ? (
+                                            <p className="text-sm text-gray-900">{appt.attendeeNote}</p>
+                                          ) : (
+                                            <p className="text-sm text-gray-400 italic">ok</p>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      {/* Reschedule Reasons */}
+                                      {appt.rescheduleReasons && appt.rescheduleReasons.length > 0 && (
+                                        <div className="flex items-start gap-3 md:col-span-2">
+                                          <Calendar className="h-5 w-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+                                          <div className="flex-1 min-w-0">
+                                            <div className="text-xs font-medium text-gray-500 mb-2">Reschedule Reasons</div>
+                                            <div className="space-y-2">
+                                              {appt.rescheduleReasons.map((reason, index) => (
+                                                <div key={index} className="text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md border border-gray-200">
+                                                  <span className="font-semibold text-yellow-600">#{index + 1}:</span> {reason}
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {/* Provider/Cancellation Note */}
+                                      <div className="flex items-start gap-3 md:col-span-2">
+                                        <StickyNote className={`h-5 w-5 mt-0.5 flex-shrink-0 ${appt.outcome === "Canceled" ? "text-red-600" : "text-blue-600"}`} />
+                                        <div className="flex-1 min-w-0">
+                                          <div className="text-xs font-medium text-gray-500 mb-1">
+                                            {appt.outcome === "Canceled" ? "Cancellation Reason" : "Provider Note"}
+                                          </div>
+                                          {appt.outcome === "Canceled" ? (
+                                            appt.cancellationReason ? (
+                                              <p className="text-sm text-gray-900">{appt.cancellationReason}</p>
+                                            ) : (
+                                              <p className="text-sm text-gray-400 italic">No cancellation reason provided</p>
+                                            )
+                                          ) : !isNoteEditable(appt, date) ? (
+                                            appt.note ? (
+                                              <p className="text-sm text-gray-900">{appt.note}</p>
+                                            ) : (
+                                              <p className="text-sm text-gray-400 italic">No note</p>
+                                            )
+                                          ) : editingNoteId === appt.id ? (
+                                            <div className="flex flex-col gap-2">
+                                              <Input
+                                                value={editingNoteValue}
+                                                onChange={(e) => setEditingNoteValue(e.target.value)}
+                                                className="text-sm"
+                                                autoFocus
+                                                onKeyDown={(e) => {
+                                                  if (e.key === "Enter") {
+                                                    saveNoteEdit(appt.id);
+                                                  } else if (e.key === "Escape") {
+                                                    cancelNoteEdit();
+                                                  }
+                                                }}
+                                              />
+                                              <div className="flex gap-2">
+                                                <Button size="sm" onClick={() => saveNoteEdit(appt.id)} className="text-xs h-7">
+                                                  Save
+                                                </Button>
+                                                <Button size="sm" variant="outline" onClick={cancelNoteEdit} className="text-xs h-7">
+                                                  Cancel
+                                                </Button>
+                                              </div>
+                                            </div>
+                                          ) : appt.note === undefined || appt.note === "" ? (
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              className="text-xs h-8 w-fit justify-start"
+                                              onClick={() => startNoteEdit(appt.id, "")}
+                                            >
+                                              + Add Note
+                                            </Button>
+                                          ) : (
+                                            <div 
+                                              className="text-sm text-gray-900 cursor-pointer px-2 py-1.5 rounded hover:bg-blue-50 transition-colors border border-transparent hover:border-blue-200"
+                                              onClick={() => startNoteEdit(appt.id, appt.note || "")}
+                                            >
+                                              {appt.note}
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
                                     </div>
                                   </div>
-                                </div>
-                              )}
-
-                                         {/* Provider Note - Editable */}
-                <div className="flex items-start gap-3">
-                  <div className="mt-0.5">
-                    <StickyNote className="h-4 w-4 text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <label className="text-xs text-muted-foreground block mb-1">
-                      {appt.outcome === "Canceled" ? "Cancellation Reason" : "Provider Note"}
-                    </label>
-                    
-                    {appt.outcome === "Canceled" ? (
-                      // Display cancellation reason (non-editable)
-                      appt.cancellationReason ? (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <p className="text-sm text-gray-900 truncate cursor-default">
-                                {appt.cancellationReason.length > 50 
-                                  ? `${appt.cancellationReason.substring(0, 50)}...` 
-                                  : appt.cancellationReason}
-                              </p>
-                            </TooltipTrigger>
-                            <TooltipContent className="bg-white text-black border border-gray-200 max-w-xs">
-                              {appt.cancellationReason}
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      ) : (
-                        <p className="text-sm text-muted-foreground italic">No cancellation reason provided</p>
-                      )
-                    ) : !isNoteEditable(appt, date) ? (
-                      // Display note as read-only (for past dates)
-                      appt.note ? (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <p className="text-sm text-gray-900 truncate cursor-default">
-                                {appt.note.length > 50 ? `${appt.note.substring(0, 50)}...` : appt.note}
-                              </p>
-                            </TooltipTrigger>
-                            <TooltipContent className="bg-white text-black border border-gray-200 max-w-xs">
-                              {appt.note}
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      ) : (
-                        <p className="text-sm text-muted-foreground italic">No note</p>
-                      )
-                    ) : (
-                      // Original editable logic (for today's appointments)
-                      editingNoteId === appt.id ? (
-                        <div className="flex flex-col gap-2">
-                          <Input
-                            value={editingNoteValue}
-                            onChange={(e) => setEditingNoteValue(e.target.value)}
-                            className="text-sm"
-                            autoFocus
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                saveNoteEdit(appt.id);
-                              } else if (e.key === "Escape") {
-                                cancelNoteEdit();
-                              }
-                            }}
-                          />
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              onClick={() => saveNoteEdit(appt.id)}
-                              className="text-xs h-7"
-                            >
-                              Save
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={cancelNoteEdit}
-                              className="text-xs h-7"
-                            >
-                              Cancel
-                            </Button>
-                          </div>
-                        </div>
-                      ) : appt.note === undefined || appt.note === "" ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-xs h-8 w-full justify-start"
-                          onClick={() => startNoteEdit(appt.id, "")}
-                        >
-                          + Add Note
-                        </Button>
-                      ) : (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div 
-                                className="text-sm text-gray-900 cursor-pointer px-2 py-1.5 rounded hover:bg-primary/10 transition-colors border border-transparent hover:border-primary/20"
-                                onClick={() => startNoteEdit(appt.id, appt.note || "")}
-                              >
-                                {appt.note.length > 50 ? `${appt.note.substring(0, 50)}...` : appt.note}
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent className="bg-white text-black border border-gray-200 max-w-xs">
-                              {appt.note}
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      )
-                                             )}
-                                           </div>
-                                         </div>
-
-                                         {/* Reschedule Reasons */}
-                                         {appt.rescheduleReasons && appt.rescheduleReasons.length > 0 && (
-                                           <div className="flex items-start gap-3 mt-4">
-                                             <div className="mt-0.5">
-                                               <Calendar className="h-4 w-4 text-amber-600" />
-                                             </div>
-                                             <div className="flex-1 min-w-0">
-                                               <label className="text-xs text-muted-foreground block mb-1">
-                                                 Reschedule Reasons
-                                               </label>
-                                               <div className="space-y-2">
-                                                 {appt.rescheduleReasons.map((reason, index) => (
-                                                   <div key={index} className="text-sm text-gray-900 p-2 bg-amber-50 border border-amber-200 rounded">
-                                                     <span className="font-medium text-amber-700">#{index + 1}:</span> {reason}
-                                                   </div>
-                                                 ))}
-                                               </div>
-                                             </div>
-                                           </div>
-                                         )}
-                                       </div>
-                                     </div>
-                                   </div>
 
                                    {/* Actions Section */}
                                   <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
