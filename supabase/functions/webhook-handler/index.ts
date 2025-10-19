@@ -1396,21 +1396,7 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
       }
     }
 
-    // Attempt 4: try stripped iCal UID
-    if (!existingAppointment && iCalUIDStripped) {
-      const { data } = await supabase
-        .from('schedule_appointments')
-        .select('id, appointment_status')
-        .eq('cal_booking_id', iCalUIDStripped)
-        .eq('agency_id', webhook.agency_id)
-        .maybeSingle();
-      if (data) {
-        existingAppointment = data;
-        console.log('Found existing appointment by iCalUIDStripped:', data.id);
-      }
-    }
-
-    // Attempt 5: match on booking_details JSON -> uid or bookingId
+    // Attempt 4: match on booking_details JSON -> uid or bookingId (Cal.com identifiers only)
     if (!existingAppointment && calUid) {
       const { data } = await supabase
         .from('schedule_appointments')
@@ -1437,49 +1423,6 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
       }
     }
 
-    // Attempt 5b: match on booking_details JSON -> iCalUID or stripped
-    if (!existingAppointment && iCalUID) {
-      const { data } = await supabase
-        .from('schedule_appointments')
-        .select('id, appointment_status')
-        .filter('booking_details->>iCalUID', 'eq', iCalUID)
-        .eq('agency_id', webhook.agency_id)
-        .maybeSingle();
-      if (data) {
-        existingAppointment = data;
-        console.log('Found existing appointment by booking_details.iCalUID:', data.id);
-      }
-    }
-
-    if (!existingAppointment && iCalUIDStripped) {
-      const { data } = await supabase
-        .from('schedule_appointments')
-        .select('id, appointment_status')
-        .filter('booking_details->>iCalUID', 'eq', iCalUIDStripped)
-        .eq('agency_id', webhook.agency_id)
-        .maybeSingle();
-      if (data) {
-        existingAppointment = data;
-        console.log('Found existing appointment by booking_details.iCalUID (stripped):', data.id);
-      }
-    }
-
-    // Attempt 6: match by owner + time window
-    if (!existingAppointment && calendarOwnerId) {
-      const { data } = await supabase
-        .from('schedule_appointments')
-        .select('id, appointment_status')
-        .eq('calendar_owner_id', calendarOwnerId)
-        .eq('start_time', startTimeISO)
-        .eq('end_time', endTimeISO)
-        .eq('agency_id', webhook.agency_id)
-        .maybeSingle();
-      if (data) {
-        existingAppointment = data;
-        console.log('Found existing appointment by owner+time:', data.id);
-      }
-    }
-
     if (existingAppointment) {
       console.log('Final matched appointment:', existingAppointment.id, 'with status:', existingAppointment.appointment_status);
     } else {
@@ -1487,9 +1430,11 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
     }
 
 
-    if (existingAppointment) {
-      // Update existing appointment
-      console.log('Updating existing appointment:', existingAppointment.id, 'with status:', appointmentStatus);
+    // CRITICAL: Only update existing appointments for reschedules and cancellations
+    // For BOOKING_CREATED events, always create a new appointment
+    if (existingAppointment && (eventType === 'BOOKING_RESCHEDULED' || eventType === 'BOOKING_CANCELLED')) {
+      // Update existing appointment for reschedules and cancellations only
+      console.log('Updating existing appointment:', existingAppointment.id, 'Event:', eventType, 'Status:', appointmentStatus);
       
       // Build update object with base fields
       const updateData: any = {
@@ -1542,9 +1487,10 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
       }
     } else if (eventType === 'BOOKING_RESCHEDULED' && !existingAppointment) {
       console.log('BOOKING_RESCHEDULED event but no existing appointment found - this should not happen');
-    } else if (eventType === 'BOOKING_CREATED' || eventType === 'BOOKING_REQUESTED') {
-      // Create new appointment for booking creation/request
-      console.log('Creating new appointment');
+    } else {
+      // Always create new appointment for BOOKING_CREATED/BOOKING_REQUESTED
+      // or if no existing appointment was found
+      console.log('Creating new appointment for event:', eventType, 'bookingId:', calBookingId);
       
       const { data: newAppointment, error: createError } = await supabase
         .from('schedule_appointments')
