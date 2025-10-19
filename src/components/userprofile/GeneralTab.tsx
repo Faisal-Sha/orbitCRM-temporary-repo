@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,21 +7,26 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from '@/components/ui/alert-dialog';
 import {
   Mail, Phone, MapPin, Facebook, Instagram, Pencil, X, User, Calendar, Briefcase, ShieldCheck,
   Home, Users, Heart, Languages, Plus, ExternalLink, Linkedin, Shield, FileText, CreditCard,
-  Globe, UserPlus, Edit2, Loader2, Smartphone, Copy, Check, UserIcon
+  Globe, UserPlus, Edit2, Loader2, Smartphone, Copy, Check, UserIcon, Trash2
 } from 'lucide-react';
 import { FaTiktok } from 'react-icons/fa';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useUserRoles } from '@/hooks/useUserRoles';
 import { useStaffTypes } from '@/hooks/useStaffTypes';
 import { useOrganizationCountry } from '@/hooks/useOrganizationCountry';
+import { useAppointments } from '@/hooks/useAppointments';
 import { validateEmail, validatePhoneNumber, getEmailValidationError, getPhoneValidationError, getUrlValidationError } from '@/utils/validation';
 import { formatPhoneNumber, getFormattedPhoneDisplay } from '@/utils/phoneFormatting';
 import { supabase } from '@/integrations/supabase/client';
 import { EmergencyContactSection } from './EmergencyContactSection';
 import { UserDataSection } from './UserDataSection';
+import ScheduleAppointmentModal from '@/components/appointments/ScheduleAppointmentModal';
+import { toast } from 'sonner';
+import { useQuery } from '@tanstack/react-query';
 
 // Format date nicely
 const formatDateNice = (iso?: string | null) => {
@@ -1454,10 +1459,106 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ personId, hideUpcomingAppointme
   // Profile aggregate (assigned values)
   const { data, loading: profileLoading, error } = useUserProfile(personId);
 
-  const dummyAppointments = [
-    { date: "Jun 18, 2025", time: "11:00 AM", clinician: "Dr. Emily Clark" },
-    { date: "Jun 22, 2025", time: "3:30 PM", clinician: "Dr. Mike Evans" },
-  ];
+  // State for modals
+  const [rescheduleModalOpen, setRescheduleModalOpen] = useState(false);
+  const [rescheduleModalInitialValues, setRescheduleModalInitialValues] = useState<any | null>(null);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [cancelDialogAppt, setCancelDialogAppt] = useState<any | null>(null);
+
+  // Get current user's person_id for cancel mutation
+  const { data: currentPersonId } = useQuery({
+    queryKey: ['currentPersonId'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('current_user_person_id');
+      if (error) throw error;
+      return data;
+    }
+  });
+
+  // Determine appointment type based on person's role
+  const appointmentType = data?.userRoles?.[0]?.role_name === 'lead' ? 'Lead' : 'Client';
+
+  // Fetch appointments
+  const { data: allAppointments, isLoading: appointmentsLoading } = useAppointments({
+    appointmentType: appointmentType,
+    enabled: !hideUpcomingAppointments && !!personId
+  });
+
+  // Filter for upcoming appointments for this specific person
+  const upcomingAppointments = useMemo(() => {
+    if (!allAppointments || !personId) return [];
+    
+    const now = new Date();
+    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).getTime();
+    
+    return allAppointments
+      .filter(appt => 
+        // Future appointments only
+        appt.startMs > todayEnd &&
+        // Not canceled
+        appt.outcome !== "Canceled" &&
+        // Belongs to this person
+        appt.attendeeId === personId
+      )
+      .sort((a, b) => a.startMs - b.startMs) // Sort by date ascending
+      .slice(0, 5); // Show max 5 upcoming appointments
+  }, [allAppointments, personId]);
+
+  // Handler to open reschedule modal
+  function openRescheduleModal(appt: any) {
+    setRescheduleModalInitialValues({
+      ...appt,
+      calendar: appt.type === "intakes" ? "Intakes" : "Clients",
+      date: appt.groupDate ? new Date(appt.groupDate) : undefined,
+      time: appt.time,
+      attendees: appt.attendees || [],
+      title: appt.meetingTitle || "",
+      description: appt.description || "",
+      location: appt.location || "",
+      locationDetail:
+          appt.location === "Video"
+            ? appt.meetingUrl
+            : appt.location === "Phone"
+              ? appt.phone
+              : appt.location === "In-Person"
+                ? appt.address
+                : appt.location === "Other"
+                  ? appt.otherDetails
+                  : "",
+    });
+    setRescheduleModalOpen(true);
+  }
+
+  // Handler to open cancel dialog
+  function openCancelDialog(appt: any) {
+    setCancelDialogAppt(appt);
+    setCancelDialogOpen(true);
+  }
+
+  // Handler to confirm cancellation
+  async function confirmCancelAppointment() {
+    if (!cancelDialogAppt || !currentPersonId) return;
+    
+    try {
+      // Update appointment status to canceled
+      const { error } = await supabase
+        .from('schedule_appointments')
+        .update({ 
+          appointment_status: 'canceled',
+          canceled_by: currentPersonId
+        })
+        .eq('id', cancelDialogAppt.id);
+      
+      if (error) throw error;
+      
+      toast.success('Appointment canceled successfully');
+      setCancelDialogOpen(false);
+      setCancelDialogAppt(null);
+    } catch (error) {
+      console.error('Error canceling appointment:', error);
+      toast.error('Failed to cancel appointment');
+    }
+  }
 
   const NA = (v?: string | null) => (v && String(v).trim()) || 'Not provided';
 
@@ -1476,35 +1577,104 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ personId, hideUpcomingAppointme
         )}
 
         {!hideUpcomingAppointments && (
-          <SectionCard title="Upcoming Appointments">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Time</TableHead>
-                  <TableHead>Clinician</TableHead>
-                  <TableHead className="text-center">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {dummyAppointments.map((appt, index) => (
-                  <TableRow key={index}>
-                    <TableCell>{appt.date}</TableCell>
-                    <TableCell>{appt.time}</TableCell>
-                    <TableCell>{appt.clinician}</TableCell>
-                    <TableCell className="text-center">
-                      <Button variant="ghost" size="icon" className="hover:bg-blue-100">
-                        <Pencil className="h-4 w-4 text-blue-500" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="hover:bg-red-100">
-                        <X className="h-4 w-4 text-red-500" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </SectionCard>
+          <>
+            {/* Reschedule Modal */}
+            <ScheduleAppointmentModal
+              open={rescheduleModalOpen}
+              onOpenChange={setRescheduleModalOpen}
+              mode="reschedule"
+              initialValues={rescheduleModalInitialValues}
+            />
+
+            {/* Cancel Confirmation Dialog */}
+            <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Cancel appointment?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to cancel this appointment? This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel onClick={() => setCancelDialogOpen(false)}>
+                    No, keep
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-destructive text-white hover:bg-destructive/90"
+                    onClick={confirmCancelAppointment}
+                  >
+                    Yes, cancel appointment
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Upcoming Appointments Table - Only show if appointments exist */}
+            {!appointmentsLoading && upcomingAppointments.length > 0 && (
+              <SectionCard title="Upcoming Appointments">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Time</TableHead>
+                      <TableHead className="text-center">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {upcomingAppointments.map((appt) => (
+                      <TableRow key={appt.id}>
+                        <TableCell className="font-medium">
+                          {appt.groupDateDisplay}
+                        </TableCell>
+                        <TableCell>
+                          {appt.time}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 hover:bg-blue-100"
+                                    onClick={() => openRescheduleModal(appt)}
+                                  >
+                                    <Calendar className="h-4 w-4 text-blue-500" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Reschedule</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 hover:bg-red-100"
+                                    onClick={() => openCancelDialog(appt)}
+                                  >
+                                    <Trash2 className="h-4 w-4 text-red-500" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Cancel</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </SectionCard>
+            )}
+          </>
         )}
 
         {/* Contact Information - Enhanced Dynamic Section */}
