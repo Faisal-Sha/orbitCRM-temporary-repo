@@ -33,15 +33,28 @@ export const transformSupabaseToAppointment = (row: any, latestOutcome?: string,
     || bookingDetails.notes
     || '';
   
-  // Extract reschedule reasons (could be string or array)
+  // Extract reschedule reasons from responses object
   let rescheduleReasons: string[] = [];
-  if (bookingDetails.rescheduleReason) {
+  const rescheduleData = bookingDetails.responses?.rescheduleReason?.value;
+  if (rescheduleData) {
+    if (Array.isArray(rescheduleData)) {
+      rescheduleReasons = rescheduleData.filter(r => r && typeof r === 'string' && r.trim());
+    } else if (typeof rescheduleData === 'string' && rescheduleData.trim()) {
+      rescheduleReasons = [rescheduleData.trim()];
+    }
+  }
+  
+  // Fallback: Check old direct path for backwards compatibility
+  if (rescheduleReasons.length === 0 && bookingDetails.rescheduleReason) {
     if (Array.isArray(bookingDetails.rescheduleReason)) {
-      rescheduleReasons = bookingDetails.rescheduleReason.filter(r => r && r.trim());
+      rescheduleReasons = bookingDetails.rescheduleReason.filter(r => r && typeof r === 'string' && r.trim());
     } else if (typeof bookingDetails.rescheduleReason === 'string' && bookingDetails.rescheduleReason.trim()) {
       rescheduleReasons = [bookingDetails.rescheduleReason.trim()];
     }
   }
+  
+  // Extract meeting URL from responses
+  const meetingURL = bookingDetails.responses?.meetingURL?.value || '';
   
   // Format date and time
   const startTime = new Date(row.start_time);
@@ -123,6 +136,7 @@ export const transformSupabaseToAppointment = (row: any, latestOutcome?: string,
     startMs,
     startISO,
     rescheduleReasons,
+    meetingUrl: meetingURL,
     // Dummy data for now - as per requirements
     alertLevel: 'grey' as "red" | "yellow" | "grey",
     growthStage: 'foundation' as "foundation" | "developing" | "established",

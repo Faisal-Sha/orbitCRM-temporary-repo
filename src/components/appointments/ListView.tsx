@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Mail, Phone, FormInput, User, ChevronDown, ChevronUp, Users, FileText, StickyNote, Calendar, X } from "lucide-react";
+import { Mail, Phone, FormInput, User, ChevronDown, ChevronUp, Users, FileText, StickyNote, Calendar, X, Video } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TooltipProvider, Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import UserProfilePanel from "@/components/userprofile/UserProfilePanel";
@@ -569,6 +569,27 @@ const shouldHideEditActions = (appt: any) => {
                                           <p className="text-sm text-gray-900">{appt.phone}</p>
                                         </div>
                                       </div>
+                                      
+                                      {/* Meeting URL */}
+                                      {appt.meetingUrl && (
+                                        <div className="flex items-start gap-3">
+                                          <div className="mt-0.5">
+                                            <Video className="h-4 w-4 text-blue-600" />
+                                          </div>
+                                          <div className="flex-1 min-w-0">
+                                            <label className="text-xs text-muted-foreground block mb-1">Meeting URL</label>
+                                            <a
+                                              href={appt.meetingUrl}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="text-sm text-blue-600 hover:text-blue-800 hover:underline break-all"
+                                            >
+                                              {appt.meetingUrl}
+                                            </a>
+                                          </div>
+                                        </div>
+                                      )}
+                                      
                                       <div className="flex items-start gap-3">
                                         <div className="mt-0.5">
                                           <StickyNote className="h-4 w-4 text-primary" />
@@ -934,6 +955,26 @@ const shouldHideEditActions = (appt: any) => {
                                             <p className="text-sm text-gray-900">{appt.phone}</p>
                                           </div>
                                         </div>
+                                        
+                                        {/* Meeting URL */}
+                                        {appt.meetingUrl && (
+                                          <div className="flex items-start gap-3">
+                                            <div className="mt-0.5">
+                                              <Video className="h-4 w-4 text-blue-600" />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                              <label className="text-xs text-muted-foreground block mb-1">Meeting URL</label>
+                                              <a
+                                                href={appt.meetingUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-sm text-blue-600 hover:text-blue-800 hover:underline break-all"
+                                              >
+                                                {appt.meetingUrl}
+                                              </a>
+                                            </div>
+                                          </div>
+                                        )}
                                       </div>
 
                                       {/* Row 2: Attendee Note and Provider Note */}
@@ -960,11 +1001,32 @@ const shouldHideEditActions = (appt: any) => {
                                               </TooltipProvider>
                                             ) : (
                                               <p className="text-sm text-muted-foreground italic">No note</p>
-                                            )}
+                                             )}
                                           </div>
                                         </div>
 
-                                        {/* Provider Note - Editable */}
+                                        {/* Reschedule Reasons */}
+                                        {appt.rescheduleReasons && appt.rescheduleReasons.length > 0 && (
+                                          <div className="flex items-start gap-3">
+                                            <div className="mt-0.5">
+                                              <Calendar className="h-4 w-4 text-amber-600" />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                              <label className="text-xs text-muted-foreground block mb-1">
+                                                Reschedule Reasons
+                                              </label>
+                                              <div className="space-y-2">
+                                                {appt.rescheduleReasons.map((reason, index) => (
+                                                  <div key={index} className="text-sm text-gray-900 p-2 bg-amber-50 border border-amber-200 rounded">
+                                                    <span className="font-medium text-amber-700">#{index + 1}:</span> {reason}
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        )}
+
+                                         {/* Provider Note - Editable */}
                 <div className="flex items-start gap-3">
                   <div className="mt-0.5">
                     <StickyNote className="h-4 w-4 text-primary" />

@@ -20,7 +20,6 @@ export interface Appointment {
   growthStage: "foundation" | "developing" | "established";
   outcome: string;
   cancellationReason?: string;
-  meetingUrl?: string;
   description?: string;
   location?: string;
   address?: string;
@@ -29,6 +28,7 @@ export interface Appointment {
   startMs: number;
   startISO?: string;
   rescheduleReasons?: string[];
+  meetingUrl?: string;
 }
 
 export interface FilterOptions {
