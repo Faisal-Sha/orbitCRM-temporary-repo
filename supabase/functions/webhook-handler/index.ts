@@ -1536,8 +1536,6 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
           }
         }
       }
-    } else {
-      console.log('Event type does not require appointment creation:', eventType);
     }
 
     // Insert trigger log now that we have calendarOwnerId and appointmentId
