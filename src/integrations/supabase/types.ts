@@ -2444,6 +2444,15 @@ export type Database = {
           | { p_role_name: string }
         Returns: Json
       }
+      alert_metrics_for_people: {
+        Args: { p_agency_id: string; p_person_ids: string[] }
+        Returns: {
+          is_client: boolean
+          person_id: string
+          total_appointments: number
+          total_rescheduled: number
+        }[]
+      }
       create_agency_with_admin: {
         Args: {
           admin_email: string
