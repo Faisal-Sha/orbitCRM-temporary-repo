@@ -80,3 +80,53 @@ export const openCalCancelUrl = (url: string | null) => {
   window.open(url, '_blank', 'noopener,noreferrer');
   return true;
 };
+
+/**
+ * Generates a Cal.com URL for scheduling a NEW appointment (not rescheduling existing)
+ * Used for canceled/past appointments where we want to schedule fresh with prefilled data
+ * 
+ * URL Format: {calendarUrl}?name={fullName}&attendee_id={personId}&email={email}&appointment_type={type}&calendar_owner_id={ownerId}&location={...}&meetingURL={url}
+ * 
+ * @param calendarUrl - The base Cal.com URL from cal_calendar_users.calendar_url
+ * @param attendeeData - Object containing attendee information to prefill
+ * @param appointmentType - 'Lead' or 'Client'
+ * @param calendarOwnerId - The calendar owner's person_id
+ * @returns Complete new appointment URL with prefilled data
+ */
+export const generateNewAppointmentUrl = (
+  calendarUrl: string,
+  attendeeData: {
+    personId: string;
+    fullName: string;
+    email: string;
+    phone?: string;
+    meetingUrl?: string;
+  },
+  appointmentType: 'Lead' | 'Client',
+  calendarOwnerId: string
+): string => {
+  const params = new URLSearchParams();
+  
+  params.append('name', attendeeData.fullName);
+  params.append('attendee_id', attendeeData.personId);
+  params.append('email', attendeeData.email);
+  params.append('appointment_type', appointmentType);
+  params.append('calendar_owner_id', calendarOwnerId);
+
+  // Add meeting URL if provided
+  if (attendeeData.meetingUrl) {
+    params.append('meetingURL', attendeeData.meetingUrl);
+  }
+
+  // Manually construct location parameter to avoid double-encoding
+  let url = `${calendarUrl}?${params.toString()}`;
+  
+  if (attendeeData.phone) {
+    // Extract digits only from phone number
+    const cleanDigits = attendeeData.phone.replace(/\D/g, '');
+    // Construct location JSON parameter (manually to prevent double encoding)
+    url += `&location={"value":"phone","optionValue":"%2B1${cleanDigits}"}`;
+  }
+
+  return url;
+};

@@ -10,7 +10,7 @@ import UserProfilePanel from "@/components/userprofile/UserProfilePanel";
 import ScheduleAppointmentModal from "@/components/appointments/ScheduleAppointmentModal";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { generateCalRescheduleUrl, openCalRescheduleUrl, generateCalCancelUrl, openCalCancelUrl } from "@/utils/calRescheduleUrl";
+import { generateCalRescheduleUrl, openCalRescheduleUrl, generateCalCancelUrl, openCalCancelUrl, generateNewAppointmentUrl } from "@/utils/calRescheduleUrl";
 
 // Import new components
 import { TYPE_OPTIONS, DATE_OPTIONS, INITIAL_LOAD, LOAD_MORE_AMOUNT, MAX_APPOINTMENTS } from "./listview/constants";
@@ -338,7 +338,7 @@ const shouldHideEditActions = (appt: any) => {
     setEditingNoteValue("");
   }
 
-  // Handle reschedule button click - generates Cal.com reschedule URL
+  // Handle reschedule button click - generates Cal.com reschedule URL or new appointment URL
   const handleRescheduleClick = (appt: Appointment) => {
     // Find matching calendar URL based on calendar_owner_id and appointment_type
     const calendarData = calCalendarUsers?.find(
@@ -356,17 +356,55 @@ const shouldHideEditActions = (appt: any) => {
       return;
     }
 
-    // Generate reschedule URL with current user's email
-    const rescheduleUrl = generateCalRescheduleUrl(
-      appt.calBookingId,
-      calendarData.calendar_url,
-      currentUserEmail
-    );
+    // Determine if this is a canceled or past appointment
+    const isCanceledOrPast = appt.outcome === 'Canceled' || date === 'past' || date === 'canceled';
 
-    // Open URL in new tab
-    if (!openCalRescheduleUrl(rescheduleUrl)) {
-      toast.error('Unable to open reschedule link: Missing booking ID');
-      console.error('Missing cal_booking_id for appointment:', appt.id);
+    let url: string | null = null;
+
+    if (isCanceledOrPast) {
+      // For canceled/past: Generate NEW appointment URL (not reschedule)
+      console.log('Generating new appointment URL for canceled/past event');
+      
+      // Validate required data for new appointment
+      if (!appt.attendeeId || !appt.email) {
+        toast.error('Unable to generate scheduling link: Missing attendee information');
+        console.error('Missing required data for new appointment URL:', {
+          attendeeId: appt.attendeeId,
+          email: appt.email
+        });
+        return;
+      }
+
+      url = generateNewAppointmentUrl(
+        calendarData.calendar_url,
+        {
+          personId: appt.attendeeId,
+          fullName: appt.clientFullName,
+          email: appt.email,
+          phone: appt.phone,
+          meetingUrl: appt.meetingUrl
+        },
+        appt.type === 'intakes' ? 'Lead' : 'Client',
+        appt.calendarOwnerId || calendarData.calendar_owner_id
+      );
+      
+      // Open new appointment URL
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } else {
+      // For today/upcoming: Generate traditional reschedule URL
+      console.log('Generating reschedule URL for active appointment');
+      
+      const rescheduleUrl = generateCalRescheduleUrl(
+        appt.calBookingId,
+        calendarData.calendar_url,
+        currentUserEmail
+      );
+
+      // Open reschedule URL
+      if (!openCalRescheduleUrl(rescheduleUrl)) {
+        toast.error('Unable to open reschedule link: Missing booking ID');
+        console.error('Missing cal_booking_id for appointment:', appt.id);
+      }
     }
   };
 

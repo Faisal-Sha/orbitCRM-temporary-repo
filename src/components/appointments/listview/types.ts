@@ -33,6 +33,7 @@ export interface Appointment {
   calendarOwnerId?: string;
   rescheduledByEmail?: string;
   canceledByEmail?: string;
+  attendeeId?: string;
 }
 
 export interface FilterOptions {
