@@ -1318,8 +1318,12 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
     console.log('Cancellation data - reason:', cancellationReason, 'cancelledBy:', cancelledBy, 'cancelledByEmail:', cancelledByEmail);
     
     // Extract reschedule data from payload (if applicable)
-    const rescheduledBy = p.rescheduledBy || null; // Email of person who rescheduled
-    console.log('Reschedule data - rescheduledBy:', rescheduledBy);
+    // Try multiple paths to extract rescheduledBy email
+    const rescheduledBy = p.rescheduledBy || 
+                         data.payload?.rescheduledBy || 
+                         data.rescheduledBy || 
+                         null;
+    console.log('Reschedule data extraction - p.rescheduledBy:', p.rescheduledBy, 'data.payload?.rescheduledBy:', data.payload?.rescheduledBy, 'final rescheduledBy:', rescheduledBy);
 
     // Check if appointment already exists (robust multi-identifier lookup)
     // For BOOKING_RESCHEDULED, prioritize lookup by rescheduleUid (original appointment)
