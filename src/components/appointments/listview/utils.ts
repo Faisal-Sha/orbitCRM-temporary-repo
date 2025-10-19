@@ -85,6 +85,7 @@ export function generateAppointments(count: number): Appointment[] {
 
 export function getIntakeOutcomeBadgeProps(outcome: string) {
   switch (outcome) {
+    case "Canceled": return { className: "bg-red-100 text-red-900", label: "Canceled" };
     case "New Client": return { className: "bg-green-100 text-green-800", label: "New Client" };
     case "Due": return { className: "bg-yellow-100 text-yellow-800", label: "Due" };
     case "No Show": return { className: "bg-gray-200 text-gray-700", label: "No Show" };
@@ -97,6 +98,7 @@ export function getIntakeOutcomeBadgeProps(outcome: string) {
 
 export function getClientOutcomeBadgeProps(outcome: string) {
   switch (outcome) {
+    case "Canceled": return { className: "bg-red-100 text-red-900", label: "Canceled" };
     case "Success": return { className: "bg-green-100 text-green-800", label: "Success" };
     case "Due": return { className: "bg-yellow-100 text-yellow-800", label: "Due" };
     case "No Show": return { className: "bg-gray-200 text-gray-700", label: "No Show" };

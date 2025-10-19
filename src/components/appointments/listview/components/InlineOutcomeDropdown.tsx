@@ -13,6 +13,7 @@ interface InlineOutcomeDropdownProps {
   onChange: (value: string) => void;
   badgeClass?: string;
   getBadgeProps: (outcome: string) => { className: string; label: string };
+  disabled?: boolean;
 }
 
 export const InlineOutcomeDropdown = ({
@@ -20,9 +21,22 @@ export const InlineOutcomeDropdown = ({
   options,
   onChange,
   badgeClass,
-  getBadgeProps
-}: InlineOutcomeDropdownProps) => (
-  <DropdownMenu>
+  getBadgeProps,
+  disabled = false
+}: InlineOutcomeDropdownProps) => {
+  // If disabled, render static badge without dropdown
+  if (disabled) {
+    return (
+      <span
+        className={`inline-block px-2 py-1 rounded font-medium text-xs ring-1 ring-inset ring-gray-200 ${badgeClass}`}
+      >
+        {value}
+      </span>
+    );
+  }
+
+  return (
+    <DropdownMenu>
     <DropdownMenuTrigger asChild>
       <span
         className={`cursor-pointer inline-block px-2 py-1 rounded font-medium text-xs ring-1 ring-inset ring-gray-200 transition-colors ${badgeClass}`}
@@ -53,4 +67,5 @@ export const InlineOutcomeDropdown = ({
       })}
     </DropdownMenuContent>
   </DropdownMenu>
-);
+  );
+};

@@ -444,13 +444,14 @@ const ListView = () => {
                               </div>
                             </td>
                             <td className="px-2 py-2">
-                              <InlineOutcomeDropdown
-                                value={appt.outcome}
-                                options={["Due", "No Show", "New Client", "Unqualified", "Doubtful", "Remove"]}
-                                onChange={val => handleEdit(appt.id, "outcome", val)}
-                                badgeClass={getIntakeOutcomeBadgeProps(appt.outcome).className}
-                                getBadgeProps={getIntakeOutcomeBadgeProps}
-                              />
+                        <InlineOutcomeDropdown
+                          value={appt.outcome}
+                          options={["Due", "No Show", "New Client", "Unqualified", "Doubtful", "Remove"]}
+                          onChange={val => handleEdit(appt.id, "outcome", val)}
+                          badgeClass={getIntakeOutcomeBadgeProps(appt.outcome).className}
+                          getBadgeProps={getIntakeOutcomeBadgeProps}
+                          disabled={appt.outcome === "Canceled"}
+                        />
                             </td>
                             <td className="pl-2 pr-4 py-2 text-end">
                               <button onClick={() => handleExpand(appt.id)} aria-label={expanded[appt.id] ? "Collapse" : "Expand"} className="p-1 focus:outline-none transition-colors" tabIndex={0}>
@@ -729,13 +730,14 @@ const ListView = () => {
                               </div>
                             </td>
                             <td className="px-2 py-2">
-                              <InlineOutcomeDropdown
-                                value={appt.outcome}
-                                options={["Due", "Success", "No Show"]}
-                                onChange={val => handleEdit(appt.id, "outcome", val)}
-                                badgeClass={getClientOutcomeBadgeProps(appt.outcome).className}
-                                getBadgeProps={getClientOutcomeBadgeProps}
-                              />
+                        <InlineOutcomeDropdown
+                          value={appt.outcome}
+                          options={["Due", "Success", "No Show"]}
+                          onChange={val => handleEdit(appt.id, "outcome", val)}
+                          badgeClass={getClientOutcomeBadgeProps(appt.outcome).className}
+                          getBadgeProps={getClientOutcomeBadgeProps}
+                          disabled={appt.outcome === "Canceled"}
+                        />
                             </td>
                             <td className="pl-2 pr-4 py-2 text-end">
                               <button onClick={() => handleExpand(appt.id)} aria-label={expanded[appt.id] ? "Collapse" : "Expand"} className="p-1 focus:outline-none transition-colors" tabIndex={0}>

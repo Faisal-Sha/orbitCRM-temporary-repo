@@ -24,6 +24,7 @@ export const useAppointments = ({ appointmentType, enabled }: UseAppointmentsOpt
         .select(`
           id,
           appointment_type,
+          appointment_status,
           start_time,
           end_time,
           booking_details,
