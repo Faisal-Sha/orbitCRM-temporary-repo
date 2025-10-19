@@ -29,8 +29,6 @@ export interface Appointment {
   startISO?: string;
   rescheduleReasons?: string[];
   meetingUrl?: string;
-  isCanceled: boolean;
-  appointmentStatus?: string;
 }
 
 export interface FilterOptions {

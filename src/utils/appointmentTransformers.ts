@@ -104,17 +104,12 @@ export const transformSupabaseToAppointment = (
     !!notesData?.call_log_3
   ];
   
-  // Determine outcome and cancellation state
-  // CRITICAL: appointment_status is the source of truth for canceled state
-  // outcome logs may be stale after rescheduling
-  const isCanceled = row.appointment_status === 'canceled';
-  
+  // Determine outcome - prioritize appointment_status='canceled', then latest outcome log
+  // NOTE: When appointment_status changes to "canceled", this outcome should be logged 
+  // in schedule_appointment_outcomes_log table (via Cal.com webhook handler)
   let outcome: string;
-  if (isCanceled) {
+  if (row.appointment_status === 'canceled') {
     outcome = 'Canceled';
-  } else if (latestOutcome === 'Canceled') {
-    // Override stale "Canceled" outcome for scheduled appointments
-    outcome = 'Due';
   } else {
     outcome = latestOutcome || 'Due';
   }
@@ -159,9 +154,6 @@ export const transformSupabaseToAppointment = (
     // Store IDs for mutations and navigation
     appointmentId: row.id,
     attendeeId: attendee?.id || '',
-    // Cancellation state flags
-    isCanceled,
-    appointmentStatus: row.appointment_status,
     // Other fields with defaults
     numberOfInvitees: 1,
     attendees: [clientFullName],
