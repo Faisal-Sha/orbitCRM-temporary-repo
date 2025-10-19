@@ -654,7 +654,7 @@ const shouldHideEditActions = (appt: any) => {
                                 )}
                               </div>
                             </td>
-                            <td className="px-2 py-2 text-center"><AlertIconWithTooltip level={appt.alertLevel} /></td>
+                            <td className="px-2 py-2 text-center"><AlertIconWithTooltip level={appt.alertLevel} alertData={appt.alertData} /></td>
                             <td className="px-2 py-2">
                               <div className="flex items-center gap-1">
                                 {displayProviderName}
@@ -994,7 +994,7 @@ const shouldHideEditActions = (appt: any) => {
                                 )}
                               </div>
                             </td>
-                            <td className="px-2 py-2 text-center"><AlertIconWithTooltip level={appt.alertLevel} /></td>
+                            <td className="px-2 py-2 text-center"><AlertIconWithTooltip level={appt.alertLevel} alertData={appt.alertData} /></td>
                             <td className="px-2 py-2 text-center"><GrowthStatusCell stage={appt.growthStage} /></td>
                             <td className="px-2 py-2">
                               <div className="flex items-center gap-1">

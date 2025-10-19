@@ -141,10 +141,95 @@ export const useAppointments = ({ appointmentType, enabled }: UseAppointmentsOpt
         }
       }
 
+      // Fetch alert data for each attendee
+      const alertDataMap = new Map<string, {
+        totalAppointments: number;
+        totalRescheduled: number;
+        isClient: boolean;
+      }>();
+
+      if (attendeeIds.length > 0) {
+        // Get all appointments for these attendees with their trigger logs
+        const { data: allAppointmentsData } = await supabase
+          .from('schedule_appointments')
+          .select(`
+            id,
+            booking_details,
+            schedule_appointment_trigger_log(
+              trigger_event
+            )
+          `)
+          .eq('agency_id', agencyData);
+
+        // Build email to counts map
+        const countsByEmail = new Map<string, { total: number; rescheduled: number }>();
+        
+        allAppointmentsData?.forEach((appt: any) => {
+          const email = appt.booking_details?.responses?.email?.value || 
+                       appt.booking_details?.attendees?.[0]?.email;
+          
+          if (email) {
+            if (!countsByEmail.has(email)) {
+              countsByEmail.set(email, { total: 0, rescheduled: 0 });
+            }
+            
+            const counts = countsByEmail.get(email)!;
+            const logs = appt.schedule_appointment_trigger_log || [];
+            
+            logs.forEach((log: any) => {
+              if (log.trigger_event === 'BOOKING_CREATED' || log.trigger_event === 'BOOKING_RESCHEDULED') {
+                counts.total++;
+              }
+              if (log.trigger_event === 'BOOKING_RESCHEDULED') {
+                counts.rescheduled++;
+              }
+            });
+          }
+        });
+
+        // Get client status for each attendee
+        const { data: peopleData } = await supabase
+          .from('people')
+          .select(`
+            id,
+            status,
+            user_role_id,
+            app_user_roles!inner(role_name),
+            people_contacts!inner(email)
+          `)
+          .in('id', attendeeIds)
+          .eq('is_deleted', false);
+
+        // Build alert data map
+        peopleData?.forEach((person: any) => {
+          const email = person.people_contacts?.[0]?.email;
+          const isClient = 
+            person.app_user_roles?.role_name === 'client' &&
+            (person.status === 'Active' || person.status === 'On Hold');
+          
+          const counts = email ? countsByEmail.get(email) : undefined;
+          
+          alertDataMap.set(person.id, {
+            totalAppointments: counts?.total || 0,
+            totalRescheduled: counts?.rescheduled || 0,
+            isClient: isClient || false
+          });
+        });
+      }
+
       // Transform data to match Appointment interface
-      return data?.map((appt: any) => 
-        transformSupabaseToAppointment(appt, latestOutcomes.get(appt.id), serviceByPersonId, rescheduleReasonsMap.get(appt.id) || [])
-      ) || [];
+      return data?.map((appt: any) => {
+        const attendeeId = appt.schedule_appointment_attendees?.[0]?.attendee?.id;
+        const alertData = attendeeId ? alertDataMap.get(attendeeId) : undefined;
+        
+        return transformSupabaseToAppointment(
+          appt, 
+          latestOutcomes.get(appt.id), 
+          serviceByPersonId, 
+          rescheduleReasonsMap.get(appt.id) || [],
+          alertData
+        );
+      }) || [];
     },
     enabled,
     staleTime: 30000, // 30 seconds

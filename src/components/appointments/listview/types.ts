@@ -1,3 +1,4 @@
+import { AlertData } from "@/utils/alertLevelCalculation";
 
 export interface Appointment {
   id: string;
@@ -13,6 +14,7 @@ export interface Appointment {
   numberOfInvitees: number;
   attendees: string[];
   alertLevel: "red" | "yellow" | "grey";
+  alertData?: AlertData;
   note?: string;
   attendeeNote?: string;
   email: string;

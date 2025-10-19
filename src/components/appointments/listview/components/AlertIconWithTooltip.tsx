@@ -1,34 +1,30 @@
-
 import React from "react";
 import { AlertCircle, AlertTriangle } from "lucide-react";
 import { TooltipProvider, Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { formatAlertTooltipData, AlertData } from "@/utils/alertLevelCalculation";
 
 interface AlertIconWithTooltipProps {
   level: "red" | "yellow" | "grey";
+  alertData?: AlertData;
 }
 
-export const AlertIconWithTooltip = ({ level }: AlertIconWithTooltipProps) => {
+export const AlertIconWithTooltip = ({ level, alertData }: AlertIconWithTooltipProps) => {
   let icon = null;
-  let tooltipLines = [
-    { label: "Appointments", value: "2" },
-    { label: "Duplicates", value: "n/a", color: "" },
-    { label: "Client", value: "n/a", color: "" }
-  ];
   
+  // Use real data if available, otherwise show defaults
+  const tooltipLines = alertData 
+    ? formatAlertTooltipData(alertData)
+    : [
+        { label: "Appointments", value: "0", color: "" },
+        { label: "Rescheduled", value: "0", color: "" },
+        { label: "Client", value: "No", color: "" }
+      ];
+  
+  // Icon selection based on level
   if (level === "red") {
     icon = <AlertCircle className="h-4 w-4" color="#ea384c" fill="#ea384c" />;
-    tooltipLines = [
-      { label: "Appointments", value: "2" },
-      { label: "Duplicates", value: "yes", color: "text-red-600" },
-      { label: "Client", value: "yes", color: "text-red-600" }
-    ];
   } else if (level === "yellow") {
     icon = <AlertTriangle className="h-4 w-4" color="#f59e42" fill="#FEF7CD" />;
-    tooltipLines = [
-      { label: "Appointments", value: "2" },
-      { label: "Duplicates", value: "yes", color: "text-red-600" },
-      { label: "Client", value: "n/a", color: "" }
-    ];
   } else {
     icon = <AlertCircle className="h-4 w-4" color="#8E9196" fill="#E5E7EB" />;
   }

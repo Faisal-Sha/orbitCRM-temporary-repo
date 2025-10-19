@@ -1,11 +1,13 @@
 import { format } from "date-fns";
 import { getFormattedPhoneDisplay } from "./phoneFormatting";
+import { calculateAlertLevel, AlertData } from "./alertLevelCalculation";
 
 export const transformSupabaseToAppointment = (
   row: any, 
   latestOutcome?: string, 
   serviceByPersonId?: Record<string, string>,
-  rescheduleReasons?: string[]
+  rescheduleReasons?: string[],
+  alertData?: AlertData
 ) => {
   const bookingDetails = row.booking_details || {};
   
@@ -127,6 +129,11 @@ export const transformSupabaseToAppointment = (
   // const hasTimeRange = endTime && endTime.getTime() !== startTime.getTime();
   // const isTimeRange = type === 'intakes' && hasTimeRange;
   
+  // Calculate alert level
+  const alertLevel = alertData 
+    ? calculateAlertLevel(alertData)
+    : 'grey';
+  
   return {
     id: row.id,
     groupDate,
@@ -152,8 +159,9 @@ export const transformSupabaseToAppointment = (
     calendarOwnerId: row.calendar_owner_id || '',
     rescheduledByEmail: row.rescheduled_by_email || '',
     canceledByEmail: row.canceled_by_email || '',
-    // Dummy data for now - as per requirements
-    alertLevel: 'grey' as "red" | "yellow" | "grey",
+    // Alert data
+    alertLevel: alertLevel as "red" | "yellow" | "grey",
+    alertData,
     growthStage: 'foundation' as "foundation" | "developing" | "established",
     // Store IDs for mutations and navigation
     appointmentId: row.id,
