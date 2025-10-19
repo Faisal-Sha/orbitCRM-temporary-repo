@@ -88,6 +88,30 @@ const shouldHideEditActions = (appt: any) => {
     }
   });
 
+  // Get current user's email for reschedule URL
+  const { data: currentUserEmail } = useQuery({
+    queryKey: ['currentUserEmail', currentPersonId],
+    queryFn: async () => {
+      if (!currentPersonId) return null;
+      
+      const { data, error } = await supabase
+        .from('people_contacts')
+        .select('email')
+        .eq('person_id', currentPersonId)
+        .eq('is_deleted', false)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .single();
+      
+      if (error) {
+        console.warn('Unable to fetch user email:', error);
+        return null;
+      }
+      return data?.email;
+    },
+    enabled: !!currentPersonId
+  });
+
   // Fetch Cal calendar users data for reschedule URLs
   const { data: calCalendarUsers } = useQuery({
     queryKey: ['cal-calendar-users'],
@@ -318,10 +342,11 @@ const shouldHideEditActions = (appt: any) => {
       return;
     }
 
-    // Generate reschedule URL
+    // Generate reschedule URL with current user's email
     const rescheduleUrl = generateCalRescheduleUrl(
       appt.calBookingId,
-      calendarData.calendar_url
+      calendarData.calendar_url,
+      currentUserEmail
     );
 
     // Open URL in new tab

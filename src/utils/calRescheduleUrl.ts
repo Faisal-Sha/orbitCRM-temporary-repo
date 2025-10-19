@@ -1,15 +1,17 @@
 /**
  * Generates a Cal.com reschedule URL based on appointment data
  * 
- * URL Format: {baseUrl}?rescheduleUid={calBookingId}&rescheduledBy=appointments%40companioned.org
+ * URL Format: {baseUrl}?rescheduleUid={calBookingId}&rescheduledBy={userEmail}
  * 
  * @param calBookingId - The Cal.com booking UID from schedule_appointments.cal_booking_id
  * @param calendarUrl - The base Cal.com URL from cal_calendar_users.calendar_url
+ * @param rescheduledByEmail - Email of the user performing the reschedule action (from people_contacts)
  * @returns Complete reschedule URL or null if data is missing
  */
 export const generateCalRescheduleUrl = (
   calBookingId: string | undefined,
-  calendarUrl: string | undefined
+  calendarUrl: string | undefined,
+  rescheduledByEmail?: string | null
 ): string | null => {
   // Validate required data
   if (!calBookingId || !calendarUrl) {
@@ -17,11 +19,12 @@ export const generateCalRescheduleUrl = (
     return null;
   }
 
-  // Hardcoded rescheduledBy email (URL encoded)
-  const rescheduledByEmail = 'appointments%40companioned.org';
+  // Use provided email or fallback to default, then URL-encode it
+  const emailToUse = rescheduledByEmail || 'appointments@companioned.org';
+  const encodedEmail = encodeURIComponent(emailToUse);
 
   // Construct the URL
-  const url = `${calendarUrl}?rescheduleUid=${calBookingId}&rescheduledBy=${rescheduledByEmail}`;
+  const url = `${calendarUrl}?rescheduleUid=${calBookingId}&rescheduledBy=${encodedEmail}`;
   
   return url;
 };
