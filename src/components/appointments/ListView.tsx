@@ -24,6 +24,7 @@ import { InlineOutcomeDropdown } from "./listview/components/InlineOutcomeDropdo
 import { useAppointments } from "@/hooks/useAppointments";
 import { useAppointmentNotes } from "@/hooks/useAppointmentNotes";
 import { useAppointmentOutcomes } from "@/hooks/useAppointmentOutcomes";
+import { usePeopleNamesByEmail } from "@/hooks/usePeopleNamesByEmail";
 
 const ListView = () => {
   // Filters, search, appointment expanded state
@@ -135,6 +136,19 @@ const shouldHideEditActions = (appt: any) => {
 
   // Use Supabase data for intakes/clients, mock data for others
   const apptsData = shouldFetchFromSupabase ? (supabaseAppts || []) : mockApptsData;
+
+  // Collect all unique emails for reschedule/cancel lookups
+  const allEmails = useMemo(() => {
+    const emails: (string | null | undefined)[] = [];
+    apptsData.forEach(appt => {
+      if (appt.rescheduledByEmail) emails.push(appt.rescheduledByEmail);
+      if (appt.canceledByEmail) emails.push(appt.canceledByEmail);
+    });
+    return emails;
+  }, [apptsData]);
+
+  // Fetch people names by email
+  const { data: emailToNameMap = {} } = usePeopleNamesByEmail(allEmails);
 
   // Get mutation functions
   const { updateNote, updateCallLog } = useAppointmentNotes();
@@ -705,14 +719,18 @@ const shouldHideEditActions = (appt: any) => {
                                             <div className="text-xs font-medium text-gray-500 mb-2">Reschedule Reasons</div>
                                             <div className="space-y-2">
                                               {appt.rescheduleReasons.map((reason, index) => (
-                                                <div key={index} className="text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md border border-gray-200">
-                                                  <span className="font-semibold text-yellow-600">#{index + 1}:</span> {reason}
+                                                <div key={index} className="flex items-start justify-between gap-4">
+                                                  <p className="text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md border border-gray-200 flex-1">
+                                                    <span className="font-semibold text-yellow-600">#{index + 1}:</span> {reason}
+                                                  </p>
+                                                  {index === appt.rescheduleReasons.length - 1 && appt.rescheduledByEmail && emailToNameMap[appt.rescheduledByEmail] && (
+                                                    <span className="text-xs text-gray-500 whitespace-nowrap mt-2">
+                                                      (by {emailToNameMap[appt.rescheduledByEmail]})
+                                                    </span>
+                                                  )}
                                                 </div>
                                               ))}
                                             </div>
-                                            {appt.rescheduledByEmail && (
-                                              <p className="text-xs text-gray-500 mt-2">Rescheduled by: {appt.rescheduledByEmail}</p>
-                                            )}
                                           </div>
                                         </div>
                                       )}
@@ -725,16 +743,20 @@ const shouldHideEditActions = (appt: any) => {
                                             {appt.outcome === "Canceled" ? "Cancellation Reason" : "Assessor Note"}
                                           </div>
                                           {appt.outcome === "Canceled" ? (
-                                            <>
-                                              {appt.cancellationReason ? (
-                                                <p className="text-sm text-gray-900">{appt.cancellationReason}</p>
-                                              ) : (
-                                                <p className="text-sm text-gray-400 italic">No cancellation reason provided</p>
+                                            <div className="flex items-start justify-between gap-4">
+                                              <div className="flex-1">
+                                                {appt.cancellationReason ? (
+                                                  <p className="text-sm text-gray-900">{appt.cancellationReason}</p>
+                                                ) : (
+                                                  <p className="text-sm text-gray-400 italic">No cancellation reason provided</p>
+                                                )}
+                                              </div>
+                                              {appt.canceledByEmail && emailToNameMap[appt.canceledByEmail] && (
+                                                <span className="text-xs text-gray-500 whitespace-nowrap">
+                                                  (by {emailToNameMap[appt.canceledByEmail]})
+                                                </span>
                                               )}
-                                              {appt.canceledByEmail && (
-                                                <p className="text-xs text-gray-500 mt-2">Canceled by: {appt.canceledByEmail}</p>
-                                              )}
-                                            </>
+                                            </div>
                                           ) : !isNoteEditable(appt, date) ? (
                                             appt.note ? (
                                               <p className="text-sm text-gray-900">{appt.note}</p>
@@ -1038,8 +1060,15 @@ const shouldHideEditActions = (appt: any) => {
                                             <div className="text-xs font-medium text-gray-500 mb-2">Reschedule Reasons</div>
                                             <div className="space-y-2">
                                               {appt.rescheduleReasons.map((reason, index) => (
-                                                <div key={index} className="text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md border border-gray-200">
-                                                  <span className="font-semibold text-yellow-600">#{index + 1}:</span> {reason}
+                                                <div key={index} className="flex items-start justify-between gap-4">
+                                                  <p className="text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md border border-gray-200 flex-1">
+                                                    <span className="font-semibold text-yellow-600">#{index + 1}:</span> {reason}
+                                                  </p>
+                                                  {index === appt.rescheduleReasons.length - 1 && appt.rescheduledByEmail && emailToNameMap[appt.rescheduledByEmail] && (
+                                                    <span className="text-xs text-gray-500 whitespace-nowrap mt-2">
+                                                      (by {emailToNameMap[appt.rescheduledByEmail]})
+                                                    </span>
+                                                  )}
                                                 </div>
                                               ))}
                                             </div>
@@ -1055,11 +1084,20 @@ const shouldHideEditActions = (appt: any) => {
                                             {appt.outcome === "Canceled" ? "Cancellation Reason" : "Provider Note"}
                                           </div>
                                           {appt.outcome === "Canceled" ? (
-                                            appt.cancellationReason ? (
-                                              <p className="text-sm text-gray-900">{appt.cancellationReason}</p>
-                                            ) : (
-                                              <p className="text-sm text-gray-400 italic">No cancellation reason provided</p>
-                                            )
+                                            <div className="flex items-start justify-between gap-4">
+                                              <div className="flex-1">
+                                                {appt.cancellationReason ? (
+                                                  <p className="text-sm text-gray-900">{appt.cancellationReason}</p>
+                                                ) : (
+                                                  <p className="text-sm text-gray-400 italic">No cancellation reason provided</p>
+                                                )}
+                                              </div>
+                                              {appt.canceledByEmail && emailToNameMap[appt.canceledByEmail] && (
+                                                <span className="text-xs text-gray-500 whitespace-nowrap">
+                                                  (by {emailToNameMap[appt.canceledByEmail]})
+                                                </span>
+                                              )}
+                                            </div>
                                           ) : !isNoteEditable(appt, date) ? (
                                             appt.note ? (
                                               <p className="text-sm text-gray-900">{appt.note}</p>
