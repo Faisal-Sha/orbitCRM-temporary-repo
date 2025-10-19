@@ -78,6 +78,8 @@ export function generateAppointments(count: number): Appointment[] {
       description,
       location: location,
       callLogs: isTimeRange ? [false, false, false] : undefined,
+      startMs: new Date(group.date + ' ' + time).getTime(),
+      startISO: group.date + 'T' + time,
     });
   }
   return appointments;

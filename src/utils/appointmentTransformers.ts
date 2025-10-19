@@ -38,6 +38,8 @@ export const transformSupabaseToAppointment = (row: any, latestOutcome?: string,
   const groupDate = format(startTime, 'yyyy-MM-dd');
   const groupDateDisplay = format(startTime, 'MMM d');
   const time = format(startTime, 'h:mm a');
+  const startMs = startTime.getTime();
+  const startISO = row.start_time;
   
   // Determine appointment type
   const type = row.appointment_type === 'Lead' ? 'intakes' : 'clients';
@@ -108,6 +110,8 @@ export const transformSupabaseToAppointment = (row: any, latestOutcome?: string,
     callLogs,
     outcome,
     cancellationReason,
+    startMs,
+    startISO,
     // Dummy data for now - as per requirements
     alertLevel: 'grey' as "red" | "yellow" | "grey",
     growthStage: 'foundation' as "foundation" | "developing" | "established",

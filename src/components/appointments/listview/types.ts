@@ -26,6 +26,8 @@ export interface Appointment {
   address?: string;
   otherDetails?: string;
   callLogs?: boolean[];
+  startMs: number;
+  startISO?: string;
 }
 
 export interface FilterOptions {

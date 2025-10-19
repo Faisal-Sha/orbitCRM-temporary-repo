@@ -30,22 +30,39 @@ const ListView = () => {
   const [search, setSearch] = useState("");
   const [loadAmount, setLoadAmount] = useState(INITIAL_LOAD);
 
-  // Helper function to determine if appointment notes should be editable
-  const isAppointmentEditable = (appt: any) => {
-    // Canceled appointments are never editable (show cancellation reason instead)
-    if (appt.outcome === "Canceled") {
-      return false;
-    }
-    
-    // Check if appointment is within "Today" range
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
-    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
-    const apptDateTime = new Date(appt.groupDate + ' ' + appt.time);
-    
-    // Editable only if appointment is today (past or upcoming)
-    return apptDateTime >= todayStart && apptDateTime <= todayEnd;
-  };
+// Helper function to determine if appointment notes should be editable
+const isNoteEditable = (appt: any, currentDateFilter: string) => {
+  // Canceled appointments are never editable (show cancellation reason instead)
+  if (appt.outcome === "Canceled") {
+    return false;
+  }
+  
+  // Notes are only editable when viewing the "Today" filter and appointment is today
+  if (currentDateFilter !== "today") {
+    return false;
+  }
+  
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0).getTime();
+  const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).getTime();
+  
+  // Editable only if appointment is today
+  return appt.startMs >= todayStart && appt.startMs <= todayEnd;
+};
+
+// Helper function to determine if appointment outcomes should be editable
+const isOutcomeEditable = (appt: any) => {
+  // Canceled appointments are never editable
+  if (appt.outcome === "Canceled") {
+    return false;
+  }
+  
+  const now = new Date();
+  const yesterdayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0).getTime() - 1;
+  
+  // Disable outcomes for appointments that are yesterday or older
+  return appt.startMs > yesterdayEnd;
+};
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   
   // Mock data for Team/Personal/All views
@@ -95,21 +112,63 @@ const ListView = () => {
 
   // Generate, filter, group, and slice dummy appointments
   const groupedAppts = useMemo(() => {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0).getTime();
+    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).getTime();
+    const nowMs = Date.now();
+    
     let raw = apptsData;
-    raw = raw.filter(a => (type === "all" ? true : a.type === type) && (search === "" ? true : a.clientFullName?.toLowerCase().includes(search.toLowerCase()) || a.email?.toLowerCase().includes(search.toLowerCase()) || a.clinicianFullName?.toLowerCase().includes(search.toLowerCase())));
-    // Group appointments by groupDate
+    
+    // Filter by type and search
+    raw = raw.filter(a => 
+      (type === "all" ? true : a.type === type) && 
+      (search === "" ? true : 
+        a.clientFullName?.toLowerCase().includes(search.toLowerCase()) || 
+        a.email?.toLowerCase().includes(search.toLowerCase()) || 
+        a.clinicianFullName?.toLowerCase().includes(search.toLowerCase())
+      )
+    );
+    
+    // Filter by date range
+    raw = raw.filter(a => {
+      switch (date) {
+        case "today":
+          // Show all events for today (past and upcoming), exclude canceled
+          return a.startMs >= todayStart && 
+                 a.startMs <= todayEnd && 
+                 a.outcome !== "Canceled";
+        
+        case "upcoming":
+          // Show events after today, exclude canceled
+          return a.startMs > todayEnd && a.outcome !== "Canceled";
+        
+        case "past":
+          // Show events before now (including earlier today), exclude canceled
+          return a.startMs < nowMs && a.outcome !== "Canceled";
+        
+        case "canceled":
+          // Show only canceled events (all dates)
+          return a.outcome === "Canceled";
+        
+        default:
+          return true;
+      }
+    });
+    
+    // Group appointments by groupDateDisplay
     const grouped: Record<string, any[]> = {};
     raw.slice(0, loadAmount).forEach(a => {
       if (!grouped[a.groupDateDisplay]) grouped[a.groupDateDisplay] = [];
       grouped[a.groupDateDisplay].push(a);
     });
+    
     return {
       grouped,
       total: raw.length,
       shown: Math.min(loadAmount, raw.length),
       hasMore: raw.length > loadAmount
     };
-  }, [type, search, loadAmount, apptsData]);
+  }, [type, date, search, loadAmount, apptsData]);
 
   // Handlers for expandable rows and inline editing
   function handleExpand(apptId: string) {
@@ -467,7 +526,7 @@ const ListView = () => {
                           onChange={val => handleEdit(appt.id, "outcome", val)}
                           badgeClass={getIntakeOutcomeBadgeProps(appt.outcome).className}
                           getBadgeProps={getIntakeOutcomeBadgeProps}
-                  disabled={appt.outcome === "Canceled" || !isAppointmentEditable(appt)}
+                          disabled={!isOutcomeEditable(appt)}
                         />
                             </td>
                             <td className="pl-2 pr-4 py-2 text-end">
@@ -555,7 +614,7 @@ const ListView = () => {
                       ) : (
                         <p className="text-sm text-muted-foreground italic">No cancellation reason provided</p>
                       )
-                    ) : !isAppointmentEditable(appt) ? (
+                    ) : !isNoteEditable(appt, date) ? (
                       // Display note as read-only (for past dates)
                       appt.note ? (
                         <TooltipProvider>
@@ -797,7 +856,7 @@ const ListView = () => {
                           onChange={val => handleEdit(appt.id, "outcome", val)}
                           badgeClass={getClientOutcomeBadgeProps(appt.outcome).className}
                           getBadgeProps={getClientOutcomeBadgeProps}
-                          disabled={appt.outcome === "Canceled" || !isAppointmentEditable(appt)}
+                          disabled={!isOutcomeEditable(appt)}
                         />
                             </td>
                             <td className="pl-2 pr-4 py-2 text-end">
@@ -897,7 +956,7 @@ const ListView = () => {
                       ) : (
                         <p className="text-sm text-muted-foreground italic">No cancellation reason provided</p>
                       )
-                    ) : !isAppointmentEditable(appt) ? (
+                    ) : !isNoteEditable(appt, date) ? (
                       // Display note as read-only (for past dates)
                       appt.note ? (
                         <TooltipProvider>
