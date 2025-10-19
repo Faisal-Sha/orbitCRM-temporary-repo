@@ -82,6 +82,27 @@ export const useAppointments = ({ appointmentType, enabled }: UseAppointmentsOpt
         }
       });
 
+      // Fetch all reschedule trigger logs for each appointment
+      const { data: triggerLogsData } = await supabase
+        .from('schedule_appointment_trigger_log')
+        .select('appointment_id, raw_event_payload, created_at')
+        .in('appointment_id', appointmentIds)
+        .eq('trigger_event', 'BOOKING_RESCHEDULED')
+        .order('created_at', { ascending: true });
+
+      // Map reschedule reasons per appointment (array of reasons)
+      const rescheduleReasonsMap = new Map<string, string[]>();
+      triggerLogsData?.forEach((log: any) => {
+        const reason = log.raw_event_payload?.payload?.responses?.rescheduleReason?.value;
+        if (reason && typeof reason === 'string' && reason.trim()) {
+          const appointmentId = log.appointment_id;
+          if (!rescheduleReasonsMap.has(appointmentId)) {
+            rescheduleReasonsMap.set(appointmentId, []);
+          }
+          rescheduleReasonsMap.get(appointmentId)!.push(reason.trim());
+        }
+      });
+
       // Build service map per attendee (person) id
       const attendeeIds: string[] = Array.from(new Set(
         (data || []).flatMap((appt: any) =>
@@ -119,7 +140,7 @@ export const useAppointments = ({ appointmentType, enabled }: UseAppointmentsOpt
 
       // Transform data to match Appointment interface
       return data?.map((appt: any) => 
-        transformSupabaseToAppointment(appt, latestOutcomes.get(appt.id), serviceByPersonId)
+        transformSupabaseToAppointment(appt, latestOutcomes.get(appt.id), serviceByPersonId, rescheduleReasonsMap.get(appt.id) || [])
       ) || [];
     },
     enabled,

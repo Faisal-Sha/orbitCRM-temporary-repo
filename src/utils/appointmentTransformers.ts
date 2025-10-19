@@ -1,7 +1,12 @@
 import { format } from "date-fns";
 import { getFormattedPhoneDisplay } from "./phoneFormatting";
 
-export const transformSupabaseToAppointment = (row: any, latestOutcome?: string, serviceByPersonId?: Record<string, string>) => {
+export const transformSupabaseToAppointment = (
+  row: any, 
+  latestOutcome?: string, 
+  serviceByPersonId?: Record<string, string>,
+  rescheduleReasons?: string[]
+) => {
   const bookingDetails = row.booking_details || {};
   
   // Get attendee data from the first attendee
@@ -33,23 +38,29 @@ export const transformSupabaseToAppointment = (row: any, latestOutcome?: string,
     || bookingDetails.notes
     || '';
   
-  // Extract reschedule reasons from responses object
-  let rescheduleReasons: string[] = [];
-  const rescheduleData = bookingDetails.responses?.rescheduleReason?.value;
-  if (rescheduleData) {
-    if (Array.isArray(rescheduleData)) {
-      rescheduleReasons = rescheduleData.filter(r => r && typeof r === 'string' && r.trim());
-    } else if (typeof rescheduleData === 'string' && rescheduleData.trim()) {
-      rescheduleReasons = [rescheduleData.trim()];
+  // Use reschedule reasons from trigger logs (if provided)
+  // Otherwise fall back to booking_details for backward compatibility
+  let finalRescheduleReasons: string[] = [];
+  if (rescheduleReasons && rescheduleReasons.length > 0) {
+    finalRescheduleReasons = rescheduleReasons;
+  } else {
+    // Fallback: Extract from booking_details (old approach)
+    const rescheduleData = bookingDetails.responses?.rescheduleReason?.value;
+    if (rescheduleData) {
+      if (Array.isArray(rescheduleData)) {
+        finalRescheduleReasons = rescheduleData.filter(r => r && typeof r === 'string' && r.trim());
+      } else if (typeof rescheduleData === 'string' && rescheduleData.trim()) {
+        finalRescheduleReasons = [rescheduleData.trim()];
+      }
     }
-  }
-  
-  // Fallback: Check old direct path for backwards compatibility
-  if (rescheduleReasons.length === 0 && bookingDetails.rescheduleReason) {
-    if (Array.isArray(bookingDetails.rescheduleReason)) {
-      rescheduleReasons = bookingDetails.rescheduleReason.filter(r => r && typeof r === 'string' && r.trim());
-    } else if (typeof bookingDetails.rescheduleReason === 'string' && bookingDetails.rescheduleReason.trim()) {
-      rescheduleReasons = [bookingDetails.rescheduleReason.trim()];
+    
+    // Secondary fallback: Check old direct path
+    if (finalRescheduleReasons.length === 0 && bookingDetails.rescheduleReason) {
+      if (Array.isArray(bookingDetails.rescheduleReason)) {
+        finalRescheduleReasons = bookingDetails.rescheduleReason.filter(r => r && typeof r === 'string' && r.trim());
+      } else if (typeof bookingDetails.rescheduleReason === 'string' && bookingDetails.rescheduleReason.trim()) {
+        finalRescheduleReasons = [bookingDetails.rescheduleReason.trim()];
+      }
     }
   }
   
@@ -135,7 +146,7 @@ export const transformSupabaseToAppointment = (row: any, latestOutcome?: string,
     cancellationReason,
     startMs,
     startISO,
-    rescheduleReasons,
+    rescheduleReasons: finalRescheduleReasons,
     meetingUrl: meetingURL,
     // Dummy data for now - as per requirements
     alertLevel: 'grey' as "red" | "yellow" | "grey",

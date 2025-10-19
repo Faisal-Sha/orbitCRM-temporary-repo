@@ -3,12 +3,13 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Mail, Phone, FormInput, User, ChevronDown, ChevronUp, Users, FileText, StickyNote, Calendar, X, Video } from "lucide-react";
+import { Mail, Phone, FormInput, User, ChevronDown, ChevronUp, Users, FileText, StickyNote, Calendar, X, Video, Copy } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TooltipProvider, Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import UserProfilePanel from "@/components/userprofile/UserProfilePanel";
 import ScheduleAppointmentModal from "@/components/appointments/ScheduleAppointmentModal";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 
 // Import new components
 import { TYPE_OPTIONS, DATE_OPTIONS, INITIAL_LOAD, LOAD_MORE_AMOUNT, MAX_APPOINTMENTS } from "./listview/constants";
@@ -572,20 +573,33 @@ const shouldHideEditActions = (appt: any) => {
                                       
                                       {/* Meeting URL */}
                                       {appt.meetingUrl && (
-                                        <div className="flex items-start gap-3">
+                                         <div className="flex items-start gap-3">
                                           <div className="mt-0.5">
                                             <Video className="h-4 w-4 text-blue-600" />
                                           </div>
                                           <div className="flex-1 min-w-0">
                                             <label className="text-xs text-muted-foreground block mb-1">Meeting URL</label>
-                                            <a
-                                              href={appt.meetingUrl}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              className="text-sm text-blue-600 hover:text-blue-800 hover:underline break-all"
-                                            >
-                                              {appt.meetingUrl}
-                                            </a>
+                                            <div className="flex items-center gap-2">
+                                              <a
+                                                href={appt.meetingUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-sm text-blue-600 hover:text-blue-800 hover:underline break-all flex-1"
+                                              >
+                                                {appt.meetingUrl}
+                                              </a>
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  navigator.clipboard.writeText(appt.meetingUrl || '');
+                                                  toast.success('Meeting URL copied to clipboard');
+                                                }}
+                                                className="flex-shrink-0 p-1.5 rounded hover:bg-gray-100 transition-colors"
+                                                title="Copy to clipboard"
+                                              >
+                                                <Copy className="h-4 w-4 text-gray-600" />
+                                              </button>
+                                            </div>
                                           </div>
                                         </div>
                                       )}
@@ -615,26 +629,26 @@ const shouldHideEditActions = (appt: any) => {
                                         </div>
                                       </div>
 
-                                      {/* Reschedule Reasons */}
-                                      {appt.rescheduleReasons && appt.rescheduleReasons.length > 0 && (
-                                        <div className="flex items-start gap-3">
-                                          <div className="mt-0.5">
-                                            <Calendar className="h-4 w-4 text-amber-600" />
-                                          </div>
-                                          <div className="flex-1 min-w-0">
-                                            <label className="text-xs text-muted-foreground block mb-1">
-                                              Reschedule Reasons
-                                            </label>
-                                            <div className="space-y-2">
-                                              {appt.rescheduleReasons.map((reason, index) => (
-                                                <div key={index} className="text-sm text-gray-900 p-2 bg-amber-50 border border-amber-200 rounded">
-                                                  <span className="font-medium text-amber-700">#{index + 1}:</span> {reason}
-                                                </div>
-                                              ))}
-                                            </div>
-                                          </div>
+                              {/* Reschedule Reasons */}
+                              {appt.rescheduleReasons && appt.rescheduleReasons.length > 0 && (
+                                <div className="flex items-start gap-3">
+                                  <div className="mt-0.5">
+                                    <Calendar className="h-4 w-4 text-gray-600" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <label className="text-xs text-muted-foreground block mb-1">
+                                      Reschedule Reasons
+                                    </label>
+                                    <div className="space-y-2">
+                                      {appt.rescheduleReasons.map((reason, index) => (
+                                        <div key={index} className="text-sm text-gray-900 p-2 bg-white border border-gray-200 rounded">
+                                          <span className="font-medium text-gray-700">#{index + 1}:</span> {reason}
                                         </div>
-                                      )}
+                                      ))}
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
 
                 <div className="flex items-start gap-3">
                   <div className="mt-0.5">
@@ -964,14 +978,27 @@ const shouldHideEditActions = (appt: any) => {
                                             </div>
                                             <div className="flex-1 min-w-0">
                                               <label className="text-xs text-muted-foreground block mb-1">Meeting URL</label>
-                                              <a
-                                                href={appt.meetingUrl}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="text-sm text-blue-600 hover:text-blue-800 hover:underline break-all"
-                                              >
-                                                {appt.meetingUrl}
-                                              </a>
+                                              <div className="flex items-center gap-2">
+                                                <a
+                                                  href={appt.meetingUrl}
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  className="text-sm text-blue-600 hover:text-blue-800 hover:underline break-all flex-1"
+                                                >
+                                                  {appt.meetingUrl}
+                                                </a>
+                                                <button
+                                                  type="button"
+                                                  onClick={() => {
+                                                    navigator.clipboard.writeText(appt.meetingUrl || '');
+                                                    toast.success('Meeting URL copied to clipboard');
+                                                  }}
+                                                  className="flex-shrink-0 p-1.5 rounded hover:bg-gray-100 transition-colors"
+                                                  title="Copy to clipboard"
+                                                >
+                                                  <Copy className="h-4 w-4 text-gray-600" />
+                                                </button>
+                                              </div>
                                             </div>
                                           </div>
                                         )}
@@ -1005,26 +1032,26 @@ const shouldHideEditActions = (appt: any) => {
                                           </div>
                                         </div>
 
-                                        {/* Reschedule Reasons */}
-                                        {appt.rescheduleReasons && appt.rescheduleReasons.length > 0 && (
-                                          <div className="flex items-start gap-3">
-                                            <div className="mt-0.5">
-                                              <Calendar className="h-4 w-4 text-amber-600" />
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                              <label className="text-xs text-muted-foreground block mb-1">
-                                                Reschedule Reasons
-                                              </label>
-                                              <div className="space-y-2">
-                                                {appt.rescheduleReasons.map((reason, index) => (
-                                                  <div key={index} className="text-sm text-gray-900 p-2 bg-amber-50 border border-amber-200 rounded">
-                                                    <span className="font-medium text-amber-700">#{index + 1}:</span> {reason}
-                                                  </div>
-                                                ))}
-                                              </div>
-                                            </div>
-                                          </div>
-                                        )}
+                              {/* Reschedule Reasons */}
+                              {appt.rescheduleReasons && appt.rescheduleReasons.length > 0 && (
+                                <div className="flex items-start gap-3">
+                                  <div className="mt-0.5">
+                                    <Calendar className="h-4 w-4 text-gray-600" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <label className="text-xs text-muted-foreground block mb-1">
+                                      Reschedule Reasons
+                                    </label>
+                                    <div className="space-y-2">
+                                      {appt.rescheduleReasons.map((reason, index) => (
+                                        <div key={index} className="text-sm text-gray-900 p-2 bg-white border border-gray-200 rounded">
+                                          <span className="font-medium text-gray-700">#{index + 1}:</span> {reason}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
 
                                          {/* Provider Note - Editable */}
                 <div className="flex items-start gap-3">
