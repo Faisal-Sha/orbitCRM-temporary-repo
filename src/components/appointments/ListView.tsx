@@ -29,6 +29,23 @@ const ListView = () => {
   const [date, setDate] = useState("today");
   const [search, setSearch] = useState("");
   const [loadAmount, setLoadAmount] = useState(INITIAL_LOAD);
+
+  // Helper function to determine if appointment notes should be editable
+  const isAppointmentEditable = (appt: any) => {
+    // Canceled appointments are never editable (show cancellation reason instead)
+    if (appt.outcome === "Canceled") {
+      return false;
+    }
+    
+    // Check if appointment is within "Today" range
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+    const apptDateTime = new Date(appt.groupDate + ' ' + appt.time);
+    
+    // Editable only if appointment is today (past or upcoming)
+    return apptDateTime >= todayStart && apptDateTime <= todayEnd;
+  };
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   
   // Mock data for Team/Personal/All views
@@ -450,7 +467,7 @@ const ListView = () => {
                           onChange={val => handleEdit(appt.id, "outcome", val)}
                           badgeClass={getIntakeOutcomeBadgeProps(appt.outcome).className}
                           getBadgeProps={getIntakeOutcomeBadgeProps}
-                          disabled={appt.outcome === "Canceled"}
+                  disabled={appt.outcome === "Canceled" || !isAppointmentEditable(appt)}
                         />
                             </td>
                             <td className="pl-2 pr-4 py-2 text-end">
@@ -509,73 +526,117 @@ const ListView = () => {
                                           )}
                                         </div>
                                       </div>
-                                      <div className="flex items-start gap-3">
-                                        <div className="mt-0.5">
-                                          <StickyNote className="h-4 w-4 text-primary" />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                          <label className="text-xs text-muted-foreground block mb-1">Assessor Note</label>
-                                          {editingNoteId === appt.id ? (
-                                            <div className="flex flex-col gap-2">
-                                              <Input
-                                                value={editingNoteValue}
-                                                onChange={(e) => setEditingNoteValue(e.target.value)}
-                                                className="text-sm"
-                                                autoFocus
-                                                onKeyDown={(e) => {
-                                                  if (e.key === "Enter") {
-                                                    saveNoteEdit(appt.id);
-                                                  } else if (e.key === "Escape") {
-                                                    cancelNoteEdit();
-                                                  }
-                                                }}
-                                              />
-                                              <div className="flex gap-2">
-                                                <Button
-                                                  size="sm"
-                                                  onClick={() => saveNoteEdit(appt.id)}
-                                                  className="text-xs h-7"
-                                                >
-                                                  Save
-                                                </Button>
-                                                <Button
-                                                  size="sm"
-                                                  variant="outline"
-                                                  onClick={cancelNoteEdit}
-                                                  className="text-xs h-7"
-                                                >
-                                                  Cancel
-                                                </Button>
-                                              </div>
-                                            </div>
-                                          ) : appt.note === undefined || appt.note === "" ? (
-                                            <Button
-                                              size="sm"
-                                              variant="outline"
-                                              className="text-xs h-8 w-full justify-start"
-                                              onClick={() => startNoteEdit(appt.id, "")}
-                                            >
-                                              + Add Note
-                                            </Button>
-                                          ) : (
-                                            <TooltipProvider>
-                                              <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                  <div 
-                                                    className="text-sm text-gray-900 cursor-pointer px-2 py-1.5 rounded hover:bg-primary/10 transition-colors border border-transparent hover:border-primary/20"
-                                                    onClick={() => startNoteEdit(appt.id, appt.note || "")}
-                                                  >
-                                                    {appt.note.length > 50 ? `${appt.note.substring(0, 50)}...` : appt.note}
-                                                  </div>
-                                                </TooltipTrigger>
-                                                <TooltipContent className="bg-white text-black border border-gray-200 max-w-xs">
-                                                  {appt.note}
-                                                </TooltipContent>
-                                              </Tooltip>
-                                            </TooltipProvider>
-                                          )}
-                                        </div>
-                                      </div>
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5">
+                    <StickyNote className="h-4 w-4 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <label className="text-xs text-muted-foreground block mb-1">
+                      {appt.outcome === "Canceled" ? "Cancellation Reason" : "Assessor Note"}
+                    </label>
+                    
+                    {appt.outcome === "Canceled" ? (
+                      // Display cancellation reason (non-editable)
+                      appt.cancellationReason ? (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <p className="text-sm text-gray-900 truncate cursor-default">
+                                {appt.cancellationReason.length > 50 
+                                  ? `${appt.cancellationReason.substring(0, 50)}...` 
+                                  : appt.cancellationReason}
+                              </p>
+                            </TooltipTrigger>
+                            <TooltipContent className="bg-white text-black border border-gray-200 max-w-xs">
+                              {appt.cancellationReason}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      ) : (
+                        <p className="text-sm text-muted-foreground italic">No cancellation reason provided</p>
+                      )
+                    ) : !isAppointmentEditable(appt) ? (
+                      // Display note as read-only (for past dates)
+                      appt.note ? (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <p className="text-sm text-gray-900 truncate cursor-default">
+                                {appt.note.length > 50 ? `${appt.note.substring(0, 50)}...` : appt.note}
+                              </p>
+                            </TooltipTrigger>
+                            <TooltipContent className="bg-white text-black border border-gray-200 max-w-xs">
+                              {appt.note}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      ) : (
+                        <p className="text-sm text-muted-foreground italic">No note</p>
+                      )
+                    ) : (
+                      // Original editable logic (for today's appointments)
+                      editingNoteId === appt.id ? (
+                        <div className="flex flex-col gap-2">
+                          <Input
+                            value={editingNoteValue}
+                            onChange={(e) => setEditingNoteValue(e.target.value)}
+                            className="text-sm"
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                saveNoteEdit(appt.id);
+                              } else if (e.key === "Escape") {
+                                cancelNoteEdit();
+                              }
+                            }}
+                          />
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => saveNoteEdit(appt.id)}
+                              className="text-xs h-7"
+                            >
+                              Save
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={cancelNoteEdit}
+                              className="text-xs h-7"
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      ) : appt.note === undefined || appt.note === "" ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs h-8 w-full justify-start"
+                          onClick={() => startNoteEdit(appt.id, "")}
+                        >
+                          + Add Note
+                        </Button>
+                      ) : (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div 
+                                className="text-sm text-gray-900 cursor-pointer px-2 py-1.5 rounded hover:bg-primary/10 transition-colors border border-transparent hover:border-primary/20"
+                                onClick={() => startNoteEdit(appt.id, appt.note || "")}
+                              >
+                                {appt.note.length > 50 ? `${appt.note.substring(0, 50)}...` : appt.note}
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent className="bg-white text-black border border-gray-200 max-w-xs">
+                              {appt.note}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )
+                    )}
+                  </div>
+                </div>
                                     </div>
                                   </div>
 
@@ -736,7 +797,7 @@ const ListView = () => {
                           onChange={val => handleEdit(appt.id, "outcome", val)}
                           badgeClass={getClientOutcomeBadgeProps(appt.outcome).className}
                           getBadgeProps={getClientOutcomeBadgeProps}
-                          disabled={appt.outcome === "Canceled"}
+                          disabled={appt.outcome === "Canceled" || !isAppointmentEditable(appt)}
                         />
                             </td>
                             <td className="pl-2 pr-4 py-2 text-end">
@@ -807,73 +868,117 @@ const ListView = () => {
                                         </div>
 
                                         {/* Provider Note - Editable */}
-                                        <div className="flex items-start gap-3">
-                                          <div className="mt-0.5">
-                                            <StickyNote className="h-4 w-4 text-primary" />
-                                          </div>
-                                          <div className="flex-1 min-w-0">
-                                            <label className="text-xs text-muted-foreground block mb-1">Provider Note</label>
-                                            {editingNoteId === appt.id ? (
-                                              <div className="flex flex-col gap-2">
-                                                <Input
-                                                  value={editingNoteValue}
-                                                  onChange={(e) => setEditingNoteValue(e.target.value)}
-                                                  className="text-sm"
-                                                  autoFocus
-                                                  onKeyDown={(e) => {
-                                                    if (e.key === "Enter") {
-                                                      saveNoteEdit(appt.id);
-                                                    } else if (e.key === "Escape") {
-                                                      cancelNoteEdit();
-                                                    }
-                                                  }}
-                                                />
-                                                <div className="flex gap-2">
-                                                  <Button
-                                                    size="sm"
-                                                    onClick={() => saveNoteEdit(appt.id)}
-                                                    className="text-xs h-7"
-                                                  >
-                                                    Save
-                                                  </Button>
-                                                  <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    onClick={cancelNoteEdit}
-                                                    className="text-xs h-7"
-                                                  >
-                                                    Cancel
-                                                  </Button>
-                                                </div>
-                                              </div>
-                                            ) : appt.note === undefined || appt.note === "" ? (
-                                              <Button
-                                                size="sm"
-                                                variant="outline"
-                                                className="text-xs h-8 w-full justify-start"
-                                                onClick={() => startNoteEdit(appt.id, "")}
-                                              >
-                                                + Add Note
-                                              </Button>
-                                            ) : (
-                                              <TooltipProvider>
-                                                <Tooltip>
-                                                  <TooltipTrigger asChild>
-                                                    <div 
-                                                      className="text-sm text-gray-900 cursor-pointer px-2 py-1.5 rounded hover:bg-primary/10 transition-colors border border-transparent hover:border-primary/20"
-                                                      onClick={() => startNoteEdit(appt.id, appt.note || "")}
-                                                    >
-                                                      {appt.note.length > 50 ? `${appt.note.substring(0, 50)}...` : appt.note}
-                                                    </div>
-                                                  </TooltipTrigger>
-                                                  <TooltipContent className="bg-white text-black border border-gray-200 max-w-xs">
-                                                    {appt.note}
-                                                  </TooltipContent>
-                                                </Tooltip>
-                                              </TooltipProvider>
-                                            )}
-                                          </div>
-                                        </div>
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5">
+                    <StickyNote className="h-4 w-4 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <label className="text-xs text-muted-foreground block mb-1">
+                      {appt.outcome === "Canceled" ? "Cancellation Reason" : "Provider Note"}
+                    </label>
+                    
+                    {appt.outcome === "Canceled" ? (
+                      // Display cancellation reason (non-editable)
+                      appt.cancellationReason ? (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <p className="text-sm text-gray-900 truncate cursor-default">
+                                {appt.cancellationReason.length > 50 
+                                  ? `${appt.cancellationReason.substring(0, 50)}...` 
+                                  : appt.cancellationReason}
+                              </p>
+                            </TooltipTrigger>
+                            <TooltipContent className="bg-white text-black border border-gray-200 max-w-xs">
+                              {appt.cancellationReason}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      ) : (
+                        <p className="text-sm text-muted-foreground italic">No cancellation reason provided</p>
+                      )
+                    ) : !isAppointmentEditable(appt) ? (
+                      // Display note as read-only (for past dates)
+                      appt.note ? (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <p className="text-sm text-gray-900 truncate cursor-default">
+                                {appt.note.length > 50 ? `${appt.note.substring(0, 50)}...` : appt.note}
+                              </p>
+                            </TooltipTrigger>
+                            <TooltipContent className="bg-white text-black border border-gray-200 max-w-xs">
+                              {appt.note}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      ) : (
+                        <p className="text-sm text-muted-foreground italic">No note</p>
+                      )
+                    ) : (
+                      // Original editable logic (for today's appointments)
+                      editingNoteId === appt.id ? (
+                        <div className="flex flex-col gap-2">
+                          <Input
+                            value={editingNoteValue}
+                            onChange={(e) => setEditingNoteValue(e.target.value)}
+                            className="text-sm"
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                saveNoteEdit(appt.id);
+                              } else if (e.key === "Escape") {
+                                cancelNoteEdit();
+                              }
+                            }}
+                          />
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => saveNoteEdit(appt.id)}
+                              className="text-xs h-7"
+                            >
+                              Save
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={cancelNoteEdit}
+                              className="text-xs h-7"
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      ) : appt.note === undefined || appt.note === "" ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs h-8 w-full justify-start"
+                          onClick={() => startNoteEdit(appt.id, "")}
+                        >
+                          + Add Note
+                        </Button>
+                      ) : (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div 
+                                className="text-sm text-gray-900 cursor-pointer px-2 py-1.5 rounded hover:bg-primary/10 transition-colors border border-transparent hover:border-primary/20"
+                                onClick={() => startNoteEdit(appt.id, appt.note || "")}
+                              >
+                                {appt.note.length > 50 ? `${appt.note.substring(0, 50)}...` : appt.note}
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent className="bg-white text-black border border-gray-200 max-w-xs">
+                              {appt.note}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )
+                    )}
+                  </div>
+                </div>
                                       </div>
                                     </div>
                                   </div>

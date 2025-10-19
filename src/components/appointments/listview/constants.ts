@@ -11,14 +11,9 @@ export const TYPE_OPTIONS: FilterOptions[] = [
 
 export const DATE_OPTIONS: FilterOptions[] = [
   { value: "today", label: "Today" },
-  { value: "yesterday", label: "Yesterday" },
-  { value: "tomorrow", label: "Tomorrow" },
-  { value: "thisweek", label: "This Week" },
-  { value: "lastweek", label: "Last Week" },
-  { value: "thismonth", label: "This Month" },
-  { value: "lastmonth", label: "Last Month" },
-  { value: "thisyear", label: "This Year" },
-  { value: "custom", label: "Custom" }
+  { value: "upcoming", label: "Upcoming" },
+  { value: "past", label: "Past" },
+  { value: "canceled", label: "Canceled" }
 ];
 
 export const FULL_NAMES = [

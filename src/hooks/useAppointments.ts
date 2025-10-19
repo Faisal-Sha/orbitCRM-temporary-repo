@@ -22,12 +22,13 @@ export const useAppointments = ({ appointmentType, enabled }: UseAppointmentsOpt
       const { data, error } = await supabase
         .from('schedule_appointments')
         .select(`
-          id,
-          appointment_type,
-          appointment_status,
-          start_time,
-          end_time,
-          booking_details,
+      id,
+      appointment_type,
+      appointment_status,
+      cancellation_reason,
+      start_time,
+      end_time,
+      booking_details,
           calendar_owner_id,
           agency_id,
           host:people!schedule_appointments_calendar_owner_id_fkey(

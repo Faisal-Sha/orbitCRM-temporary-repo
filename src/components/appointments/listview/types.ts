@@ -19,6 +19,7 @@ export interface Appointment {
   phone: string;
   growthStage: "foundation" | "developing" | "established";
   outcome: string;
+  cancellationReason?: string;
   meetingUrl?: string;
   description?: string;
   location?: string;

@@ -78,6 +78,9 @@ export const transformSupabaseToAppointment = (row: any, latestOutcome?: string,
     outcome = latestOutcome || 'Due';
   }
   
+  // Get cancellation reason for canceled appointments
+  const cancellationReason = row.cancellation_reason || '';
+  
   // Hide Call Logs for now - will be enabled when time range format is implemented
   // Currently only displaying start_time (e.g., "1 PM")
   // Future: Show Call Logs only when time range format is detected (e.g., "1 PM - 4 PM")
@@ -104,6 +107,7 @@ export const transformSupabaseToAppointment = (row: any, latestOutcome?: string,
     note,
     callLogs,
     outcome,
+    cancellationReason,
     // Dummy data for now - as per requirements
     alertLevel: 'grey' as "red" | "yellow" | "grey",
     growthStage: 'foundation' as "foundation" | "developing" | "established",
