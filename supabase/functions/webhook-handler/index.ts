@@ -1204,6 +1204,50 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
     const startTimeISO = startTimeRaw ? new Date(startTimeRaw).toISOString() : new Date().toISOString();
     const endTimeISO = endTimeRaw ? new Date(endTimeRaw).toISOString() : new Date(Date.now() + 3600000).toISOString();
 
+    // Helper function to resolve person ID by email with fallback
+    async function resolvePersonIdByEmail(
+      email: string | null, 
+      fallbackPersonId: string | null,
+      agencyId: string
+    ): Promise<string | null> {
+      if (!email) {
+        console.log('No email provided, using fallback person ID:', fallbackPersonId);
+        return fallbackPersonId;
+      }
+
+      try {
+        const { data: contact, error } = await supabase
+          .from('people_contacts')
+          .select(`
+            person_id,
+            people!inner(
+              id,
+              app_agencies_people!inner(agency_id)
+            )
+          `)
+          .eq('email', email)
+          .eq('people.app_agencies_people.agency_id', agencyId)
+          .eq('is_deleted', false)
+          .maybeSingle();
+
+        if (error) {
+          console.error('Error looking up person by email:', email, error);
+          return fallbackPersonId;
+        }
+
+        if (contact?.person_id) {
+          console.log(`Resolved person ID ${contact.person_id} for email: ${email}`);
+          return contact.person_id;
+        } else {
+          console.log(`No person found for email ${email} in agency ${agencyId}, using fallback: ${fallbackPersonId}`);
+          return fallbackPersonId;
+        }
+      } catch (err) {
+        console.error('Exception while resolving person by email:', err);
+        return fallbackPersonId;
+      }
+    }
+
     // Extract calendar owner ID from userFieldsResponses
     let calendarOwnerId: string | null = null;
     const calendarOwnerValue = p.userFieldsResponses?.calendar_owner_id?.value ||
@@ -1445,6 +1489,14 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
       // Update existing appointment for reschedules and cancellations only
       console.log('Updating existing appointment:', existingAppointment.id, 'Event:', eventType, 'Status:', appointmentStatus);
       
+      // Resolve who performed the update
+      const actionEmail = eventType === 'BOOKING_RESCHEDULED' ? rescheduledBy : cancelledByEmail;
+      const updatedByPersonId = await resolvePersonIdByEmail(
+        actionEmail,
+        calendarOwnerId,
+        webhook.agency_id
+      );
+      
       // Build update object with base fields
       const updateData: any = {
         appointment_status: appointmentStatus,
@@ -1453,26 +1505,32 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
         booking_details: p,
         start_time: startTimeISO,
         end_time: endTimeISO,
-        updated_by: calendarOwnerId,
+        updated_by: updatedByPersonId,
         updated_at: new Date().toISOString()
       };
 
       // Add cancellation-specific fields if this is a cancellation event
       if (eventType === 'BOOKING_CANCELLED') {
+        const canceledByPersonId = await resolvePersonIdByEmail(
+          cancelledByEmail,
+          calendarOwnerId,
+          webhook.agency_id
+        );
+        
         updateData.cancellation_reason = cancellationReason;
-        updateData.canceled_by = calendarOwnerId; // Person who owns the calendar
-        updateData.canceled_by_email = cancelledByEmail; // Email of person who canceled
+        updateData.canceled_by = canceledByPersonId;
+        updateData.canceled_by_email = cancelledByEmail;
         updateData.canceled_at = new Date().toISOString();
-        console.log('Adding cancellation fields - reason:', cancellationReason, 'canceled_by:', calendarOwnerId, 'canceled_by_email:', cancelledByEmail);
+        console.log('Adding cancellation fields - canceled_by:', canceledByPersonId, 'email:', cancelledByEmail);
       }
 
       // Add reschedule-specific fields if this is a reschedule event
       if (eventType === 'BOOKING_RESCHEDULED') {
-        updateData.appointment_status = 'rescheduled'; // Explicitly ensure status is rescheduled
-        updateData.cal_booking_id = calBookingId; // Update to new booking ID
-        updateData.reschedule_id = rescheduleUid; // Store original booking ID for history
-        updateData.rescheduled_by_email = rescheduledBy; // Email of person who rescheduled
-        console.log('Adding reschedule fields - new cal_booking_id:', calBookingId, 'reschedule_id:', rescheduleUid, 'rescheduled_by_email:', rescheduledBy);
+        updateData.appointment_status = 'rescheduled';
+        updateData.cal_booking_id = calBookingId;
+        updateData.reschedule_id = rescheduleUid;
+        updateData.rescheduled_by_email = rescheduledBy;
+        console.log('Adding reschedule fields - updated_by:', updatedByPersonId, 'email:', rescheduledBy);
       }
       
       const { data: updatedAppointment, error: updateError } = await supabase
@@ -1503,6 +1561,13 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
       // or if no existing appointment was found
       console.log('Creating new appointment for event:', eventType, 'bookingId:', calBookingId);
       
+      // Resolve who created the appointment (first attendee who booked)
+      const createdByPersonId = await resolvePersonIdByEmail(
+        p.attendees?.[0]?.email,
+        calendarOwnerId,
+        webhook.agency_id
+      );
+      
       const { data: newAppointment, error: createError } = await supabase
         .from('schedule_appointments')
         .insert({
@@ -1517,8 +1582,8 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
           location_details: locationDetails,
           reschedule_id: rescheduleUid,
           booking_details: p,
-          created_by: calendarOwnerId,
-          updated_by: calendarOwnerId
+          created_by: createdByPersonId,
+          updated_by: createdByPersonId
         })
         .select('id')
         .single();
@@ -1553,7 +1618,30 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
     let triggerLogId: string | null = null;
     if (calendarOwnerId) {
       try {
-        console.log('Inserting trigger log with triggered_by_user_id:', calendarOwnerId, 'appointment_id:', appointmentId);
+        // Resolve who triggered this event
+        let triggeredByPersonId = calendarOwnerId;
+        
+        if (eventType === 'BOOKING_RESCHEDULED' && rescheduledBy) {
+          triggeredByPersonId = await resolvePersonIdByEmail(
+            rescheduledBy,
+            calendarOwnerId,
+            webhook.agency_id
+          );
+        } else if (eventType === 'BOOKING_CANCELLED' && cancelledByEmail) {
+          triggeredByPersonId = await resolvePersonIdByEmail(
+            cancelledByEmail,
+            calendarOwnerId,
+            webhook.agency_id
+          );
+        } else if (eventType === 'BOOKING_CREATED' && p.attendees?.[0]?.email) {
+          triggeredByPersonId = await resolvePersonIdByEmail(
+            p.attendees[0].email,
+            calendarOwnerId,
+            webhook.agency_id
+          );
+        }
+        
+        console.log('Inserting trigger log with triggered_by_user_id:', triggeredByPersonId, 'appointment_id:', appointmentId);
         
         const { data: triggerLogRow, error: logError } = await supabase
           .from('schedule_appointment_trigger_log')
@@ -1561,8 +1649,8 @@ async function processCalSchedulingEvent(supabase: any, webhook: any, data: any)
             trigger_event: eventType,
             event_source: 'Cal.com',
             raw_event_payload: data,
-            appointment_id: appointmentId, // Now we have the appointment ID
-            triggered_by_user_id: calendarOwnerId // Resolved people.id
+            appointment_id: appointmentId,
+            triggered_by_user_id: triggeredByPersonId
           })
           .select('id')
           .single();
