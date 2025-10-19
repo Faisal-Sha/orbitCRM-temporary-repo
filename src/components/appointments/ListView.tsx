@@ -10,7 +10,7 @@ import UserProfilePanel from "@/components/userprofile/UserProfilePanel";
 import ScheduleAppointmentModal from "@/components/appointments/ScheduleAppointmentModal";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { generateCalRescheduleUrl, openCalRescheduleUrl } from "@/utils/calRescheduleUrl";
+import { generateCalRescheduleUrl, openCalRescheduleUrl, generateCalCancelUrl, openCalCancelUrl } from "@/utils/calRescheduleUrl";
 
 // Import new components
 import { TYPE_OPTIONS, DATE_OPTIONS, INITIAL_LOAD, LOAD_MORE_AMOUNT, MAX_APPOINTMENTS } from "./listview/constants";
@@ -327,6 +327,18 @@ const shouldHideEditActions = (appt: any) => {
     // Open URL in new tab
     if (!openCalRescheduleUrl(rescheduleUrl)) {
       toast.error('Unable to open reschedule link: Missing booking ID');
+      console.error('Missing cal_booking_id for appointment:', appt.id);
+    }
+  };
+
+  // Handle cancel button click - generates Cal.com cancellation URL
+  const handleCancelClick = (appt: Appointment) => {
+    // Generate cancellation URL
+    const cancelUrl = generateCalCancelUrl(appt.calBookingId);
+
+    // Open URL in new tab
+    if (!openCalCancelUrl(cancelUrl)) {
+      toast.error('Unable to open cancellation link: Missing booking ID');
       console.error('Missing cal_booking_id for appointment:', appt.id);
     }
   };
@@ -771,15 +783,7 @@ const shouldHideEditActions = (appt: any) => {
                                       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5 w-2/3">
                                         <h4 className="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">Actions</h4>
                                          <div className="flex flex-wrap items-center justify-center gap-3">
-                                          <button
-                                            type="button"
-                                            onClick={() => handleRescheduleClick(appt)}
-                                            className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-primary/5 hover:border-primary/30 transition-all text-sm font-medium text-gray-700 hover:text-primary shadow-sm"
-                                          >
-                                            <Calendar className="h-4 w-4" />
-                                            <span>Reschedule</span>
-                                          </button>
-
+                                          {/* 1. Profile */}
                                           <button
                                             type="button"
                                             onClick={() => openUserProfile(appt)}
@@ -789,36 +793,39 @@ const shouldHideEditActions = (appt: any) => {
                                             <span>Profile</span>
                                           </button>
 
-                                           {!shouldHideEditActions(appt) && (
-                                             <button
-                                               type="button"
-                                               onClick={() => openAssessmentForm(appt.clientFullName, appt.attendeeId)}
-                                               className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-primary/5 hover:border-primary/30 transition-all text-sm font-medium text-gray-700 hover:text-primary shadow-sm"
-                                             >
-                                               <FormInput className="h-4 w-4" />
-                                               <span>Assessment</span>
-                                             </button>
-                                           )}
+                                          {/* 2. Assessment (only for upcoming/today) */}
+                                          {!shouldHideEditActions(appt) && (
+                                            <button
+                                              type="button"
+                                              onClick={() => openAssessmentForm(appt.clientFullName, appt.attendeeId)}
+                                              className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-primary/5 hover:border-primary/30 transition-all text-sm font-medium text-gray-700 hover:text-primary shadow-sm"
+                                            >
+                                              <FormInput className="h-4 w-4" />
+                                              <span>Assessment</span>
+                                            </button>
+                                          )}
 
+                                          {/* 3. Reschedule */}
                                           <button
                                             type="button"
-                                            onClick={() => {/* No action for now */}}
+                                            onClick={() => handleRescheduleClick(appt)}
                                             className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-primary/5 hover:border-primary/30 transition-all text-sm font-medium text-gray-700 hover:text-primary shadow-sm"
                                           >
-                                            <FileText className="h-4 w-4" />
-                                            <span>Transcript</span>
+                                            <Calendar className="h-4 w-4" />
+                                            <span>Reschedule</span>
                                           </button>
 
-                                           {!shouldHideEditActions(appt) && (
-                                             <button
-                                               type="button"
-                                               onClick={() => openCancelDialog(appt)}
-                                               className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-destructive/5 hover:border-destructive/30 transition-all text-sm font-medium text-gray-700 hover:text-destructive shadow-sm"
-                                             >
-                                               <X className="h-4 w-4" />
-                                               <span>Cancel</span>
-                                             </button>
-                                           )}
+                                          {/* 4. Cancel (only for upcoming/today) */}
+                                          {!shouldHideEditActions(appt) && (
+                                            <button
+                                              type="button"
+                                              onClick={() => handleCancelClick(appt)}
+                                              className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-destructive/5 hover:border-destructive/30 transition-all text-sm font-medium text-gray-700 hover:text-destructive shadow-sm"
+                                            >
+                                              <X className="h-4 w-4" />
+                                              <span>Cancel</span>
+                                            </button>
+                                          )}
                                         </div>
                                       </div>
                                     </div>
@@ -827,15 +834,7 @@ const shouldHideEditActions = (appt: any) => {
                                     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
                                       <h4 className="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">Actions</h4>
                                        <div className="flex flex-wrap items-center justify-center gap-3">
-                                        <button
-                                          type="button"
-                                          onClick={() => handleRescheduleClick(appt)}
-                                          className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-primary/5 hover:border-primary/30 transition-all text-sm font-medium text-gray-700 hover:text-primary shadow-sm"
-                                        >
-                                          <Calendar className="h-4 w-4" />
-                                          <span>Reschedule</span>
-                                        </button>
-
+                                        {/* 1. Profile */}
                                         <button
                                           type="button"
                                           onClick={() => openUserProfile(appt)}
@@ -845,27 +844,39 @@ const shouldHideEditActions = (appt: any) => {
                                           <span>Profile</span>
                                         </button>
 
-                                         {!shouldHideEditActions(appt) && (
-                                           <button
-                                             type="button"
-                                             onClick={() => openAssessmentForm(appt.clientFullName, appt.attendeeId)}
-                                             className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-primary/5 hover:border-primary/30 transition-all text-sm font-medium text-gray-700 hover:text-primary shadow-sm"
-                                           >
-                                             <FormInput className="h-4 w-4" />
-                                             <span>Assessment</span>
-                                           </button>
-                                         )}
+                                        {/* 2. Assessment (only for upcoming/today) */}
+                                        {!shouldHideEditActions(appt) && (
+                                          <button
+                                            type="button"
+                                            onClick={() => openAssessmentForm(appt.clientFullName, appt.attendeeId)}
+                                            className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-primary/5 hover:border-primary/30 transition-all text-sm font-medium text-gray-700 hover:text-primary shadow-sm"
+                                          >
+                                            <FormInput className="h-4 w-4" />
+                                            <span>Assessment</span>
+                                          </button>
+                                        )}
 
-                                         {!shouldHideEditActions(appt) && (
-                                           <button
-                                             type="button"
-                                             onClick={() => openCancelDialog(appt)}
-                                             className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-destructive/5 hover:border-destructive/30 transition-all text-sm font-medium text-gray-700 hover:text-destructive shadow-sm"
-                                           >
-                                             <X className="h-4 w-4" />
-                                             <span>Cancel</span>
-                                           </button>
-                                         )}
+                                        {/* 3. Reschedule */}
+                                        <button
+                                          type="button"
+                                          onClick={() => handleRescheduleClick(appt)}
+                                          className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-primary/5 hover:border-primary/30 transition-all text-sm font-medium text-gray-700 hover:text-primary shadow-sm"
+                                        >
+                                          <Calendar className="h-4 w-4" />
+                                          <span>Reschedule</span>
+                                        </button>
+
+                                        {/* 4. Cancel (only for upcoming/today) */}
+                                        {!shouldHideEditActions(appt) && (
+                                          <button
+                                            type="button"
+                                            onClick={() => handleCancelClick(appt)}
+                                            className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-destructive/5 hover:border-destructive/30 transition-all text-sm font-medium text-gray-700 hover:text-destructive shadow-sm"
+                                          >
+                                            <X className="h-4 w-4" />
+                                            <span>Cancel</span>
+                                          </button>
+                                        )}
                                       </div>
                                     </div>
                                   )}
@@ -1072,15 +1083,7 @@ const shouldHideEditActions = (appt: any) => {
                                   <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
                                     <h4 className="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">Actions</h4>
                                      <div className="flex flex-wrap items-center justify-center gap-3">
-                                      <button
-                                        type="button"
-                                        onClick={() => handleRescheduleClick(appt)}
-                                        className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-primary/5 hover:border-primary/30 transition-all text-sm font-medium text-gray-700 hover:text-primary shadow-sm"
-                                      >
-                                        <Calendar className="h-4 w-4" />
-                                        <span>Reschedule</span>
-                                      </button>
-
+                                      {/* 1. Profile */}
                                       <button
                                         type="button"
                                         onClick={() => openUserProfile(appt)}
@@ -1090,36 +1093,39 @@ const shouldHideEditActions = (appt: any) => {
                                         <span>Profile</span>
                                       </button>
 
-                                       {!shouldHideEditActions(appt) && (
-                                         <button
-                                           type="button"
-                                           onClick={() => openProgressNotesForm(appt.clientFullName, appt.attendeeId)}
-                                           className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-primary/5 hover:border-primary/30 transition-all text-sm font-medium text-gray-700 hover:text-primary shadow-sm"
-                                         >
-                                           <StickyNote className="h-4 w-4" />
-                                           <span>Progress Note</span>
-                                         </button>
-                                       )}
+                                      {/* 2. Progress Note (only for upcoming/today) */}
+                                      {!shouldHideEditActions(appt) && (
+                                        <button
+                                          type="button"
+                                          onClick={() => openProgressNotesForm(appt.clientFullName, appt.attendeeId)}
+                                          className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-primary/5 hover:border-primary/30 transition-all text-sm font-medium text-gray-700 hover:text-primary shadow-sm"
+                                        >
+                                          <StickyNote className="h-4 w-4" />
+                                          <span>Progress Note</span>
+                                        </button>
+                                      )}
 
-                                       <button
-                                         type="button"
-                                         onClick={() => {/* No action for now */}}
-                                         className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-primary/5 hover:border-primary/30 transition-all text-sm font-medium text-gray-700 hover:text-primary shadow-sm"
-                                       >
-                                         <FileText className="h-4 w-4" />
-                                         <span>Transcript</span>
-                                       </button>
+                                      {/* 3. Reschedule */}
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRescheduleClick(appt)}
+                                        className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-primary/5 hover:border-primary/30 transition-all text-sm font-medium text-gray-700 hover:text-primary shadow-sm"
+                                      >
+                                        <Calendar className="h-4 w-4" />
+                                        <span>Reschedule</span>
+                                      </button>
 
-                                       {!shouldHideEditActions(appt) && (
-                                         <button
-                                           type="button"
-                                           onClick={() => openCancelDialog(appt)}
-                                           className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-destructive/5 hover:border-destructive/30 transition-all text-sm font-medium text-gray-700 hover:text-destructive shadow-sm"
-                                         >
-                                           <X className="h-4 w-4" />
-                                           <span>Cancel</span>
-                                         </button>
-                                       )}
+                                      {/* 4. Cancel (only for upcoming/today) */}
+                                      {!shouldHideEditActions(appt) && (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleCancelClick(appt)}
+                                          className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-destructive/5 hover:border-destructive/30 transition-all text-sm font-medium text-gray-700 hover:text-destructive shadow-sm"
+                                        >
+                                          <X className="h-4 w-4" />
+                                          <span>Cancel</span>
+                                        </button>
+                                      )}
                                     </div>
                                   </div>
                                 </div>

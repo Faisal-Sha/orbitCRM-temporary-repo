@@ -38,3 +38,42 @@ export const openCalRescheduleUrl = (url: string | null) => {
   window.open(url, '_blank', 'noopener,noreferrer');
   return true;
 };
+
+/**
+ * Generates a Cal.com cancellation URL based on booking ID
+ * 
+ * URL Format: https://app.cal.com/booking/{calBookingId}?cancel=true
+ * 
+ * @param calBookingId - The Cal.com booking UID from schedule_appointments.cal_booking_id
+ * @returns Complete cancellation URL or null if booking ID is missing
+ */
+export const generateCalCancelUrl = (
+  calBookingId: string | undefined
+): string | null => {
+  // Validate required data
+  if (!calBookingId) {
+    console.warn('Missing cal_booking_id for cancellation URL');
+    return null;
+  }
+
+  // Fixed Cal.com cancellation base URL
+  const baseUrl = 'https://app.cal.com/booking';
+
+  // Construct the URL: https://app.cal.com/booking/{id}?cancel=true
+  const url = `${baseUrl}/${calBookingId}?cancel=true`;
+  
+  return url;
+};
+
+/**
+ * Opens Cal.com cancellation URL in a new tab
+ */
+export const openCalCancelUrl = (url: string | null) => {
+  if (!url) {
+    console.error('Cannot open cancellation URL: URL is null');
+    return false;
+  }
+
+  window.open(url, '_blank', 'noopener,noreferrer');
+  return true;
+};
