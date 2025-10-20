@@ -1,7 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { createManagedUser, getCalAtomsConfig } from '@/lib/cal-atoms-refresh';
 
 interface CalAtomsUser {
   cal_user_id: number;
@@ -29,8 +28,9 @@ interface UseCalAtomsUserReturn {
     updated_at: string;
     username: string;
   }>;
-  refreshToken: () => Promise<void>;
+  refreshToken: () => Promise<CalAtomsUser>;
   isCreatingUser: boolean;
+  isRefreshingToken: boolean;
 }
 
 /**
@@ -141,42 +141,22 @@ export function useCalAtomsUser(): UseCalAtomsUserReturn {
   // Mutation to refresh access token
   const refreshTokenMutation = useMutation({
     mutationFn: async () => {
-      if (!calUser?.refresh_token) {
-        throw new Error('No refresh token available');
-      }
-
-      // This should be called from your backend refresh endpoint
-      const response = await fetch('/api/cal-atoms/refresh', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${calUser.access_token}`,
+      const response = await supabase.functions.invoke('cal-atoms-user', {
+        body: {
+          action: 'refresh',
         },
-        body: JSON.stringify({
-          refreshToken: calUser.refresh_token,
-        }),
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to refresh token');
+      if (response.error) {
+        console.error('Cal.com token refresh error:', response.error);
+        throw new Error(response.error.message || 'Failed to refresh Cal.com token');
       }
 
-      const { accessToken, refreshToken } = await response.json();
+      if (!response.data?.success) {
+        throw new Error(response.data?.error || 'Failed to refresh Cal.com token');
+      }
 
-      // Update tokens in database
-      const { data, error } = await supabase
-        .from('cal_atoms_users')
-        .update({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', calUser.id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
+      return response.data.data as CalAtomsUser;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cal-atoms-user', currentUser?.id] });
@@ -193,9 +173,10 @@ export function useCalAtomsUser(): UseCalAtomsUserReturn {
     error,
     createCalUser: createCalUserMutation.mutateAsync,
     refreshToken: async () => {
-      await refreshTokenMutation.mutateAsync();
-      return;
+      const data = await refreshTokenMutation.mutateAsync();
+      return data;
     },
     isCreatingUser: createCalUserMutation.isPending,
+    isRefreshingToken: refreshTokenMutation.isPending,
   };
 }

@@ -92,6 +92,7 @@ const CalendarsTab = () => {
     }
   };
 
+
   const getBaseUrl = (): string => {
     if (domain) {
       return `${domain.protocol}${domain.domain}/calendars/${currentUserName}`;

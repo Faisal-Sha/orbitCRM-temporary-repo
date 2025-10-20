@@ -3,11 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Settings, Calendar, Clock, User, Plus, CheckCircle, AlertTriangle } from "lucide-react";
+import { Loader2, Settings, Calendar, Clock, User, Plus, CheckCircle, AlertTriangle, RefreshCw } from "lucide-react";
 import { CalProvider, AvailabilitySettings, CreateEventType, Booker } from "@calcom/atoms";
 import { useCalAtomsUser } from "@/hooks/useCalAtomsUser";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 interface Props {
   // Cal Atoms doesn't need configuration props - it's fully customizable
@@ -15,7 +16,7 @@ interface Props {
 
 const AvailabilityTab = ({ }: Props) => {
   const [activeView, setActiveView] = useState<'availability' | 'events' | 'booking'>('availability');
-  const { calUser, isLoading, error, createCalUser, isCreatingUser } = useCalAtomsUser();
+  const { calUser, isLoading, error, createCalUser, isCreatingUser, refreshToken, isRefreshingToken } = useCalAtomsUser();
   
   // Debug: Get current user info
   const { data: currentUser } = useQuery({
@@ -157,6 +158,23 @@ const AvailabilityTab = ({ }: Props) => {
 
   // Check if we have valid access tokens (not demo tokens)
   const hasValidToken = calUser.access_token && calUser.access_token !== 'demo_access_token';
+
+  const handleRefreshToken = async () => {
+    try {
+      await refreshToken();
+      toast({
+        title: "Token refreshed",
+        description: "Cal.com access token has been refreshed successfully.",
+      });
+    } catch (err: any) {
+      console.error('Failed to refresh Cal.com token:', err);
+      toast({
+        title: "Refresh failed",
+        description: err?.message || "Unable to refresh Cal.com access token.",
+        variant: "destructive",
+      });
+    }
+  };
   
   // Main Cal Atoms interface with fallback
   if (!hasValidToken) {
@@ -171,9 +189,29 @@ const AvailabilityTab = ({ }: Props) => {
                 <AlertTriangle className="h-5 w-5 text-orange-500" />
                 Cal.com Integration (Demo Mode)
               </CardTitle>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <User className="h-4 w-4" />
-                {calUser.email}
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <User className="h-4 w-4" />
+                  {calUser.email}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRefreshToken}
+                  disabled={isRefreshingToken}
+                >
+                  {isRefreshingToken ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Refreshing…
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Refresh Token
+                    </>
+                  )}
+                </Button>
               </div>
             </div>
           </CardHeader>
@@ -376,9 +414,29 @@ const AvailabilityTab = ({ }: Props) => {
                 <CheckCircle className="h-5 w-5 text-green-500" />
                 Cal.com Integration Active
               </CardTitle>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <User className="h-4 w-4" />
-                {calUser.email}
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <User className="h-4 w-4" />
+                  {calUser.email}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRefreshToken}
+                  disabled={isRefreshingToken}
+                >
+                  {isRefreshingToken ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Refreshing…
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Refresh Token
+                    </>
+                  )}
+                </Button>
               </div>
             </div>
           </CardHeader>

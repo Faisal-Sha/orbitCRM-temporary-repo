@@ -40,18 +40,104 @@ serve(async (req) => {
       throw new Error('User not authenticated');
     }
 
-    const requestBody = await req.json();
-    console.log('Cal.com managed user creation request:', requestBody);
-
     if (req.method === 'POST') {
-      // Create Cal.com managed user
+      let requestBody: any = {};
+      try {
+        requestBody = await req.json();
+      } catch (_error) {
+        requestBody = {};
+      }
+      console.log('Cal.com managed user request:', requestBody);
+
+      const action = requestBody?.action || 'create';
+
+      if (action === 'refresh') {
+        // Refresh tokens for existing Cal.com managed user
+        const { data: existingUser, error: existingUserError } = await supabase
+          .from('cal_atoms_users')
+          .select('*')
+          .eq('orbit_user_id', user.id)
+          .single();
+
+        if (existingUserError || !existingUser) {
+          throw new Error('No Cal.com user found to refresh tokens');
+        }
+
+        if (!existingUser.refresh_token) {
+          throw new Error('No refresh token available for this Cal.com user');
+        }
+
+        const clientId = Deno.env.get('CAL_OAUTH_CLIENT_ID');
+        const clientSecret = Deno.env.get('CAL_OAUTH_CLIENT_SECRET');
+        const apiUrl = Deno.env.get('CAL_API_URL') || 'https://api.cal.com/v2';
+
+        if (!clientId || !clientSecret) {
+          throw new Error('Cal.com credentials not configured');
+        }
+
+        console.log('Refreshing Cal.com access token for user:', existingUser.cal_user_id);
+
+        const refreshResponse = await fetch(`${apiUrl}/oauth-clients/${clientId}/refresh`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-cal-secret-key': clientSecret,
+          },
+          body: JSON.stringify({
+            refresh_token: existingUser.refresh_token,
+          }),
+        });
+
+        const refreshText = await refreshResponse.text();
+        console.log('Cal.com refresh response status:', refreshResponse.status);
+        console.log('Cal.com refresh response:', refreshText);
+
+        if (!refreshResponse.ok) {
+          throw new Error(`Failed to refresh Cal.com token: ${refreshResponse.status} - ${refreshText}`);
+        }
+
+        const refreshData = JSON.parse(refreshText);
+        if (refreshData.status !== 'success' || !refreshData.data?.accessToken) {
+          throw new Error(`Cal.com refresh error: ${refreshData.error || 'Unknown error'}`);
+        }
+
+        const updatedTokens = {
+          access_token: refreshData.data.accessToken,
+          refresh_token: refreshData.data.refreshToken || existingUser.refresh_token,
+        };
+
+        const { data: updatedRecord, error: updateError } = await supabase
+          .from('cal_atoms_users')
+          .update({
+            access_token: updatedTokens.access_token,
+            refresh_token: updatedTokens.refresh_token,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existingUser.id)
+          .select()
+          .single();
+
+        if (updateError || !updatedRecord) {
+          console.error('Database error while updating refreshed tokens:', updateError);
+          throw new Error('Failed to store refreshed Cal.com tokens');
+        }
+
+        return new Response(JSON.stringify({
+          success: true,
+          message: 'Cal.com access token refreshed successfully',
+          data: updatedRecord,
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Create Cal.com managed user (default action)
       const { email, name } = requestBody;
       
       if (!email || !name) {
         throw new Error('Email and name are required');
       }
 
-      // Get Cal.com credentials from environment
       const clientId = Deno.env.get('CAL_OAUTH_CLIENT_ID');
       const clientSecret = Deno.env.get('CAL_OAUTH_CLIENT_SECRET');
       const apiUrl = Deno.env.get('CAL_API_URL') || 'https://api.cal.com/v2';

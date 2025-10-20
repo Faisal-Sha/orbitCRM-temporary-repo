@@ -63,6 +63,7 @@ interface EditableDetailItemProps {
   icon: React.ElementType;
   label: string;
   value: string;
+  displayValue?: string;
   options: string[];
   isEditing: boolean;
   onEdit: () => void;
@@ -76,6 +77,7 @@ const EditableDetailItem: React.FC<EditableDetailItemProps> = ({
   icon: Icon,
   label,
   value,
+  displayValue,
   options,
   isEditing,
   onEdit,
@@ -92,6 +94,11 @@ const EditableDetailItem: React.FC<EditableDetailItemProps> = ({
     setCurrentValue(value);
   }, [value, isEditing]);
   
+  const optionMatch = options.some(
+    (option) => option.toLowerCase() === (currentValue || '').toLowerCase()
+  );
+  const selectValue = optionMatch ? currentValue : '';
+
   const handleChange = async (newValue: string) => {
     if (isSaving) return;
     try {
@@ -113,7 +120,7 @@ const EditableDetailItem: React.FC<EditableDetailItemProps> = ({
       <div className="flex-1">
         <p className="text-sm font-medium text-gray-700">{label}</p>
         {isEditing ? (
-          <Select value={currentValue} onValueChange={handleChange} disabled={disabled || loading || isSaving}>
+          <Select value={selectValue} onValueChange={handleChange} disabled={disabled || loading || isSaving}>
             <SelectTrigger className="w-full mt-1">
               <SelectValue placeholder={loading || isSaving ? 'Loading…' : 'Select'} />
             </SelectTrigger>
@@ -133,7 +140,7 @@ const EditableDetailItem: React.FC<EditableDetailItemProps> = ({
           </Select>
         ) : (
           <div className="flex items-center space-x-2">
-            <p className="text-sm text-gray-500">{value || 'Not provided'}</p>
+            <p className="text-sm text-gray-500">{(displayValue ?? value) || 'Not provided'}</p>
             <Button
               variant="ghost"
               size="icon"

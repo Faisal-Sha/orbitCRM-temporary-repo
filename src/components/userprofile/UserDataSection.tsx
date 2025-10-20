@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { ShieldCheck, Briefcase, UserCheck } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { EditableDetailItem } from './GeneralTab';
@@ -9,6 +9,17 @@ import { useStaffTypes } from '@/hooks/useStaffTypes';
 interface UserDataSectionProps {
   personId?: string;
 }
+
+const DEFAULT_STATUS_OPTIONS = ['Active', 'Inactive'];
+
+const ROLE_STATUS_OPTIONS: Record<string, string[]> = {
+  owner: ['Active', 'Inactive'],
+  admin: ['Active', 'Inactive'],
+  general: ['Active', 'Inactive'],
+  lead: ['Unqualified', 'Unsubscribed', 'Doubtful'],
+  client: ['Active', 'On Hold', 'Discharged', 'Deceased'],
+  staff: ['Active', 'On Leave', 'Terminated'],
+};
 
 // Helper function to validate if a string is a valid UUID
 const isValidUUID = (uuid: string): boolean => {
@@ -34,25 +45,17 @@ export const UserDataSection: React.FC<UserDataSectionProps> = ({ personId }) =>
   const roleOptions = (roles || []).map(r => r.role_name).filter(Boolean);
   const staffTypeOptions = (staffTypes || []).map(s => s.staff_type).filter(Boolean);
 
-  // Get status options based on user role
-  const getStatusOptions = (role: string): string[] => {
-    switch (role?.toLowerCase()) {
-      case 'owner':
-      case 'admin':  
-      case 'general':
-        return ['Active', 'Inactive'];
-      case 'lead':
-        return ['Applied', 'Qualified', 'Unqualified', 'Unsubscribed'];
-      case 'client':
-        return ['Active', 'On Hold', 'Discharged', 'Inactive', 'Deceased'];
-      case 'staff':
-        return ['Onboarding', 'Active', 'On Leave', 'Terminated'];
-      default:
-        return ['Active', 'Inactive']; // fallback
-    }
-  };
+  const normalizedRole = assignedRole?.toLowerCase() || '';
+  const statusOptions = useMemo(() => {
+    const baseOptions = ROLE_STATUS_OPTIONS[normalizedRole] || DEFAULT_STATUS_OPTIONS;
+    const deduped = Array.from(new Set(baseOptions));
 
-  const statusOptions = getStatusOptions(assignedRole);
+    if (currentStatus && !deduped.some(option => option.toLowerCase() === currentStatus.toLowerCase())) {
+      return [currentStatus, ...deduped];
+    }
+
+    return deduped;
+  }, [normalizedRole, currentStatus]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -169,7 +172,8 @@ export const UserDataSection: React.FC<UserDataSectionProps> = ({ personId }) =>
           <EditableDetailItem
             icon={ShieldCheck}
             label="User Role"
-            value={assignedRole || 'Not assigned'}
+            value={assignedRole || ''}
+            displayValue={assignedRole || 'Not assigned'}
             options={roleOptions}
             isEditing={editingField === 'userRole'}
             onEdit={() => setEditingField('userRole')}
@@ -182,7 +186,8 @@ export const UserDataSection: React.FC<UserDataSectionProps> = ({ personId }) =>
             <EditableDetailItem
               icon={Briefcase}
               label="Staff Type"
-              value={assignedStaffType || 'Not assigned'}
+              value={assignedStaffType || ''}
+              displayValue={assignedStaffType || 'Not assigned'}
               options={staffTypeOptions}
               isEditing={editingField === 'staffType'}
               onEdit={() => setEditingField('staffType')}
@@ -196,7 +201,8 @@ export const UserDataSection: React.FC<UserDataSectionProps> = ({ personId }) =>
             <EditableDetailItem
               icon={UserCheck}
               label="Status"
-              value={currentStatus || 'Not assigned'}
+              value={currentStatus || ''}
+              displayValue={currentStatus || 'Not assigned'}
               options={statusOptions}
               isEditing={editingField === 'status'}
               onEdit={() => setEditingField('status')}
